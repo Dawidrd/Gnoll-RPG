@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0d0a0f"/>
+  <circle cx="256" cy="256" r="196" fill="#161118"/>
+  <!-- d20 silhouette -->
+  <g fill="none" stroke="#caa24f" stroke-width="14" stroke-linejoin="round">
+    <polygon points="256,82 407,169 407,343 256,430 105,343 105,169"/>
+    <polygon points="256,170 340,316 172,316"/>
+    <path d="M256 82 L256 170 M407 169 L340 316 M105 169 L172 316 M407 343 L340 316 M105 343 L172 316 M256 430 L256 316 M256 170 L407 169 M256 170 L105 169"/>
+  </g>
+  <!-- claw marks -->
+  <g stroke="#d0404a" stroke-width="22" stroke-linecap="round">
+    <path d="M196 126 C226 220 246 300 238 392"/>
+    <path d="M256 112 C282 210 296 300 286 402"/>
+    <path d="M316 126 C338 218 346 296 334 380"/>
+  </g>
+</svg>

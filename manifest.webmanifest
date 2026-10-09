@@ -1,0 +1,16 @@
+{
+  "name": "Gnoll RPG",
+  "short_name": "Gnoll RPG",
+  "description": "Free character sheet that teaches you to play your character. Darmowa karta postaci, która uczy grać Twoją postacią.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0a0f",
+  "theme_color": "#0d0a0f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
