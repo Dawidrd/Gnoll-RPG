@@ -1,22 +1,25 @@
 // The rules engine: turns a stored character into everything the sheet shows.
 import { ABILITIES, SKILLS, FEATS, mod, profBonus, clamp } from "./core.js";
 import { monk } from "./classes/monk.js";
+import { barbarian } from "./classes/barbarian.js";
+import { rogue } from "./classes/rogue.js";
+import { cleric } from "./classes/cleric.js";
+import { ARMOR, armorClass } from "./armor.js";
 import { SPECIES } from "./species.js";
 import { BACKGROUNDS, TOOLS, backgroundBonus } from "./backgrounds.js";
 
-export const CLASSES = { monk };
+export const CLASSES = { barbarian, cleric, monk, rogue };
 
 /** Classes listed in the creator but not built yet. */
 export const PLANNED_CLASSES = {
-  barbarian: { pl: "Barbarzyńca", en: "Barbarian" }, bard: { pl: "Bard", en: "Bard" },
-  cleric: { pl: "Kleryk", en: "Cleric" }, druid: { pl: "Druid", en: "Druid" },
+  bard: { pl: "Bard", en: "Bard" }, druid: { pl: "Druid", en: "Druid" },
   fighter: { pl: "Wojownik", en: "Fighter" }, paladin: { pl: "Paladyn", en: "Paladin" },
-  ranger: { pl: "Łowca", en: "Ranger" }, rogue: { pl: "Łotr", en: "Rogue" },
+  ranger: { pl: "Łowca", en: "Ranger" },
   sorcerer: { pl: "Zaklinacz", en: "Sorcerer" }, warlock: { pl: "Czarnoksiężnik", en: "Warlock" },
   wizard: { pl: "Czarodziej", en: "Wizard" },
 };
 
-export { SPECIES, BACKGROUNDS, TOOLS };
+export { SPECIES, BACKGROUNDS, TOOLS, ARMOR };
 
 /** Fixed hit points per level after the first (the 2024 "fixed value"). */
 export const fixedHp = (hitDie) => hitDie / 2 + 1;
@@ -35,6 +38,11 @@ export function normalize(ch) {
   if (!ch.bgIncrease) ch.bgIncrease = { mode: "21", plus2: "", plus1: "" };
   if (!ch.hpRolls) ch.hpRolls = {};
   if (!ch.tools) ch.tools = "";
+  if (!ch.armor) ch.armor = "none";
+  if (ch.shield == null) ch.shield = false;
+  if (!ch.classChoices) ch.classChoices = {};
+  if (!ch.spells) ch.spells = { cantrips: "", prepared: "" };
+  if (!ch.expertise) ch.expertise = [];
   return ch;
 }
 
@@ -47,7 +55,11 @@ export function compute(raw) {
   const pb = profBonus(level);
   const abilities = finalAbilities(ch);
   const mods = Object.fromEntries(ABILITIES.map((a) => [a, mod(abilities[a])]));
-  const ctx = { level, pb, mods, abilities, choice: ch.speciesChoice || {} };
+  const classChoices = Object.fromEntries(Object.entries(cls.choices || {}).map(([k, d]) => [k, ch.classChoices[k] || d.default]));
+  const ctx = { level, pb, mods, abilities, choice: ch.speciesChoice || {}, classChoices };
+  const training = [...(cls.armorTraining || []), ...(cls.extraArmorTraining ? cls.extraArmorTraining(ctx) : [])];
+  const worn = armorClass({ armorId: ch.armor, shield: !!ch.shield, mods, unarmored: cls.unarmored ? cls.unarmored(ctx) : null, training, strScore: abilities.str });
+  ctx.armor = { wearing: worn.wearing, heavy: worn.heavy, shield: !!ch.shield };
 
   const featIds = [...new Set([...(bg?.feat ? [bg.feat] : []), ...(ch.feats || [])])];
   const feats = featIds.map((id) => ({ id, ...FEATS[id], fromBackground: bg?.feat === id })).filter((f) => f.name);
@@ -62,12 +74,13 @@ export function compute(raw) {
   const hpComputed = cls.hitDie + mods.con + perLevel.reduce((s, p) => s + p.gain, 0) + hpExtra * level;
   const hpMax = ch.hp.maxOverride || Math.max(1, hpComputed);
 
-  const acBase = cls.armorClass ? cls.armorClass(ctx) : { value: 10 + mods.dex, note: { pl: "10 + ZRĘ", en: "10 + DEX" } };
-  const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie (zbroja, tarcza)", en: "Set by hand (armor, shield)" } } : acBase;
+  const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
 
   const initiative = mods.dex + feats.reduce((s, f) => s + (f.initiativeBonus ? f.initiativeBonus(ctx) : 0), 0);
   const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : sp.speed;
-  const speed = baseSpeed + (cls.speedBonus && !ch.acOverride ? cls.speedBonus(ctx) : 0);
+  const armorDef = ARMOR[ch.armor];
+  const slowArmor = armorDef?.str && abilities.str < armorDef.str ? 10 : 0;
+  const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor;
   const darkvision = sp.custom ? ch.customSpecies?.darkvision || 0 : sp.darkvision;
 
   const bgSkills = bg?.skills || [];
@@ -75,24 +88,37 @@ export function compute(raw) {
   const skills = SKILLS.map((s) => {
     const fromBg = bgSkills.includes(s.id);
     const prof = fromBg || (ch.skills || []).includes(s.id);
-    const expert = (ch.expertise || []).includes(s.id);
-    return { ...s, prof, fromBg, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) };
+    const expert = prof && (ch.expertise || []).includes(s.id);
+    const extra = cls.skillBonus ? cls.skillBonus(ctx, s.id) : 0;
+    return { ...s, prof, fromBg, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
   });
   const perception = skills.find((s) => s.id === "perception").value;
 
+  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
+  const spellcasting = cls.spellcasting ? cls.spellcasting(level, ctx) : subclass?.spellcasting ? subclass.spellcasting(level, ctx) : null;
+  const spells = spellcasting ? {
+    ...spellcasting,
+    dc: 8 + mods[spellcasting.ability] + pb, attack: mods[spellcasting.ability] + pb,
+    always: subclass?.domainSpells ? subclass.domainSpells(level) : [],
+  } : null;
+  const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: "long", slot: i + 1,
+    name: { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
+
   const resources = [
     ...(cls.resources ? cls.resources(ctx) : []),
+    ...(subclass?.resources ? subclass.resources(ctx) : []),
+    ...slotRes,
     ...(sp.resources ? sp.resources(ctx) : []),
     ...feats.filter((f) => f.resource).map((f) => f.resource(ctx)),
   ].filter((r) => r.max > 0).map((r) => ({ ...r, used: clamp((ch.used || {})[r.id] || 0, 0, r.max) }));
 
   const atLevel = (list) => (list || []).filter((f) => f.lv <= level).map((f) => ({ ...f, text: f.desc(ctx) }));
-  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
+  const customSubclass = level >= (cls.subclassLevel || 99) && ch.subclass === "custom" ? ch.subclassCustom || "" : "";
 
-  const tools = [bg?.tool ? TOOLS[bg.tool] : null, ch.tools || null].filter(Boolean);
+  const tools = [cls.classTools || null, bg?.tool ? TOOLS[bg.tool] : null, ch.tools || null].filter(Boolean);
 
   return {
-    cls, sp, bg, subclass, level, pb, abilities, mods, ac, initiative, speed, darkvision,
+    cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
@@ -118,6 +144,7 @@ export function blankCharacter() {
     level: 1, abilityMethod: "array", abilityBase: { ...cls.standardArray }, rolled: null,
     abilities: { ...cls.standardArray },
     skills: [], expertise: [], feats: [], featsOther: "", acOverride: null,
+    armor: "none", shield: false, classChoices: {}, subclassCustom: "", spells: { cantrips: "", prepared: "" },
     hpRolls: {}, hp: { cur: null, temp: 0, maxOverride: null }, death: { ok: 0, fail: 0 }, used: {},
     notes: "", created: Date.now(), updated: Date.now(),
   };

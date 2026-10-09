@@ -227,3 +227,7 @@ td b { color: #f1e6d1; }
 .rollres { font-family: var(--f-ui); font-size: 1.05rem; }
 .rollres b { color: var(--gold); font-size: 1.6rem; vertical-align: middle; }
 @media (max-width: 420px) { .abrow { grid-template-columns: minmax(0, 1.2fr) minmax(64px, 1fr) 36px minmax(64px, 1fr); gap: 6px; padding-inline: 8px; } }
+.acline { font-family: var(--f-ui); color: var(--bone-dim); }
+.acline b { color: var(--bone); font-size: 1.3rem; }
+.warn { font-family: var(--f-ui); font-size: .88rem; color: #f0a0a6; border-left: 2px solid var(--blood); padding-left: 8px; }
+details summary { cursor: pointer; }

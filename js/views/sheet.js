@@ -26,7 +26,7 @@ export function renderSheet(root, go, id, tab) {
     ch.hp.cur = clamp(ch.hp.cur, 0, c.hpMax);
     const hpPct = c.hpMax ? (ch.hp.cur / c.hpMax) * 100 : 0;
     const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(c.sp.name) : tr(c.sp.name);
-    const subName = c.cls.subclasses?.[ch.subclass] ? tr(c.cls.subclasses[ch.subclass].name) : ch.subclass;
+    const subName = c.cls.subclasses?.[ch.subclass] ? tr(c.cls.subclasses[ch.subclass].name) : ch.subclass === "custom" ? ch.subclassCustom : "";
 
     const header = h("header", { cls: "mast" }, [
       h("div", { cls: "who" }, [
@@ -49,7 +49,7 @@ export function renderSheet(root, go, id, tab) {
       h("div", { cls: "vit hp" }, [h("span", { cls: "k", text: "HP" }), h("span", { cls: "v", text: `${ch.hp.cur}/${c.hpMax}` }),
         ch.hp.temp ? h("span", { cls: "v small", text: "+" + ch.hp.temp }) : null]),
       h("div", { cls: "vit" }, [h("span", { cls: "k", text: "AC" }), h("span", { cls: "v", text: c.ac.value })]),
-      ...[...c.resources].sort((a, b) => (b.max > 1) - (a.max > 1)).slice(0, 2).map((r) => h("div", { cls: "vit" }, [h("span", { cls: "k", text: shortRes(r) }), h("span", { cls: "v", text: `${r.max - r.used}/${r.max}` })])),
+      ...[...c.resources].sort((a, b) => (!b.slot && b.max > 1) - (!a.slot && a.max > 1)).slice(0, 2).map((r) => h("div", { cls: "vit" }, [h("span", { cls: "k", text: shortRes(r) }), h("span", { cls: "v", text: `${r.max - r.used}/${r.max}` })])),
       h("div", { cls: "quick" }, [
         h("button", { type: "button", cls: "btn blood sq", "aria-label": "−1 HP", text: "−1", onclick: () => changeHp(-1) }),
         h("button", { type: "button", cls: "btn sq", "aria-label": "+1 HP", text: "+1", onclick: () => changeHp(1) }),
@@ -94,13 +94,14 @@ export function renderSheet(root, go, id, tab) {
       ]);
 
       const rows = [
-        [t("sum.ac"), String(c.ac.value), tr(c.ac.note)],
+        [t("sum.ac"), String(c.ac.value), [tr(c.ac.note), ...(c.ac.warnings || []).map(tr)].join(" ")],
         [t("sum.init"), signed(c.initiative), c.feats.some((f) => f.initiativeBonus) ? tr({ pl: "ZRĘ + PB (Alert)", en: "DEX + PB (Alert)" }) : tr({ pl: "ZRĘ", en: "DEX" })],
         [t("sum.speed"), `${c.speed} ft`, t("sum.squares", { n: c.speed / 5 })],
         [t("sum.pb"), signed(c.pb), ""],
         [t("sum.passive"), String(c.passivePerception), ""],
         [t("sum.dark"), c.darkvision ? `${c.darkvision} ft` : t("sum.none"), ""],
-        ...c.summary.map((r) => [tr(r.label), r.value, tr(r.note)]),
+        ...(c.spells ? [[t("char.spellDc"), String(c.spells.dc), t("char.spellAttack") + " " + signed(c.spells.attack)]] : []),
+        ...c.summary.map((r) => [tr(r.label), tr(r.value), tr(r.note)]),
       ];
       const table = h("div", { cls: "tw" }, [h("table", { cls: "sumtab" }, [h("tbody", { cls: "gl" }, rows.map(([k, v, n]) =>
         h("tr", {}, [h("th", { text: k }), h("td", {}, [h("div", { cls: "cell" }, [h("b", { cls: "num", text: v }), n ? h("span", { cls: "note", text: n }) : null])])])))])]);
@@ -116,7 +117,7 @@ export function renderSheet(root, go, id, tab) {
         h("span", { cls: "absave", text: `${t("char.save")} ${signed(c.saves[a].value)}` }),
       ])));
       const skills = h("div", { cls: "skills" }, c.skills.map((s) => h("div", { cls: "skill" + (s.prof ? " prof" : "") }, [
-        h("span", {}, [s[lang()], s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null]), h("b", { text: signed(s.value) }),
+        h("span", {}, [s[lang()], s.expert ? h("small", { cls: "lvtag", text: t("char.expertTag") }) : null, s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null]), h("b", { text: signed(s.value) }),
       ])));
       const featList = (list) => h("dl", { cls: "qa gl" }, list.flatMap((f) => [
         h("dt", {}, [tr(f.name), " ", h("small", { cls: "lvtag", text: `${f.lv}` })]), h("dd", {}, [h("p", { text: tr(f.text) })]),
@@ -143,6 +144,15 @@ export function renderSheet(root, go, id, tab) {
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.skills") }), skills]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.classFeatures") }), featList(c.classFeatures)]),
         c.subclassFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: tr(c.subclass.name) }), featList(c.subclassFeatures)]) : null,
+        c.customSubclass ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: c.customSubclass }), h("p", { cls: "hint", text: t("char.customSubclassHint") })]) : null,
+        c.spells ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.spells") }), h("dl", { cls: "qa" }, [
+          h("dt", { text: t("char.spellDc") + " " + c.spells.dc + " · " + t("char.spellAttack") + " " + signed(c.spells.attack) }),
+          h("dd", {}, [h("p", { cls: "hint", text: t("char.spellsRule", { list: tr(c.spells.list), slots: c.spells.slots.map((n, i) => `${n}× ${i + 1}`).join(", ") }) })]),
+          h("dt", { text: t("char.cantrips", { n: c.spells.cantrips }) }), h("dd", {}, [h("p", { cls: "pre", text: ch.spells?.cantrips || "—" })]),
+          h("dt", { text: t("char.prepared", { n: c.spells.prepared }) }), h("dd", {}, [h("p", { cls: "pre", text: ch.spells?.prepared || "—" })]),
+          c.spells.always.length ? h("dt", { text: t("form.alwaysPrepared") }) : null,
+          c.spells.always.length ? h("dd", {}, [h("p", { text: c.spells.always.join(", ") })]) : null,
+        ])]) : null,
         c.speciesFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesFeatures") }), featList(c.speciesFeatures)]) : null,
         ...extra,
       ];
@@ -223,7 +233,7 @@ export function renderSheet(root, go, id, tab) {
         type: "button", cls: "pip" + (i < left ? " on" : ""), "aria-label": `${tr(r.name)} ${i + 1}/${r.max}`,
         onclick: () => { const nowLeft = left === i + 1 ? i : i + 1; ch.used = { ...ch.used, [r.id]: r.max - nowLeft }; save(); },
       })));
-      return h("div", { cls: "resrow" }, [h("span", { cls: "lbl" }, [tr(r.name), h("small", { text: `${left} / ${r.max} · ${t("res.recharge." + r.recharge)}` })]), pips]);
+      return h("div", { cls: "resrow" }, [h("span", { cls: "lbl" }, [tr(r.name), h("small", { text: `${left} / ${r.max} · ${t(r.shortRegain ? "res.recharge.partial" : "res.recharge." + r.recharge)}` })]), pips]);
     }
 
     function restControls() {
@@ -289,7 +299,10 @@ export function renderSheet(root, go, id, tab) {
   function rest(kind) {
     const res = compute(ch).resources;
     const used = { ...ch.used };
-    for (const r of res) if (kind === "long" || r.recharge === "short") used[r.id] = 0;
+    for (const r of res) {
+      if (kind === "long" || r.recharge === "short") used[r.id] = 0;
+      else if (r.shortRegain) used[r.id] = Math.max(0, (used[r.id] || 0) - r.shortRegain);
+    }
     ch.used = used;
     if (kind === "long") { ch.hp.cur = compute(ch).hpMax; ch.hp.temp = 0; ch.death = { ok: 0, fail: 0 }; }
     save(); toast(t(kind === "long" ? "res.longDone" : "res.shortDone"));

@@ -3,7 +3,7 @@
 import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert } from "../store.js";
-import { CLASSES, PLANNED_CLASSES, SPECIES, BACKGROUNDS, TOOLS, blankCharacter, normalize, compute, finalAbilities, fixedHp } from "../rules/index.js";
+import { CLASSES, PLANNED_CLASSES, SPECIES, BACKGROUNDS, TOOLS, ARMOR, blankCharacter, normalize, compute, finalAbilities, fixedHp } from "../rules/index.js";
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
 import { backgroundBonus } from "../rules/backgrounds.js";
 
@@ -32,7 +32,13 @@ export function renderForm(root, go, id) {
     // --- Basics --------------------------------------------------------------
     const name = h("input", { type: "text", maxlength: 60, value: ch.name, oninput: (e) => (ch.name = e.target.value), id: "f-name" });
     const player = h("input", { type: "text", maxlength: 60, value: ch.player, oninput: (e) => (ch.player = e.target.value), id: "f-player" });
-    const clsSel = h("select", { id: "f-class", onchange: (e) => { ch.classId = e.target.value; ch.subclass = ""; if (ch.abilityMethod === "array") ch.abilityBase = { ...cls().standardArray }; draw(); } }, [
+    const clsSel = h("select", { id: "f-class", onchange: (e) => {
+      ch.classId = e.target.value; ch.subclass = ""; ch.classChoices = {}; ch.expertise = [];
+      ch.level = Math.min(ch.level, cls().maxLevel);
+      if (ch.abilityMethod === "array") ch.abilityBase = { ...cls().standardArray };
+      if (ch.abilityMethod === "roll" && ch.rolled) assignByClass(ch.rolled.map((r) => r.total));
+      draw();
+    } }, [
       ...Object.values(CLASSES).map((k) => h("option", { value: k.id, text: tr(k.name), selected: k.id === ch.classId })),
       ...Object.entries(PLANNED_CLASSES).map(([k, n]) => h("option", { value: k, text: `${tr(n)} (${t("form.soon")})`, disabled: true })),
     ]);
@@ -41,14 +47,22 @@ export function renderForm(root, go, id) {
       for (const l of Object.keys(ch.hpRolls)) if (+l > ch.level) delete ch.hpRolls[l];
       draw();
     } }, Array.from({ length: cls().maxLevel }, (_, i) => h("option", { value: i + 1, text: i + 1, selected: i + 1 === ch.level })));
-    const subSel = h("select", { id: "f-subclass", onchange: (e) => (ch.subclass = e.target.value) }, [
+    const subSel = h("select", { id: "f-subclass", onchange: (e) => { ch.subclass = e.target.value; draw(); } }, [
       h("option", { value: "", text: t("form.subclassNone") }),
       ...Object.entries(cls().subclasses || {}).map(([k, s]) => h("option", { value: k, text: tr(s.name), selected: k === ch.subclass })),
+      h("option", { value: "custom", text: t("form.subclassCustom"), selected: ch.subclass === "custom" }),
     ]);
+    const subCustom = ch.subclass === "custom" ? field(t("form.subclassCustomName"), h("input", { type: "text", id: "f-subclass-custom", maxlength: 80, value: ch.subclassCustom || "", oninput: (e) => (ch.subclassCustom = e.target.value) }), "wide") : null;
+    const choiceFields = Object.entries(cls().choices || {}).map(([k, d]) => {
+      const cur = ch.classChoices[k] || d.default;
+      return field(tr(d.label), h("select", { id: "f-choice-" + k, onchange: (e) => { ch.classChoices = { ...ch.classChoices, [k]: e.target.value }; draw(); } },
+        Object.entries(d.options).map(([ok, o]) => h("option", { value: ok, text: tr(o), selected: ok === cur }))), "wide");
+    });
     const basics = h("div", { cls: "card stack" }, [
       h("div", { cls: "row" }, [field(t("form.name"), name), field(t("form.player"), player)]),
       h("div", { cls: "row" }, [field(t("form.class"), clsSel), field(t("form.level"), levelSel)]),
-      h("div", { cls: "row" }, [field(t("form.subclass", { n: cls().subclassLevel }), subSel, "wide")]),
+      choiceFields.length ? h("div", { cls: "row" }, choiceFields) : null,
+      h("div", { cls: "row" }, [field(t("form.subclass", { n: cls().subclassLevel }), subSel, "wide"), subCustom]),
       ch.level < cls().subclassLevel ? h("p", { cls: "hint", text: t("form.subclassHint", { n: cls().subclassLevel }) }) : null,
     ]);
 
@@ -181,14 +195,30 @@ export function renderForm(root, go, id) {
     const skillGrid = h("div", { cls: "checks" }, SKILLS.map((s) => {
       const fromBg = bgSkills.includes(s.id);
       const cb = h("input", { type: "checkbox", id: "f-sk-" + s.id, checked: fromBg || ch.skills.includes(s.id), disabled: fromBg,
-        onchange: (e) => { ch.skills = e.target.checked ? [...new Set([...ch.skills, s.id])] : ch.skills.filter((x) => x !== s.id); } });
+        onchange: (e) => {
+          ch.skills = e.target.checked ? [...new Set([...ch.skills, s.id])] : ch.skills.filter((x) => x !== s.id);
+          if (!e.target.checked) ch.expertise = ch.expertise.filter((x) => x !== s.id);
+          if (cls().expertise) draw();
+        } });
       return h("label", { cls: "check" + (choices.from.includes(s.id) && !fromBg ? " suggested" : "") + (fromBg ? " locked" : "") },
         [cb, `${s[lang()]} (${short(s.ab)})`, fromBg ? h("small", { text: t("form.fromBg") }) : null]);
     }));
+    const expCount = cls().expertise ? cls().expertise(ch.level) : 0;
+    const profSkills = SKILLS.filter((s) => bgSkills.includes(s.id) || ch.skills.includes(s.id));
+    const expertGrid = expCount ? h("div", { cls: "stack" }, [
+      h("h4", { text: t("form.expertise") }),
+      h("p", { cls: "hint", text: t("form.expertiseHint", { n: expCount }) }),
+      profSkills.length ? h("div", { cls: "checks" }, profSkills.map((s) => h("label", { cls: "check" }, [
+        h("input", { type: "checkbox", id: "f-ex-" + s.id, checked: ch.expertise.includes(s.id), onchange: (e) => {
+          ch.expertise = e.target.checked ? [...new Set([...ch.expertise, s.id])] : ch.expertise.filter((x) => x !== s.id);
+          if (ch.expertise.length > expCount) toast(t("form.expertiseTooMany", { n: expCount }));
+        } }), s[lang()],
+      ]))) : h("p", { cls: "hint", text: t("form.expertiseFirst") }),
+    ]) : null;
     const skills = h("div", { cls: "card stack" }, [
       h("h4", { text: t("form.skills") }),
-      h("p", { cls: "hint", text: t("form.skillsHint", { cls: tr(cls().name), n: choices.count }) }),
-      skillGrid,
+      h("p", { cls: "hint", text: t("form.skillsHint", { cls: tr(cls().name), n: choices.count }) + (cls().id === "barbarian" && ch.level >= 3 ? " " + t("form.primalHint") : "") }),
+      skillGrid, expertGrid,
     ]);
 
     // --- Feats ---------------------------------------------------------------
@@ -203,8 +233,32 @@ export function renderForm(root, go, id) {
     const feats = h("div", { cls: "card stack" }, [
       h("h4", { text: t("form.feats") }), h("p", { cls: "hint", text: t("form.featsHint") }), featGrid,
       field(t("form.featsOther"), h("textarea", { rows: 2, id: "f-featsother", oninput: (e) => (ch.featsOther = e.target.value) }, ch.featsOther || ""), "wide"),
-      h("div", { cls: "row" }, [field(t("form.ac"), num(ch.acOverride, 1, 40, (e) => (ch.acOverride = e.target.value ? +e.target.value : null), { id: "f-ac" }))]),
     ]);
+
+    // --- Armor ---------------------------------------------------------------
+    const armorCard = h("div", { cls: "card stack" }, [
+      h("h4", { text: t("form.armorTitle") }),
+      h("p", { cls: "hint", text: t("form.training") + ": " + (c.training.length ? c.training.map((k) => t("armor." + k)).join(", ") : t("armor.none")) }),
+      h("div", { cls: "row" }, [
+        field(t("form.armor"), h("select", { id: "f-armor", onchange: (e) => { ch.armor = e.target.value; draw(); } },
+          Object.entries(ARMOR).map(([k, a]) => h("option", { value: k, text: tr(a.name), selected: k === ch.armor })))),
+        h("label", { cls: "check" }, [h("input", { type: "checkbox", id: "f-shield", checked: !!ch.shield, onchange: (e) => { ch.shield = e.target.checked; draw(); } }), t("form.shield")]),
+      ]),
+      h("p", { cls: "acline" }, ["AC: ", h("b", { text: c.ac.value }), " · " + tr(c.ac.note)]),
+      ...(c.ac.warnings || []).map((w) => h("p", { cls: "warn", text: tr(w) })),
+      h("details", {}, [h("summary", { cls: "hint", text: t("form.acManualToggle") }),
+        h("div", { cls: "row" }, [field(t("form.ac"), num(ch.acOverride, 1, 40, (e) => (ch.acOverride = e.target.value ? +e.target.value : null), { id: "f-ac" }))])]),
+    ]);
+
+    // --- Spells --------------------------------------------------------------
+    const sc = c.spells;
+    const spellsCard = sc ? h("div", { cls: "card stack" }, [
+      h("h4", { text: t("form.spellsTitle") }),
+      h("p", { cls: "hint", text: t("form.spellsHint", { list: tr(sc.list), cantrips: sc.cantrips, prepared: sc.prepared }) }),
+      sc.always.length ? h("p", { cls: "hint" }, [h("b", { text: t("form.alwaysPrepared") + ": " }), sc.always.join(", ")]) : null,
+      field(t("form.cantrips", { n: sc.cantrips }), h("textarea", { rows: 2, id: "f-cantrips", oninput: (e) => (ch.spells = { ...ch.spells, cantrips: e.target.value }) }, ch.spells?.cantrips || ""), "wide"),
+      field(t("form.prepared", { n: sc.prepared }), h("textarea", { rows: 3, id: "f-prepared", oninput: (e) => (ch.spells = { ...ch.spells, prepared: e.target.value }) }, ch.spells?.prepared || ""), "wide"),
+    ]) : null;
 
     // --- Hit points ----------------------------------------------------------
     const die = cls().hitDie, fixed = fixedHp(die);
@@ -246,7 +300,7 @@ export function renderForm(root, go, id) {
       go(`#/c/${ch.id}/start`);
     } }, [
       h("header", { cls: "stack" }, [h("h2", { text: t(isNew ? "form.titleNew" : "form.titleEdit") })]),
-      basics, species, background, abilities, skills, feats, hpCard,
+      basics, species, background, abilities, skills, feats, armorCard, spellsCard, hpCard,
       h("div", { cls: "row" }, [
         h("button", { type: "submit", cls: "btn gold", text: t("form.save") }),
         h("a", { cls: "btn ghost", href: isNew ? "#/" : `#/c/${ch.id}/character`, text: t("form.cancel") }),

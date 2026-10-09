@@ -61,9 +61,10 @@ export const monk = {
     en: "A mobile unarmed fighter. Rushes the weaker enemies, strikes several times a turn and slips away without opportunity attacks.",
   },
 
-  /** Armor class without armor: 10 + DEX + WIS. */
-  armorClass: (c) => ({ value: 10 + c.mods.dex + c.mods.wis, note: { pl: "10 + ZRĘ + MĄD, bez zbroi i tarczy", en: "10 + DEX + WIS, no armor or shield" } }),
-  speedBonus: (c) => speedBonus(c.level),
+  armorTraining: [],
+  /** Unarmored Defense: 10 + DEX + WIS, only without armor and shield. */
+  unarmored: (c) => ({ value: 10 + c.mods.dex + c.mods.wis, shieldOk: false, note: { pl: "10 + ZRĘ + MĄD, bez zbroi i tarczy", en: "10 + DEX + WIS, no armor or shield" } }),
+  speedBonus: (c) => (c.armor.wearing || c.armor.shield ? 0 : speedBonus(c.level)),
 
   resources: (c) => [
     { id: "focus", max: c.level >= 2 ? c.level : 0, recharge: "short",
