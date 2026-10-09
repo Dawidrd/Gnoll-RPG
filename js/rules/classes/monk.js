@@ -10,7 +10,51 @@ export const monk = {
   name: { pl: "Mnich (Monk)", en: "Monk" },
   maxLevel: 5,
   hitDie: 8,
+  // Recommended standard array from the 2024 rules.
+  standardArray: { str: 12, dex: 15, con: 13, int: 10, wis: 14, cha: 8 },
   saves: ["str", "dex"],
+  subclassLevel: 3,
+  subclasses: {
+    mercy: {
+      source: "phb2024", name: { pl: "Warrior of Mercy (Wojownik Miłosierdzia)", en: "Warrior of Mercy" },
+      features: [
+        { lv: 3, id: "hand-of-harm", name: { pl: "Hand of Harm (Dłoń krzywdy)", en: "Hand of Harm" },
+          desc: (c) => ({ pl: `Raz na turę po trafieniu ciosem, za 1 FP: dodatkowe 1${martialDie(c.level)} ${signed(c.mods.wis)} obrażeń nekrotycznych.`,
+            en: `Once per turn after an unarmed hit, spend 1 FP: an extra 1${martialDie(c.level)} ${signed(c.mods.wis)} necrotic damage.` }) },
+        { lv: 3, id: "hand-of-healing", name: { pl: "Hand of Healing (Dłoń uzdrowienia)", en: "Hand of Healing" },
+          desc: (c) => ({ pl: `Akcja Magic za 1 FP: leczysz istotę, której dotykasz, o 1${martialDie(c.level)} ${signed(c.mods.wis)} HP. Możesz też zastąpić tym jeden cios z Flurry of Blows.`,
+            en: `Magic action, 1 FP: heal a creature you touch for 1${martialDie(c.level)} ${signed(c.mods.wis)} HP. You can also swap one Flurry of Blows strike for this.` }) },
+        { lv: 3, id: "implements", name: { pl: "Implements of Mercy (Narzędzia miłosierdzia)", en: "Implements of Mercy" },
+          desc: () => ({ pl: "Biegłość w Insight i Medicine oraz w zestawie zielarskim.", en: "Proficiency in Insight, Medicine and the Herbalism Kit." }) },
+      ],
+    },
+    shadow: {
+      source: "phb2024", name: { pl: "Warrior of Shadow (Wojownik Cienia)", en: "Warrior of Shadow" },
+      features: [
+        { lv: 3, id: "shadow-arts", name: { pl: "Shadow Arts (Sztuki cienia)", en: "Shadow Arts" },
+          desc: () => ({ pl: "Za 1 FP rzucasz czar Darkness bez komponentów; widzisz przez tę ciemność i możesz ją przesuwać. Dostajesz Darkvision 60 ft (lub +60 ft) i sztuczkę Minor Illusion.",
+            en: "Spend 1 FP to cast Darkness without components; you see through it and can move it. You gain Darkvision 60 ft (or +60 ft) and the Minor Illusion cantrip." }) },
+      ],
+    },
+    elements: {
+      source: "phb2024", name: { pl: "Warrior of the Elements (Wojownik Żywiołów)", en: "Warrior of the Elements" },
+      features: [
+        { lv: 3, id: "attunement", name: { pl: "Elemental Attunement (Zestrojenie z żywiołami)", en: "Elemental Attunement" },
+          desc: () => ({ pl: "Na początku tury za 1 FP, na 10 minut: ciosy sięgają 10 ft dalej, mogą zadawać kwas, zimno, ogień, błyskawice albo grzmot, a po trafieniu wróg rzuca SIŁ albo zostaje przesunięty o 10 ft.",
+            en: "At the start of your turn, spend 1 FP for 10 minutes: unarmed strikes reach 10 ft further, can deal acid, cold, fire, lightning or thunder damage, and a hit forces a STR save or moves the target 10 ft." }) },
+        { lv: 3, id: "manipulate", name: { pl: "Manipulate Elements", en: "Manipulate Elements" },
+          desc: () => ({ pl: "Znasz sztuczkę Elementalism.", en: "You know the Elementalism cantrip." }) },
+      ],
+    },
+    "open-hand": {
+      source: "srd52", name: { pl: "Warrior of the Open Hand (Wojownik Otwartej Dłoni)", en: "Warrior of the Open Hand" },
+      features: [
+        { lv: 3, id: "open-hand-technique", name: { pl: "Open Hand Technique (Technika otwartej dłoni)", en: "Open Hand Technique" },
+          desc: (c) => ({ pl: `Każdy cios z Flurry of Blows, który trafi, może dodatkowo: odebrać wrogowi Reakcję do jego następnej tury, odepchnąć go o 15 ft (SIŁ przeciw DC ${8 + c.mods.wis + c.pb}) albo powalić (ZRĘ przeciw DC ${8 + c.mods.wis + c.pb}).`,
+            en: `Each Flurry of Blows strike that hits can also: take away the target's Reaction until its next turn, push it 15 ft (STR save, DC ${8 + c.mods.wis + c.pb}) or knock it Prone (DEX save, DC ${8 + c.mods.wis + c.pb}).` }) },
+      ],
+    },
+  },
   skillChoices: { count: 2, from: ["acrobatics", "athletics", "history", "insight", "religion", "stealth"] },
   role: {
     pl: "Mobilny wojownik walczący gołymi rękami. Doskakuje do słabszych wrogów, uderza kilka razy na turę i odchodzi bez ataków okazyjnych.",
@@ -68,7 +112,7 @@ export const monk = {
         en: `Reaction when an attack hits you for bludgeoning, piercing or slashing damage: reduce it by 1d10 ${signed(c.mods.dex + c.level)}. If that brings it to 0, spend 1 FP to redirect the attack at another enemy.`,
       }) },
     { lv: 3, id: "subclass", name: { pl: "Podklasa (Monk Subclass)", en: "Monk Subclass" },
-      desc: () => ({ pl: "Wybierasz tradycję mnicha. Wpisz ją w zakładce Postać.", en: "Choose your monastic tradition. Enter it on the Character tab." }) },
+      desc: () => ({ pl: "Wybierasz tradycję mnicha w edycji postaci. Jej zdolności pojawią się niżej.", en: "Choose your monastic tradition in the character editor. Its features appear below." }) },
     { lv: 4, id: "asi", name: { pl: "Feat albo +2 do cech (ASI)", en: "Feat or Ability Score Improvement" },
       desc: () => ({ pl: "Wybierasz feat albo +2 do jednej cechy (lub +1 do dwóch). Zmień cechy w zakładce Postać.", en: "Pick a feat or +2 to one ability (or +1 to two). Update scores on the Character tab." }) },
     { lv: 4, id: "slow-fall", name: { pl: "Slow Fall (Powolny upadek)", en: "Slow Fall" },

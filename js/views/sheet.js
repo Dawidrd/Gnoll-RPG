@@ -3,15 +3,16 @@ import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert, exportFile } from "../store.js";
 import { compute } from "../rules/index.js";
-import { ABILITIES, ABILITY_NAMES, signed, clamp } from "../rules/core.js";
+import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 
 const TABS = ["start", "character", "levelup", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
+let pendingRoll = null; // hit die rolled on the Level up tab, waiting for confirmation
 
 export function renderSheet(root, go, id, tab) {
-  if (id !== lastId) { lastHp = null; lastId = id; }
+  if (id !== lastId) { lastHp = null; pendingRoll = null; lastId = id; }
   const ch = getById(id);
   if (!ch) return go("#/");
   if (!TABS.includes(tab)) tab = "start";
@@ -25,12 +26,13 @@ export function renderSheet(root, go, id, tab) {
     ch.hp.cur = clamp(ch.hp.cur, 0, c.hpMax);
     const hpPct = c.hpMax ? (ch.hp.cur / c.hpMax) * 100 : 0;
     const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(c.sp.name) : tr(c.sp.name);
+    const subName = c.cls.subclasses?.[ch.subclass] ? tr(c.cls.subclasses[ch.subclass].name) : ch.subclass;
 
     const header = h("header", { cls: "mast" }, [
       h("div", { cls: "who" }, [
         h("a", { cls: "eyebrow back", href: "#/", text: "← " + t("sheet.back") }),
         h("h1", { cls: "name", text: ch.name }),
-        h("p", { cls: "sub", text: [spName, tr(c.cls.name), ch.subclass].filter(Boolean).join(" · ") }),
+        h("p", { cls: "sub", text: [spName, tr(c.cls.name), subName].filter(Boolean).join(" · ") }),
       ]),
       h("div", { cls: "mast-ctl" }, [
         h("div", { cls: "lvl" }, [
@@ -110,19 +112,25 @@ export function renderSheet(root, go, id, tab) {
       const abil = h("div", { cls: "abgrid" }, ABILITIES.map((a) => h("div", { cls: "abcell" + (c.saves[a].prof ? " prof" : "") }, [
         h("span", { cls: "abk", text: ABILITY_NAMES[a].short[lang()] }),
         h("span", { cls: "abv", text: signed(c.mods[a]) }),
-        h("span", { cls: "abs", text: ch.abilities[a] }),
+        h("span", { cls: "abs", text: c.abilities[a] }),
         h("span", { cls: "absave", text: `${t("char.save")} ${signed(c.saves[a].value)}` }),
       ])));
       const skills = h("div", { cls: "skills" }, c.skills.map((s) => h("div", { cls: "skill" + (s.prof ? " prof" : "") }, [
-        h("span", { text: s[lang()] }), h("b", { text: signed(s.value) }),
+        h("span", {}, [s[lang()], s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null]), h("b", { text: signed(s.value) }),
       ])));
       const featList = (list) => h("dl", { cls: "qa gl" }, list.flatMap((f) => [
         h("dt", {}, [tr(f.name), " ", h("small", { cls: "lvtag", text: `${f.lv}` })]), h("dd", {}, [h("p", { text: tr(f.text) })]),
       ]));
       const extra = [];
+      if (c.bg || c.tools.length) {
+        extra.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.background") }), h("dl", { cls: "qa" }, [
+          c.bg ? h("dt", { text: tr(c.bg.name) }) : null,
+          c.tools.length ? h("dd", {}, [h("p", {}, [h("b", { text: t("char.tools") + ": " }), c.tools.map(tr).join("; ")])]) : null,
+        ])]));
+      }
       if (c.feats.length || ch.featsOther) {
         extra.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.feats") }), h("dl", { cls: "qa gl" }, [
-          ...c.feats.flatMap((f) => [h("dt", { text: tr(f.name) }), h("dd", {}, [h("p", { text: tr(f.desc) })])]),
+          ...c.feats.flatMap((f) => [h("dt", {}, [tr(f.name), f.fromBackground ? [" ", h("small", { cls: "lvtag", text: t("form.fromBg") })] : null].flat()), h("dd", {}, [h("p", { text: tr(f.desc) })])]),
           ch.featsOther ? h("dd", {}, [h("p", { cls: "pre", text: ch.featsOther })]) : null,
         ])]));
       }
@@ -134,37 +142,67 @@ export function renderSheet(root, go, id, tab) {
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.abilities") }), abil]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.skills") }), skills]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.classFeatures") }), featList(c.classFeatures)]),
+        c.subclassFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: tr(c.subclass.name) }), featList(c.subclassFeatures)]) : null,
         c.speciesFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesFeatures") }), featList(c.speciesFeatures)]) : null,
         ...extra,
       ];
     }
 
     function tabLevel() {
-      const confirmBox = h("div", { cls: "confirm" });
-      const ask = (msg, fn) => {
-        confirmBox.replaceChildren(h("span", { cls: "small", text: msg }),
-          h("button", { type: "button", cls: "btn gold", text: t("sheet.yes"), onclick: fn }),
-          h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => confirmBox.classList.remove("open") }));
-        confirmBox.classList.add("open");
-      };
-      const setLevel = (n) => {
-        const before = c.hpMax; ch.level = n; const after = compute(ch).hpMax;
-        ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after); save();
-      };
       const out = [];
+      const setLevel = (n, roll) => {
+        const before = c.hpMax;
+        ch.hpRolls = { ...(ch.hpRolls || {}) };
+        if (n > ch.level) { if (roll == null) delete ch.hpRolls[n]; else ch.hpRolls[n] = roll; }
+        else for (const l of Object.keys(ch.hpRolls)) if (+l > n) delete ch.hpRolls[l];
+        ch.level = n;
+        const after = compute(ch).hpMax;
+        ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
+        pendingRoll = null; save();
+      };
       if (c.next) {
+        const nx = c.next;
+        const gainOf = (die) => Math.max(1, die + nx.conMod) + nx.extra;
+        const choice = h("div", { cls: "stack" });
+        if (pendingRoll == null) {
+          choice.append(
+            h("p", { cls: "hint", text: t("lvl.hpChoose", { d: nx.hitDie, n: nx.fixed, con: signed(nx.conMod) }) }),
+            h("div", { cls: "row" }, [
+              h("button", { type: "button", cls: "btn gold", id: "lvl-roll", text: t("lvl.roll", { d: nx.hitDie }), onclick: () => { pendingRoll = rollDie(nx.hitDie); draw(); } }),
+              h("button", { type: "button", cls: "btn", id: "lvl-fixed", text: t("lvl.fixed", { n: nx.fixed, hp: gainOf(nx.fixed) }), onclick: () => setLevel(nx.level, null) }),
+            ]));
+        } else {
+          choice.append(
+            h("p", { cls: "rollres" }, [t("lvl.rolled", { d: nx.hitDie }) + " ", h("b", { text: pendingRoll }), " → " + t("lvl.gain", { hp: gainOf(pendingRoll) })]),
+            h("div", { cls: "row" }, [
+              h("button", { type: "button", cls: "btn gold", id: "lvl-confirm", text: t("lvl.up", { n: nx.level }), onclick: () => setLevel(nx.level, pendingRoll) }),
+              h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => { pendingRoll = null; draw(); } }),
+            ]));
+        }
         out.push(h("section", { cls: "card key gl" }, [
-          h("h3", { text: t("lvl.next", { n: c.next.level }) }),
-          h("ul", {}, [h("li", { text: t("lvl.hp", { hp: c.next.hpGain }) }), ...tr(c.next.items).map((x) => h("li", { text: x }))]),
-          h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", text: t("lvl.up", { n: c.next.level }),
-            onclick: () => ask(t("sheet.levelUpAsk", { n: c.next.level, hp: c.next.hpGain }), () => setLevel(c.next.level)) })]),
+          h("h3", { text: t("lvl.next", { n: nx.level }) }),
+          h("ul", {}, tr(nx.items).map((x) => h("li", { text: x }))),
+          choice,
         ]));
       } else {
         out.push(h("p", { cls: "lead", text: t("lvl.max", { n: c.cls.maxLevel }) }));
       }
-      if (c.level > 1) out.push(h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn ghost", text: t("lvl.down"),
-        onclick: () => ask(t("sheet.levelDownAsk", { n: c.level - 1 }), () => setLevel(c.level - 1)) })]));
-      out.push(confirmBox);
+      if (c.hpPerLevel.length) {
+        out.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("lvl.history") }), h("div", { cls: "tw" }, [h("table", {}, [h("tbody", {}, [
+          h("tr", {}, [h("th", { text: t("form.hpLevel", { n: 1 }) }), h("td", { cls: "num", text: `+${c.cls.hitDie + c.mods.con}` }), h("td", { text: t("lvl.histFirst", { d: c.cls.hitDie }) })]),
+          ...c.hpPerLevel.map((p) => h("tr", {}, [h("th", { text: t("form.hpLevel", { n: p.level }) }), h("td", { cls: "num", text: `+${p.gain}` }),
+            h("td", { text: p.rolled ? t("lvl.histRolled", { d: c.cls.hitDie, n: p.die }) : t("lvl.histFixed", { n: p.die }) })])),
+        ])])])]));
+      }
+      if (c.level > 1) {
+        const box = h("div", { cls: "confirm" });
+        out.push(h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn ghost", text: t("lvl.down"), onclick: () => {
+          box.replaceChildren(h("span", { cls: "small", text: t("sheet.levelDownAsk", { n: c.level - 1 }) }),
+            h("button", { type: "button", cls: "btn gold", text: t("sheet.yes"), onclick: () => setLevel(c.level - 1) }),
+            h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") }));
+          box.classList.add("open");
+        } })]), box);
+      }
       return out;
     }
 

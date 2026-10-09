@@ -198,3 +198,32 @@ td b { color: #f1e6d1; }
   background: #2a1216; border: 1px solid var(--blood); color: #f3d6d6; font-family: var(--f-ui); padding: 9px 14px; border-radius: var(--r); max-width: calc(100% - 32px); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Creator: abilities table, background summary, dice, hit points */
+.lbl-sm { font-family: var(--f-ui); font-size: .85rem; color: var(--bone-dim); }
+.bgsum { display: grid; gap: 2px; font-family: var(--f-ui); font-size: .92rem; color: var(--bone-dim); }
+.bgsum b { color: var(--bone); font-weight: 600; }
+.cform .seg { align-self: start; justify-self: start; flex-wrap: wrap; }
+.abtable { display: grid; border: 1px solid var(--seam); border-radius: var(--r); background: rgba(22,17,24,.9); }
+.abrow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(76px, 1fr) 48px minmax(76px, 1fr); gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid rgba(59,48,57,.6); font-family: var(--f-ui); }
+.abrow:last-child { border-bottom: 0; }
+.abrow.head { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bone-dim); font-weight: 700; padding-block: 8px; }
+.abrow select, .abrow input { width: 100%; }
+.abname { color: var(--bone); }
+.abbonus { color: var(--gold); font-weight: 700; text-align: center; }
+.abfinal { font-variant-numeric: tabular-nums; }
+.abfinal b { font-size: 1.15rem; }
+.dice { display: flex; flex-wrap: wrap; gap: 6px; }
+.die { display: grid; justify-items: center; min-width: 50px; border: 1px solid var(--gold-dim); border-radius: var(--r); padding: 3px 6px; font-family: var(--f-ui); background: var(--crypt); }
+.die b { color: var(--gold); font-size: 1.1rem; line-height: 1.1; }
+.die small { color: var(--ash); font-size: .7rem; letter-spacing: .04em; }
+.check small { color: var(--gold-dim); font-size: .75rem; margin-left: auto; }
+.check.locked { color: var(--bone); background: rgba(143,167,127,.08); }
+.hprow { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-family: var(--f-ui); }
+.hprow.first { grid-template-columns: 90px 1fr; color: var(--bone-dim); min-height: 40px; }
+.hplv { font-size: .85rem; color: var(--bone-dim); letter-spacing: .04em; }
+.hptotal { font-family: var(--f-ui); color: var(--bone-dim); }
+.hptotal b { color: var(--blood-hi); font-size: 1.4rem; margin-left: 4px; }
+.rollres { font-family: var(--f-ui); font-size: 1.05rem; }
+.rollres b { color: var(--gold); font-size: 1.6rem; vertical-align: middle; }
+@media (max-width: 420px) { .abrow { grid-template-columns: minmax(0, 1.2fr) minmax(64px, 1fr) 36px minmax(64px, 1fr); gap: 6px; padding-inline: 8px; } }
