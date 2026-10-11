@@ -54,8 +54,29 @@ const STYLES = {
       en: ["Hope", "Ember", "Sorrow", "Riddle", "Ash", "Song", "Thorn", "Wander", "Gloom", "Oath", "Penance", "Dawn"],
     },
   },
+  aasimar: {
+    // Aasimar usually carry names of the people who raised them, often with a bright, bell-like ring.
+    first: [["A", "Ca", "Ele", "Ga", "I", "Ly", "Ma", "Ori", "Se", "Ta", "Ve", "Zar"],
+      ["ri", "sa", "le", "dri", "ra", "ma", "the", ""],
+      ["el", "ah", "iel", "on", "ya", "ra", "is", "ael", "us", "ine"]],
+    last: [["Bright", "Dawn", "Gold", "Silver", "Star", "Light", "High", "Halo", "Sun"],
+      ["ward", "mantle", "song", "veil", "crest", "hope", "wing", "brand", "spire"]],
+  },
+  gnome: {
+    first: [["Al", "Bim", "Ca", "Dim", "Ell", "Fon", "Gim", "Jeb", "Nack", "Or", "Pal", "Quil", "Rob", "Seeb", "Tink", "Wren", "Zook"],
+      ["ble", "bo", "kin", "ny", "wick", "dle", "o", "ella", "ix", "ster", "ri", "pip"]],
+    last: [["Beren", "Daer", "Fol", "Garr", "Murn", "Nim", "Raul", "Scheppen", "Timber", "Turen", "Cog", "Sprocket"],
+      ["gast", "kin", "ick", "ble", "ers", "bottom", "wrench", "spark", "whistle", "nose"]],
+  },
+  goliath: {
+    // Goliaths have a birth name, a nickname earned by deeds and a clan name.
+    first: [["Au", "Eg", "Ga", "Ke", "Lo", "Ma", "Na", "Pa", "Tha", "Va", "Ila", "Kav"],
+      ["ak", "lath", "unthi", "nu", "ga", "rek", "lo", "thak", "ni", "gan", "kae"]],
+    last: [["Anak", "Gath", "Kalag", "Katho", "Thulu", "Vaimei", "Elan", "Ogolak", "Kola"],
+      ["kalathi", "akanu", "vathi", "olavi", "ganu", "ilian", "muni", "athai"]],
+  },
 };
-STYLES.other = { first: [[...STYLES.human.first[0], ...STYLES.elf.first[0]], [...STYLES.human.first[1], ...STYLES.dwarf.first[1]]], last: STYLES.human.last };
+STYLES.other ={ first: [[...STYLES.human.first[0], ...STYLES.elf.first[0]], [...STYLES.human.first[1], ...STYLES.dwarf.first[1]]], last: STYLES.human.last };
 
 /** A random name in the style of the given species. */
 export function randomName(speciesId, lang = "en") {

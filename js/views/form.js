@@ -5,7 +5,7 @@ import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert } from "../store.js";
 import {
-  CLASSES, PLANNED_CLASSES, SPECIES, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS,
+  CLASSES, PLANNED_CLASSES, SPECIES, SPECIES_SPELLS, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS,
   blankCharacter, normalize, compute, finalAbilities, fixedHp,
 } from "../rules/index.js";
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
@@ -184,22 +184,29 @@ export function renderForm(root, go, id) {
     const bgTools = c.toolSlots.filter((s) => s.id === "bg").map((s) => toolSlotUI(c, s, true));
 
     const sp = SPECIES[ch.speciesId];
-    const spSel = h("select", { id: "f-species", onchange: (e) => { ch.speciesId = e.target.value; ch.size = ""; draw(); } }, [
+    const spSel = h("select", { id: "f-species", onchange: (e) => { ch.speciesId = e.target.value; ch.size = ""; ch.speciesChoice = {}; draw(); } }, [
       ...Object.entries(SPECIES).filter(([, s]) => !s.legacy).map(([k, s]) => h("option", { value: k, text: tr(s.name), selected: k === ch.speciesId })),
       sp.legacy ? h("option", { value: ch.speciesId, text: `${ch.customSpecies?.name || "?"} (${t("form.oldVersion")})`, selected: true, disabled: true }) : null,
     ]);
     const spParts = [h("div", { cls: "row" }, [field(t("form.species"), spSel)])];
-    if (sp.choice) {
-      const cur = ch.speciesChoice?.[sp.choice.key] || sp.choice.default;
-      ch.speciesChoice = { ...ch.speciesChoice, [sp.choice.key]: cur };
-      spParts.push(h("div", { cls: "row" }, [field(tr(sp.choice.label), h("select", { id: "f-ancestry", onchange: (e) => (ch.speciesChoice = { ...ch.speciesChoice, [sp.choice.key]: e.target.value }) },
-        Object.entries(sp.choice.options).map(([k, o]) => h("option", { value: k, text: tr(o), selected: k === cur }))))]));
+    // Lineage / legacy / ancestry and the spellcasting ability for species spells: no defaults, the player picks.
+    for (const x of sp.choices || []) {
+      const cur = ch.speciesChoice?.[x.key] || "";
+      spParts.push(h("div", { cls: "row" }, [field(tr(x.label), h("select", { id: "f-sp-" + x.key, onchange: (e) => { ch.speciesChoice = { ...ch.speciesChoice, [x.key]: e.target.value }; draw(); } }, [
+        h("option", { value: "", text: "—" }),
+        ...Object.entries(x.options).map(([k, o]) => h("option", { value: k, text: tr(o), selected: k === cur })),
+      ]))]));
+      const o = x.options[cur];
+      if (o?.text) spParts.push(h("p", { cls: "hint", text: tr(typeof o.text === "function" ? o.text(c) : o.text) }));
     }
     spParts.push(h("div", { cls: "stack" }, [h("span", { cls: "lbl-sm", text: t("form.size") }),
       sp.sizes.length > 1
         ? seg(sp.sizes.map((k) => [k, tr(SIZES[k])]), c.size, (k) => { ch.size = k; draw(); })
         : h("p", { text: tr(SIZES[sp.sizes[0]]) })]));
-    spParts.push(h("p", { cls: "hint", text: t("form.speciesFacts", { speed: sp.speed, dark: sp.darkvision ? sp.darkvision + " ft" : t("sum.none") }) }));
+    spParts.push(h("p", { cls: "hint", text: t("form.speciesFacts", { speed: c.speciesSpeed, dark: c.darkvision ? c.darkvision + " ft" : t("sum.none") }) + " " +
+      t("form.speciesTraits", { list: (sp.features || []).filter((f) => !f.only || Object.entries(f.only).every(([k, v]) => ch.speciesChoice?.[k] === v)).map((f) => tr(f.name).split(" (")[0] + (f.lv > 1 ? ` (${t("lvl.tag", { n: f.lv })})` : "")).join(", ") }) }));
+    const spList = sp.spells ? sp.spells({ choice: ch.speciesChoice || {} }) : [];
+    if (spList.length) spParts.push(h("p", { cls: "hint", text: t("form.speciesSpells", { list: spList.map((x) => tr(SPECIES_SPELLS[x.id].name).split(" (")[0] + ` (${t("lvl.tag", { n: x.at })})`).join(", ") }) }));
 
     return [card(t("form.backgroundTitle"), bgParts), ...bgTools, card(t("form.species"), spParts), languagesUI(c)];
   }

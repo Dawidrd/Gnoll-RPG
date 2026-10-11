@@ -64,6 +64,20 @@ const G = [
     text: { pl: "W wybranej umiejętności premia z biegłości liczy się podwójnie.", en: "Your proficiency bonus is doubled for the chosen skill." } },
   { id: "rest", re: { pl: "[Kk]rótki" + L + " odpoczyn" + L + "|[Dd]ługi" + L + " odpoczyn" + L, en: "\\b[Ss]hort rest\\b|\\b[Ll]ong rest\\b" },
     title: { pl: "Odpoczynek", en: "Rest" }, text: { pl: "Krótki: ok. 1 godzina. Długi: ok. 8 godzin, raz na dobę.", en: "Short: about 1 hour. Long: about 8 hours, once per day." } },
+  { id: "resist", re: { pl: "[Oo]dpornoś" + L, en: "\\b[Rr]esistance\\b" }, title: { pl: "Odporność (Resistance)", en: "Resistance" },
+    text: { pl: "Obrażenia tego rodzaju zmniejszasz o połowę (zaokrąglając w dół).", en: "Damage of that type is halved (round down)." } },
+  { id: "conc", re: { pl: "[Kk]oncentracj" + L, en: "\\b[Cc]oncentration\\b" }, title: { pl: "Koncentracja (Concentration)", en: "Concentration" },
+    text: { pl: "Czar trwa, dopóki się skupiasz. Naraz tylko jeden taki czar. Gdy dostaniesz obrażenia, rzut KON (DC 10 albo połowa obrażeń, maks. 30), inaczej czar się kończy.", en: "The spell lasts while you focus. Only one such spell at a time. When you take damage, make a CON save (DC 10 or half the damage, max 30) or the spell ends." } },
+  { id: "thp", re: { pl: "[Tt]ymczasow" + L + " HP", en: "\\b[Tt]emporary (HP|Hit Points)\\b" }, title: { pl: "Tymczasowe HP", en: "Temporary Hit Points" },
+    text: { pl: "Bufor zdejmowany przed zwykłymi HP. Nie sumują się: zostawiasz wyższą wartość. Znikają po długim odpoczynku.", en: "A buffer lost before your real HP. They don't stack: keep the higher amount. Gone after a Long Rest." } },
+  { id: "frightened", re: { pl: "Frightened", en: "Frightened" }, title: { pl: "Frightened (Przestraszony)", en: "Frightened" },
+    text: { pl: "Utrudnienie na testy i ataki, gdy widzi źródło strachu; nie może się do niego zbliżać.", en: "Disadvantage on checks and attacks while it can see the source of fear; can't move closer to it." } },
+  { id: "charmed", re: { pl: "Charmed", en: "Charmed" }, title: { pl: "Charmed (Zauroczony)", en: "Charmed" },
+    text: { pl: "Nie może atakować ani szkodzić temu, kto go zauroczył; ten ma Przewagę na kontakty społeczne z nim.", en: "Can't attack or harm the charmer; the charmer has Advantage on social checks with it." } },
+  { id: "poisoned", re: { pl: "Poisoned", en: "Poisoned" }, title: { pl: "Poisoned (Zatruty)", en: "Poisoned" },
+    text: { pl: "Utrudnienie na ataki i testy cech.", en: "Disadvantage on attack rolls and ability checks." } },
+  { id: "paralyzed", re: { pl: "Paralyzed", en: "Paralyzed" }, title: { pl: "Paralyzed (Sparaliżowany)", en: "Paralyzed" },
+    text: { pl: "Nie działa, nie rusza się ani nie mówi; oblewa rzuty SIŁ i ZRĘ; ataki na niego mają Przewagę, a trafienie z 5 ft jest krytyczne.", en: "Can't act, move or speak; fails STR and DEX saves; attacks against it have Advantage and hits from within 5 ft are critical." } },
 ];
 
 let compiled = { lang: null, re: null };

@@ -22,6 +22,7 @@ export function review(ch, c) {
   else if (c.bg.legacy) T(2, "todo.legacyBackground");
   if (c.sp.legacy) T(2, "todo.legacySpecies", { name: ch.customSpecies?.name || "?" });
   if (!c.size) T(2, "todo.size");
+  for (const x of c.speciesMissing || []) T(2, "todo.speciesChoice", { what: x.label });
   const lang = c.languages;
   if (!lang.fit.ok) E(2, "err.languages");
   else if (lang.chosen.length < lang.total) T(2, "todo.languages", { n: lang.total - lang.chosen.length });

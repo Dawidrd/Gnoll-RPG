@@ -2,7 +2,7 @@
 import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert, exportFile } from "../store.js";
-import { compute, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS } from "../rules/index.js";
+import { compute, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS, CREATURE_TYPES, DAMAGE_NAMES } from "../rules/index.js";
 import { msg } from "./msg.js";
 import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
@@ -104,6 +104,8 @@ export function renderSheet(root, go, id, tab) {
         [t("sum.passive"), String(c.passivePerception), ""],
         [t("sum.dark"), c.darkvision ? `${c.darkvision} ft` : t("sum.none"), ""],
         ...(c.spells ? [[t("char.spellDc"), String(c.spells.dc), t("char.spellAttack") + " " + signed(c.spells.attack)]] : []),
+        ...(c.resistances.length ? [[t("sum.resist"), c.resistances.map((d) => tr(DAMAGE_NAMES[d])).join(", "), t("sum.resistNote")]] : []),
+        ...(c.speciesMagic?.dc != null ? [[t("sum.speciesMagic"), "DC " + c.speciesMagic.dc, t("char.spellAttack") + " " + signed(c.speciesMagic.attack) + " · " + ABILITY_NAMES[c.speciesMagic.ability].short[lang()]]] : []),
         ...c.summary.map((r) => [tr(r.label), tr(r.value), tr(r.note)]),
       ];
       const table = h("div", { cls: "tw" }, [h("table", { cls: "sumtab" }, [h("tbody", { cls: "gl" }, rows.map(([k, v, n]) =>
@@ -124,6 +126,7 @@ export function renderSheet(root, go, id, tab) {
         h("span", { cls: "abv", text: signed(c.mods[a]) }),
         h("span", { cls: "abs", text: c.abilities[a] }),
         h("span", { cls: "absave", text: `${t("char.save")} ${signed(c.saves[a].value)}` }),
+        c.saveAdvantage.includes(a) ? h("span", { cls: "absave", text: t("char.saveAdv") }) : null,
       ])));
       const skills = h("div", { cls: "skills" }, c.skills.map((s) => h("div", { cls: "skill" + (s.prof ? " prof" : "") }, [
         h("span", {}, [s[lang()], s.expert ? h("small", { cls: "lvtag", text: t("char.expertTag") }) : null, s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null, s.fromSub ? h("small", { cls: "lvtag", text: t("form.fromSub") }) : null, s.fromFeat ? h("small", { cls: "lvtag", text: t("form.fromFeat") }) : null]), h("b", { text: signed(s.value) }),
@@ -136,6 +139,7 @@ export function renderSheet(root, go, id, tab) {
       const identity = h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.identity") }), h("dl", { cls: "idgrid" }, [
         idRow(t("char.setting"), tr(SETTINGS[c.setting])),
         idRow(t("char.background"), c.bg ? tr(c.bg.name) : ""),
+        idRow(t("char.type"), tr(CREATURE_TYPES[c.creatureType])),
         idRow(t("char.size"), c.size ? tr(SIZES[c.size]) : ""),
         idRow(t("char.alignment"), c.alignment ? tr(ALIGNMENTS[c.alignment]) : ""),
         idRow(t("char.languages"), c.languages.known.map((k) => tr(LANGUAGES[k].name)).join(", ")),
@@ -172,8 +176,23 @@ export function renderSheet(root, go, id, tab) {
           c.spells.always.length ? h("dd", {}, [h("p", { text: c.spells.always.join(", ") })]) : null,
         ])]) : null,
         c.speciesFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesFeatures") }), featList(c.speciesFeatures)]) : null,
+        c.speciesMagic ? speciesMagicBlock(c.speciesMagic) : null,
         ...extra,
       ];
+    }
+
+    /** Spells from species traits: always prepared, cantrips at will, the rest free once per Long Rest (or PB times). */
+    function speciesMagicBlock(m) {
+      const uses = (x) => x.uses === "atwill" ? t("spell.atWill") : x.uses === "pb" ? t("spell.pbPerLong", { n: c.pb }) : t("spell.oncePerLong");
+      return h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesSpells") }), h("dl", { cls: "qa gl" }, [
+        h("dt", { text: m.ability ? `${t("form.spellAbility")}: ${ABILITY_NAMES[m.ability][lang()]} · DC ${m.dc} · ${t("char.spellAttack")} ${signed(m.attack)}` : t("char.speciesSpellsNoAbility") }),
+        h("dd", {}, [h("p", { cls: "hint", text: t("char.speciesSpellsRule") })]),
+        ...m.spells.flatMap((x) => [
+          h("dt", {}, [tr(x.name), " ", h("small", { cls: "lvtag", text: x.circle ? t("spell.circle", { n: x.circle }) : t("spell.cantrip") }),
+            x.conc ? [" ", h("small", { cls: "lvtag", text: t("spell.conc") })] : null, x.ritual ? [" ", h("small", { cls: "lvtag", text: t("spell.ritual") })] : null].flat()),
+          h("dd", {}, [h("p", { text: tr(x.text) }), h("p", { cls: "hint", text: uses(x) })]),
+        ]),
+      ])]);
     }
 
     function tabLevel() {
@@ -251,7 +270,12 @@ export function renderSheet(root, go, id, tab) {
         const ready = ok.every(Boolean);
         out.push(h("section", { cls: "card key gl" }, [
           h("h3", { text: t("lvl.next", { n: N }) }),
-          h("ul", {}, tr(nx.items).map((x) => h("li", { text: x }))),
+          h("ul", {}, [
+            ...tr(nx.items).map((x) => h("li", { text: x })),
+            // Species gifts that arrive at this character level (Celestial Revelation, Large Form, lineage spells...)
+            ...cn.speciesFeatures.filter((f) => f.lv === N).map((f) => h("li", { text: `${tr(f.name)} (${tr(c.sp.name).split(" (")[0]})` })),
+            ...(cn.speciesMagic?.spells || []).filter((x) => x.at === N).map((x) => h("li", { text: t("lvl.speciesSpell", { name: tr(x.name) }) })),
+          ]),
           ...steps,
           h("p", { cls: "picked" + (ready ? " done" : ""), text: ready ? t("lvl.ready") : t("lvl.notReady", { n: ok.filter((x) => !x).length }) }),
           h("div", { cls: "row" }, [

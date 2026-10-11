@@ -6,7 +6,7 @@ import { rogue } from "./classes/rogue.js";
 import { cleric } from "./classes/cleric.js";
 import { ARMOR, armorClass } from "./armor.js";
 import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
-import { SPECIES } from "./species.js";
+import { SPECIES, speciesTraits } from "./species.js";
 import { BACKGROUNDS, backgroundBonus } from "./backgrounds.js";
 import { TOOLS, TOOL_GROUPS, toolOptions, ALL_TOOLS } from "./tools.js";
 import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./identity.js";
@@ -24,6 +24,7 @@ export const PLANNED_CLASSES = {
 };
 
 export { SPECIES, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES };
+export { CREATURE_TYPES, DAMAGE_NAMES, SPELL_ABILITIES, SPECIES_SPELLS } from "./species.js";
 
 /** Game types: the standard rules, or Ravenloft (adds The Horrors Within options). */
 export const SETTINGS = {
@@ -228,14 +229,16 @@ export function compute(raw) {
   const hpMax = ch.hp.maxOverride || Math.max(1, hpComputed);
 
   const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
+  // Species options (lineage, legacy, ancestry, spellcasting ability) shape speed, darkvision, resistances and species spells.
+  const spt = speciesTraits(sp, ctx);
 
   const initiative = mods.dex + feats.reduce((s, f) => s + (f.initiativeBonus ? f.initiativeBonus(ctx) : 0), 0);
-  const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : sp.speed;
+  const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : spt.speed;
   const armorDef = ARMOR[ch.armor];
   const slowArmor = armorDef?.str && abilities.str < armorDef.str ? 10 : 0;
   const featSpeed = levelFeats.reduce((n, lf) => n + (FEATS[lf.id].speed || 0), 0);
   const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor + featSpeed;
-  const darkvision = sp.custom ? ch.customSpecies?.darkvision || 0 : sp.darkvision;
+  const darkvision = sp.custom ? ch.customSpecies?.darkvision || 0 : spt.darkvision;
 
   const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   // Skills from feats: Skill Expert gives a proficiency; Keen Mind and Observant give proficiency or, if you have it, Expertise.
@@ -299,10 +302,12 @@ export function compute(raw) {
     ...(subclass?.resources ? subclass.resources(ctx) : []),
     ...slotRes,
     ...(sp.resources ? sp.resources(ctx) : []),
+    ...spt.spellResources,
     ...feats.filter((f) => f.resource).map((f) => f.resource(ctx)),
   ].filter((r) => r.max > 0).map((r) => ({ ...r, used: clamp((ch.used || {})[r.id] || 0, 0, r.max) }));
 
-  const atLevel = (list) => (list || []).filter((f) => f.lv <= level).map((f) => ({ ...f, text: f.desc(ctx) }));
+  const atLevel = (list) => (list || []).filter((f) => f.lv <= level && (!f.only || Object.entries(f.only).every(([k, v]) => ctx.choice[k] === v)))
+    .map((f) => ({ ...f, text: f.desc(ctx) }));
   const customSubclass = level >= (cls.subclassLevel || 99) && ch.subclass === "custom" ? ch.subclassCustom || "" : "";
 
   const tools = toolIds.map((id) => TOOLS[id]);
@@ -314,6 +319,7 @@ export function compute(raw) {
     granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0,
     cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
+    speciesSpeed: spt.speed, creatureType: sp.type || "humanoid", resistances: spt.resist, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
     classFeatures: atLevel(cls.features),

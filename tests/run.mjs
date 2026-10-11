@@ -157,6 +157,59 @@ test("Tarhun leveled 1 → 5 matches the numbers worked out by hand", () => {
   eq(c.classFeatures.some((f) => f.id === "extra-attack"), true);
 });
 
+// --- Species (PHB ch. 4) ---
+const sp = (speciesId, speciesChoice = {}, level = 1, over = {}) => run(make({ classId: "barbarian", speciesId, speciesChoice, level, size: "medium", ...over }));
+const choiceTodos = (c) => c.review.todo.filter((x) => x.key === "todo.speciesChoice").length;
+test("lineage, legacy, ancestry and spell ability must be picked", () => {
+  eq(choiceTodos(sp("elf")), 2); eq(choiceTodos(sp("tiefling")), 2); eq(choiceTodos(sp("gnome", {}, 1, { size: "" })), 2);
+  eq(choiceTodos(sp("goliath")), 1); eq(choiceTodos(sp("dragonborn")), 1);
+  eq(choiceTodos(sp("elf", { lineage: "high", ability: "int" })), 0);
+  eq(choiceTodos(sp("aasimar")), 0, "Aasimar always uses CHA");
+});
+test("elf lineages change speed, darkvision and spells", () => {
+  const wood = sp("elf", { lineage: "wood", ability: "wis" });
+  eq([wood.speed, wood.darkvision], [35, 60]);
+  const drow = sp("elf", { lineage: "drow", ability: "cha" }, 5);
+  eq(drow.darkvision, 120);
+  eq(drow.speciesMagic.spells.map((s) => s.id), ["dancing-lights", "faerie-fire", "darkness"]);
+  eq(drow.resources.filter((r) => r.spell).map((r) => [r.id, r.max]), [["sp-faerie-fire", 1], ["sp-darkness", 1]]);
+  eq(sp("elf", { lineage: "drow", ability: "cha" }, 2).speciesMagic.spells.length, 1, "level 3 spell not yet");
+});
+test("species spell DC uses the chosen ability", () => {
+  // blankCharacter keeps its default array: INT 10 (+0), WIS 14 (+2), CHA 8 (−1)
+  eq(sp("tiefling", { legacy: "infernal", ability: "wis" }).speciesMagic.dc, 8 + 2 + 2);
+  eq(sp("tiefling", { legacy: "infernal", ability: "cha" }).speciesMagic.attack, -1 + 2);
+  eq(sp("tiefling", { legacy: "infernal" }).speciesMagic.dc, null, "no ability picked yet");
+});
+test("tiefling legacies: resistance and spells by level", () => {
+  const t = sp("tiefling", { legacy: "chthonic", ability: "cha" }, 5);
+  eq(t.resistances, ["necrotic"]);
+  eq(t.speciesMagic.spells.map((s) => s.id), ["thaumaturgy", "chill-touch", "false-life", "ray-of-enfeeblement"]);
+  eq(sp("tiefling", { legacy: "abyssal", ability: "cha" }).resistances, ["poison"]);
+});
+test("Aasimar: resistances, Healing Hands, Celestial Revelation from level 3", () => {
+  const a1 = sp("aasimar");
+  eq(a1.resistances, ["necrotic", "radiant"]);
+  eq(a1.resources.find((r) => r.id === "healing-hands").max, 1);
+  eq(a1.resources.some((r) => r.id === "revelation"), false);
+  eq(sp("aasimar", {}, 3).resources.find((r) => r.id === "revelation").max, 1);
+});
+test("Goliath: speed 35, giant boon PB times, Large Form from level 5", () => {
+  const g4 = sp("goliath", { giant: "fire" }, 4);
+  eq(g4.speed, 35); eq(g4.resources.find((r) => r.id === "giant").max, 2); eq(g4.resources.some((r) => r.id === "large-form"), false);
+  const g5 = sp("goliath", { giant: "fire" }, 5);
+  eq(g5.speed, 35 + 10, "Barbarian Fast Movement at 5"); eq(g5.resources.find((r) => r.id === "giant").max, 3);
+  eq(g5.resources.find((r) => r.id === "large-form").max, 1);
+});
+test("Gnome: Small, Advantage on INT/WIS/CHA saves, rock gnome devices", () => {
+  const g = sp("gnome", { lineage: "rock", ability: "int" }, 1, { size: "" });
+  eq(g.size, "small"); eq(g.saveAdvantage, ["int", "wis", "cha"]);
+  eq(g.speciesFeatures.some((f) => f.id === "clockwork"), true);
+  const f = sp("gnome", { lineage: "forest", ability: "int" }, 5, { size: "" });
+  eq(f.speciesFeatures.some((x) => x.id === "clockwork"), false);
+  eq(f.resources.find((r) => r.id === "sp-speak-with-animals").max, 3, "PB at level 5");
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }
