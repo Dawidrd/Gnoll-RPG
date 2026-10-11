@@ -2,7 +2,9 @@
 import { h, toast } from "../dom.js";
 import { t, tr } from "../i18n.js";
 import { loadAll, remove, exportFile, parseImport, upsert, getById } from "../store.js";
-import { CLASSES, SPECIES } from "../rules/index.js";
+import { CLASSES, SPECIES, compute } from "../rules/index.js";
+
+const todoCount = (ch) => { try { const r = compute(structuredClone(ch)).review; return r.todo.length + r.errors.length; } catch { return 0; } };
 
 export function renderHome(root, go) {
   // In-page confirmation (native confirm() is blocked in some app views).
@@ -28,7 +30,7 @@ export function renderHome(root, go) {
 
   const cards = list.map((ch) => {
     const cls = CLASSES[ch.classId], sp = SPECIES[ch.speciesId];
-    const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(sp.name) : tr(sp?.name);
+    const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(sp.name) : tr(sp?.name).split(" (")[0];
     const meta = [spName, cls ? tr(cls.name) : ch.classId, `${t("home.levelShort")} ${ch.level}`].join(" · ");
     const delBtn = h("button", { type: "button", cls: "btn ghost", text: t("home.delete"), onclick: () => {
       ask(t("home.deleteConfirm", { name: ch.name }), () => { remove(ch.id); go("#/"); });
@@ -38,6 +40,7 @@ export function renderHome(root, go) {
         h("span", { cls: "ccard-name", text: ch.name }),
         h("span", { cls: "ccard-meta", text: meta }),
       ]),
+      todoCount(ch) ? h("span", { cls: "ccard-todo", text: t("home.todo", { n: todoCount(ch) }) }) : null,
       h("div", { cls: "row" }, [
         h("a", { cls: "btn gold", href: `#/c/${ch.id}/start`, text: t("home.open") }),
         h("button", { type: "button", cls: "btn", text: t("home.export"), onclick: () => exportFile(ch) }),

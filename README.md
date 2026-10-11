@@ -6,12 +6,11 @@
 
 ## Co już działa / What works
 
-- Lista postaci, tworzenie i edycja, import i eksport do pliku `.gnoll.json`
-- Mnich (Monk) poziomy 1–5; rasy z zasad 2024 i rasa własna (homebrew)
-- Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci
-- Zasoby z odpoczynkami, tabela „w pigułce”, cechy i umiejętności, awans, notatki
-- Podpowiedzi przy terminach gry (najechanie albo dotknięcie)
-- Przełącznik PL / EN
+- Kreator w 5 krokach z rozdziału 2 Podręcznika Gracza 2024: klasa → pochodzenie → cechy → charakter → szczegóły
+- Limity z podręcznika wbudowane w kreator (umiejętności, języki, narzędzia, featy, point buy, jeden rzut 4k6); lista „Do uzupełnienia”
+- Barbarzyńca, Kleryk, Mnich, Łotr (poziomy 1–5) z podklasami; 16 teł; 7 gatunków
+- Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami; awans z rzutem na HP
+- Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
 
 ## Prywatność / Privacy
 
@@ -26,6 +25,14 @@ Nie ma kroku budowania. Wystarczy dowolny serwer plików:
 python3 -m http.server 8000
 # otwórz http://localhost:8000
 ```
+
+## Testy / Tests
+
+```sh
+node tests/run.mjs
+```
+
+Testy reguł (bez zależności). Uruchamiaj przed każdą publikacją.
 
 ## Publikacja / Deploy (GitHub Pages)
 
@@ -42,7 +49,11 @@ js/config.js                              nazwa, wersja, link do wsparcia
 js/i18n.js, js/lang/{pl,en}.js            teksty interfejsu
 js/rules/core.js                          matematyka 5e, umiejętności, featy
 js/rules/classes/monk.js                  klasa: zdolności, zasoby, awans
-js/rules/species.js                       rasy
+js/rules/species.js                       gatunki
+js/rules/backgrounds.js                   tła
+js/rules/tools.js, identity.js            narzędzia; języki, charaktery, rozmiary, point buy
+js/rules/skills.js                        limity wyborów (dopasowanie do źródeł)
+js/rules/checks.js                        „Do uzupełnienia” i błędy blokujące zapis
 js/rules/index.js                         silnik: postać → wszystko, co pokazuje karta
 js/views/{home,form,sheet}.js             ekrany
 js/glossary.js                            podpowiedzi przy terminach
@@ -54,7 +65,7 @@ js/glossary.js                            podpowiedzi przy terminach
 2. Dopisz ją do `CLASSES` w `js/rules/index.js` (i usuń z `PLANNED_CLASSES`).
 3. Dodaj plik do listy `SHELL` w `sw.js`.
 
-Każdy wpis ma pole `source` (`srd52`, `phb2024`, `homebrew`), żeby dało się później zbudować wersję opartą tylko na SRD.
+Każdy wpis ma pole `source` (`srd52`, `phb2024`, `ravenloft`), żeby dało się później zbudować wersję opartą tylko na SRD.
 
 ## Fan Content
 

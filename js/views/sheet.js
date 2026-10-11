@@ -2,7 +2,8 @@
 import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert, exportFile } from "../store.js";
-import { compute } from "../rules/index.js";
+import { compute, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS } from "../rules/index.js";
+import { msg } from "./form.js";
 import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 
@@ -106,7 +107,13 @@ export function renderSheet(root, go, id, tab) {
       const table = h("div", { cls: "tw" }, [h("table", { cls: "sumtab" }, [h("tbody", { cls: "gl" }, rows.map(([k, v, n]) =>
         h("tr", {}, [h("th", { text: k }), h("td", {}, [h("div", { cls: "cell" }, [h("b", { cls: "num", text: v }), n ? h("span", { cls: "note", text: n }) : null])])])))])]);
 
-      return [h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table])];
+      const { todo, errors } = c.review;
+      const banner = todo.length || errors.length ? h("section", { cls: "todobanner", id: "todo-banner" }, [
+        h("h4", { text: `${t("sheet.todoTitle")} (${todo.length + errors.length})` }),
+        h("ul", {}, [...errors, ...todo].slice(0, 6).map((x) => h("li", { text: msg(x) }))),
+        h("a", { cls: "btn gold", href: `#/edit/${ch.id}`, text: t("sheet.todoFix") }),
+      ]) : null;
+      return [banner, h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table])];
     }
 
     function tabCharacter() {
@@ -123,15 +130,21 @@ export function renderSheet(root, go, id, tab) {
         h("dt", {}, [tr(f.name), " ", h("small", { cls: "lvtag", text: `${f.lv}` })]), h("dd", {}, [h("p", { text: tr(f.text) })]),
       ]));
       const extra = [];
-      if (c.bg || c.tools.length) {
-        extra.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.background") }), h("dl", { cls: "qa" }, [
-          c.bg ? h("dt", { text: tr(c.bg.name) }) : null,
-          c.tools.length ? h("dd", {}, [h("p", {}, [h("b", { text: t("char.tools") + ": " }), c.tools.map(tr).join("; ")])]) : null,
-        ])]));
-      }
+      const idRow = (k, v) => h("div", {}, [h("dt", { text: k }), h("dd", { text: v || "—" })]);
+      const identity = h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.identity") }), h("dl", { cls: "idgrid" }, [
+        idRow(t("char.setting"), tr(SETTINGS[c.setting])),
+        idRow(t("char.background"), c.bg ? tr(c.bg.name) : ""),
+        idRow(t("char.size"), c.size ? tr(SIZES[c.size]) : ""),
+        idRow(t("char.alignment"), c.alignment ? tr(ALIGNMENTS[c.alignment]) : ""),
+        idRow(t("char.languages"), c.languages.known.map((k) => tr(LANGUAGES[k].name)).join(", ")),
+        idRow(t("char.tools"), c.tools.map(tr).join(", ")),
+      ])]);
       if (c.feats.length || ch.featsOther) {
         extra.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.feats") }), h("dl", { cls: "qa gl" }, [
-          ...c.feats.flatMap((f) => [h("dt", {}, [tr(f.name), f.fromBackground ? [" ", h("small", { cls: "lvtag", text: t("form.fromBg") })] : null].flat()), h("dd", {}, [h("p", { text: tr(f.desc) })])]),
+          ...c.feats.flatMap((f) => [h("dt", {}, [tr(f.name), f.fromBackground ? [" ", h("small", { cls: "lvtag", text: t("form.fromBg") })] : null].flat()), h("dd", {}, [
+            h("p", { text: tr(f.desc) }),
+            f.spellAbility && (f.choice.ability || f.choice.spells) ? h("p", { cls: "hint", text: [f.choice.ability ? t("form.spellAbility") + ": " + ABILITY_NAMES[f.choice.ability][lang()] : "", f.choice.spells || ""].filter(Boolean).join(" · ") }) : null,
+          ])]),
           ch.featsOther ? h("dd", {}, [h("p", { cls: "pre", text: ch.featsOther })]) : null,
         ])]));
       }
@@ -140,6 +153,7 @@ export function renderSheet(root, go, id, tab) {
       }
       return [
         h("section", { cls: "blk" }, [h("p", { cls: "lead gl", text: tr(c.cls.role) })]),
+        identity,
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.abilities") }), abil]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.skills") }), skills]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.classFeatures") }), featList(c.classFeatures)]),

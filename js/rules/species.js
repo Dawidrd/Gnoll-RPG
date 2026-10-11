@@ -22,7 +22,7 @@ const DMG = {
 
 export const SPECIES = {
   dragonborn: {
-    source: "srd52", name: { pl: "Smokowiec (Dragonborn)", en: "Dragonborn" }, speed: 30, darkvision: 60,
+    source: "srd52", name: { pl: "Smokowiec (Dragonborn)", en: "Dragonborn" }, speed: 30, darkvision: 60, sizes: ["medium"], type: "humanoid",
     choice: { key: "ancestry", label: { pl: "Smoczy przodek", en: "Draconic ancestry" }, options: ANCESTRIES, default: "gold" },
     resources: (c) => [
       { id: "breath", max: c.pb, recharge: "long", name: { pl: "Zionięcie (Breath Weapon)", en: "Breath Weapon" } },
@@ -49,8 +49,9 @@ export const SPECIES = {
     ],
   },
   human: {
-    source: "srd52", name: { pl: "Człowiek (Human)", en: "Human" }, speed: 30, darkvision: 0,
+    source: "srd52", name: { pl: "Człowiek (Human)", en: "Human" }, speed: 30, darkvision: 0, sizes: ["medium", "small"], type: "humanoid",
     skillChoice: { id: "species", label: { pl: "Człowiek: Skillful", en: "Human: Skillful" }, count: 1, from: null },
+    featSlot: { id: "versatile", category: "origin", label: { pl: "Człowiek: Versatile (feat pochodzenia)", en: "Human: Versatile (origin feat)" } },
     resources: () => [{ id: "inspiration", max: 1, recharge: "long", name: { pl: "Heroic Inspiration", en: "Heroic Inspiration" } }],
     features: [
       { lv: 1, id: "resourceful", name: { pl: "Resourceful (Zaradność)", en: "Resourceful" },
@@ -62,7 +63,7 @@ export const SPECIES = {
     ],
   },
   dwarf: {
-    source: "srd52", name: { pl: "Krasnolud (Dwarf)", en: "Dwarf" }, speed: 30, darkvision: 120, hpPerLevel: 1,
+    source: "srd52", name: { pl: "Krasnolud (Dwarf)", en: "Dwarf" }, speed: 30, darkvision: 120, sizes: ["medium"], type: "humanoid", hpPerLevel: 1,
     resources: (c) => [{ id: "stonecunning", max: c.pb, recharge: "long", name: { pl: "Stonecunning", en: "Stonecunning" } }],
     features: [
       { lv: 1, id: "darkvision", name: { pl: "Darkvision (Widzenie w ciemności)", en: "Darkvision" }, desc: () => ({ pl: "120 ft.", en: "120 ft." }) },
@@ -75,7 +76,7 @@ export const SPECIES = {
     ],
   },
   elf: {
-    source: "srd52", name: { pl: "Elf", en: "Elf" }, speed: 30, darkvision: 60,
+    source: "srd52", name: { pl: "Elf", en: "Elf" }, speed: 30, darkvision: 60, sizes: ["medium"], type: "humanoid",
     skillChoice: { id: "species", label: { pl: "Elf: Keen Senses", en: "Elf: Keen Senses" }, count: 1, from: ["insight", "perception", "survival"] },
     features: [
       { lv: 1, id: "darkvision", name: { pl: "Darkvision (Widzenie w ciemności)", en: "Darkvision" }, desc: () => ({ pl: "60 ft.", en: "60 ft." }) },
@@ -88,7 +89,7 @@ export const SPECIES = {
     ],
   },
   halfling: {
-    source: "srd52", name: { pl: "Niziołek (Halfling)", en: "Halfling" }, speed: 30, darkvision: 0,
+    source: "srd52", name: { pl: "Niziołek (Halfling)", en: "Halfling" }, speed: 30, darkvision: 0, sizes: ["small"], type: "humanoid",
     features: [
       { lv: 1, id: "brave", name: { pl: "Brave", en: "Brave" }, desc: () => ({ pl: "Przewaga na rzuty przeciw strachowi.", en: "Advantage on saves against being frightened." }) },
       { lv: 1, id: "nimble", name: { pl: "Halfling Nimbleness", en: "Halfling Nimbleness" },
@@ -99,7 +100,7 @@ export const SPECIES = {
     ],
   },
   orc: {
-    source: "srd52", name: { pl: "Ork (Orc)", en: "Orc" }, speed: 30, darkvision: 120,
+    source: "srd52", name: { pl: "Ork (Orc)", en: "Orc" }, speed: 30, darkvision: 120, sizes: ["medium"], type: "humanoid",
     resources: (c) => [
       { id: "adrenaline", max: c.pb, recharge: "short", name: { pl: "Adrenaline Rush", en: "Adrenaline Rush" } },
       { id: "endurance", max: 1, recharge: "long", name: { pl: "Relentless Endurance", en: "Relentless Endurance" } },
@@ -113,7 +114,7 @@ export const SPECIES = {
     ],
   },
   tiefling: {
-    source: "srd52", name: { pl: "Tiefling", en: "Tiefling" }, speed: 30, darkvision: 60,
+    source: "srd52", name: { pl: "Tiefling", en: "Tiefling" }, speed: 30, darkvision: 60, sizes: ["medium", "small"], type: "humanoid",
     features: [
       { lv: 1, id: "darkvision", name: { pl: "Darkvision (Widzenie w ciemności)", en: "Darkvision" }, desc: () => ({ pl: "60 ft.", en: "60 ft." }) },
       { lv: 1, id: "legacy", name: { pl: "Fiendish Legacy", en: "Fiendish Legacy" },
@@ -123,7 +124,8 @@ export const SPECIES = {
     ],
   },
   other: {
-    source: "homebrew", name: { pl: "Inna (własna)", en: "Other (custom)" }, speed: 30, darkvision: 0, custom: true, features: [],
+    // Kept only so characters made before 0.4 still load; not offered in the creator.
+    source: "homebrew", name: { pl: "Inna (stara wersja)", en: "Other (old version)" }, speed: 30, darkvision: 0, custom: true, legacy: true, features: [], sizes: ["medium", "small"], type: "humanoid",
     skillChoice: { id: "species", label: { pl: "Rasa własna (jeśli daje umiejętność)", en: "Custom species (if it grants a skill)" }, count: 1, from: null },
   },
 };

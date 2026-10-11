@@ -15,7 +15,9 @@ export const rogue = {
   saves: ["dex", "int"],
   skillChoices: { count: 4, from: ["acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "persuasion", "sleight", "stealth"] },
   expertise: (L) => (L < 6 ? 2 : 4),
-  classTools: { pl: "Narzędzia złodziejskie (klasa)", en: "Thieves' Tools (class)" },
+  toolsFixed: ["thieves"],
+  // Thieves' Cant plus one more language from the language tables.
+  languages: { auto: ["thieves-cant"], pick: { id: "rogue", count: 1, from: "any", label: { pl: "Łotr: Thieves' Cant", en: "Rogue: Thieves' Cant" } } },
   armorTraining: ["light"],
   role: {
     pl: "Precyzyjny zabójca i specjalista od zamków, pułapek i rozmów. Raz na turę dokłada Sneak Attack, gdy ma Przewagę albo sojusznika obok celu.",

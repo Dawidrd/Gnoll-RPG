@@ -63,6 +63,8 @@ export const monk = {
   },
 
   armorTraining: [],
+  // Tool proficiency: one kind of Artisan's Tools or one Musical Instrument.
+  toolChoice: { count: 1, from: ["artisan", "instrument"] },
   /** Unarmored Defense: 10 + DEX + WIS, only without armor and shield. */
   unarmored: (c) => ({ value: 10 + c.mods.dex + c.mods.wis, shieldOk: false, note: { pl: "10 + ZRĘ + MĄD, bez zbroi i tarczy", en: "10 + DEX + WIS, no armor or shield" } }),
   speedBonus: (c) => (c.armor.wearing || c.armor.shield ? 0 : speedBonus(c.level)),
