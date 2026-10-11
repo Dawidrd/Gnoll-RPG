@@ -6,6 +6,8 @@ import { getById, upsert } from "../store.js";
 import { CLASSES, PLANNED_CLASSES, SPECIES, BACKGROUNDS, TOOLS, ARMOR, blankCharacter, normalize, compute, finalAbilities, fixedHp } from "../rules/index.js";
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
 import { backgroundBonus } from "../rules/backgrounds.js";
+import { fitSkills, trimSkills } from "../rules/skills.js";
+import { randomName } from "../rules/names.js";
 
 export function renderForm(root, go, id) {
   const stored = id ? getById(id) : null;
@@ -19,7 +21,26 @@ export function renderForm(root, go, id) {
     h("button", { type: "button", "aria-pressed": k === current ? "true" : "false", text: label, onclick: () => onpick(k) })));
   const cls = () => CLASSES[ch.classId];
 
+  // When a change alters where skills can come from (class, level, species, background, feats),
+  // drop picks that no longer fit. A character opened with too many keeps them until the player fixes it.
+  let lastSig = null;
+  function tidySkills() {
+    const c = compute(structuredClone(ch));
+    const sig = JSON.stringify([c.slots.map((x) => [x.id, x.count, x.from]), c.granted, c.expertiseMax]);
+    const changed = lastSig !== null && sig !== lastSig;
+    lastSig = sig;
+    if (!changed) return;
+    const chosen = ch.skills.filter((x) => !c.granted.includes(x));
+    const kept = trimSkills(chosen, c.slots);
+    const dropped = chosen.filter((x) => !kept.includes(x));
+    ch.skills = kept;
+    const prof = new Set([...c.granted, ...kept]);
+    ch.expertise = ch.expertise.filter((x) => prof.has(x)).slice(0, c.expertiseMax);
+    if (dropped.length) toast(t("form.skillsDropped", { list: dropped.map((x) => SKILLS.find((k) => k.id === x)[lang()]).join(", ") }));
+  }
+
   function draw() {
+    tidySkills();
     const scroll = scrollY;
     root.replaceChildren(build());
     scrollTo(0, scroll);
@@ -59,7 +80,12 @@ export function renderForm(root, go, id) {
         Object.entries(d.options).map(([ok, o]) => h("option", { value: ok, text: tr(o), selected: ok === cur }))), "wide");
     });
     const basics = h("div", { cls: "card stack" }, [
-      h("div", { cls: "row" }, [field(t("form.name"), name), field(t("form.player"), player)]),
+      h("div", { cls: "row" }, [
+        field(t("form.name"), name),
+        h("button", { type: "button", cls: "btn ghost", id: "f-name-roll", text: t("form.nameRoll"), title: t("form.nameRollHint"),
+          onclick: () => { ch.name = randomName(ch.speciesId, lang()); name.value = ch.name; } }),
+        field(t("form.player"), player),
+      ]),
       h("div", { cls: "row" }, [field(t("form.class"), clsSel), field(t("form.level"), levelSel)]),
       choiceFields.length ? h("div", { cls: "row" }, choiceFields) : null,
       h("div", { cls: "row" }, [field(t("form.subclass", { n: cls().subclassLevel }), subSel, "wide"), subCustom]),
@@ -190,34 +216,55 @@ export function renderForm(root, go, id) {
     }
 
     // --- Skills --------------------------------------------------------------
-    const choices = cls().skillChoices;
-    const bgSkills = bg?.skills || [];
+    const granted = c.granted;
+    const chosen = ch.skills.filter((x) => !granted.includes(x));
+    const fit = c.skillFit;
+    const canAdd = (id) => fitSkills([...chosen, id], c.slots).ok;
+    const classList = cls().skillChoices.from;
     const skillGrid = h("div", { cls: "checks" }, SKILLS.map((s) => {
-      const fromBg = bgSkills.includes(s.id);
-      const cb = h("input", { type: "checkbox", id: "f-sk-" + s.id, checked: fromBg || ch.skills.includes(s.id), disabled: fromBg,
+      const isGranted = granted.includes(s.id);
+      const on = isGranted || chosen.includes(s.id);
+      const blocked = !on && !canAdd(s.id);
+      const cb = h("input", { type: "checkbox", id: "f-sk-" + s.id, checked: on, disabled: isGranted || blocked,
         onchange: (e) => {
-          ch.skills = e.target.checked ? [...new Set([...ch.skills, s.id])] : ch.skills.filter((x) => x !== s.id);
+          ch.skills = e.target.checked ? [...chosen, s.id] : chosen.filter((x) => x !== s.id);
           if (!e.target.checked) ch.expertise = ch.expertise.filter((x) => x !== s.id);
-          if (cls().expertise) draw();
+          draw();
         } });
-      return h("label", { cls: "check" + (choices.from.includes(s.id) && !fromBg ? " suggested" : "") + (fromBg ? " locked" : "") },
-        [cb, `${s[lang()]} (${short(s.ab)})`, fromBg ? h("small", { text: t("form.fromBg") }) : null]);
+      const tag = isGranted ? ((bg?.skills || []).includes(s.id) ? t("form.fromBg") : t("form.fromSub")) : null;
+      return h("label", { cls: "check" + (classList.includes(s.id) && !on && !blocked ? " suggested" : "") + (isGranted ? " locked" : "") + (blocked ? " blocked" : "") },
+        [cb, `${s[lang()]} (${short(s.ab)})`, tag ? h("small", { text: tag }) : null]);
     }));
-    const expCount = cls().expertise ? cls().expertise(ch.level) : 0;
-    const profSkills = SKILLS.filter((s) => bgSkills.includes(s.id) || ch.skills.includes(s.id));
+    const budget = h("ul", { cls: "budget" }, c.slots.map((sl, i) => h("li", { cls: fit.ok && fit.used[i] === sl.count ? "full" : "" }, [
+      h("span", { text: sl.id === "class" ? t("form.slotClass", { cls: tr(cls().name) }) : tr(sl.label) }),
+      h("b", { text: fit.ok ? `${fit.used[i]}/${sl.count}` : `?/${sl.count}` }),
+      h("small", { text: sl.from ? sl.from.map((x) => SKILLS.find((k) => k.id === x)[lang()]).join(", ") : t("form.slotAny") }),
+    ])));
+
+    const expCount = c.expertiseMax;
+    const profSkills = SKILLS.filter((s) => granted.includes(s.id) || chosen.includes(s.id));
     const expertGrid = expCount ? h("div", { cls: "stack" }, [
       h("h4", { text: t("form.expertise") }),
-      h("p", { cls: "hint", text: t("form.expertiseHint", { n: expCount }) }),
-      profSkills.length ? h("div", { cls: "checks" }, profSkills.map((s) => h("label", { cls: "check" }, [
-        h("input", { type: "checkbox", id: "f-ex-" + s.id, checked: ch.expertise.includes(s.id), onchange: (e) => {
-          ch.expertise = e.target.checked ? [...new Set([...ch.expertise, s.id])] : ch.expertise.filter((x) => x !== s.id);
-          if (ch.expertise.length > expCount) toast(t("form.expertiseTooMany", { n: expCount }));
-        } }), s[lang()],
-      ]))) : h("p", { cls: "hint", text: t("form.expertiseFirst") }),
+      h("p", { cls: "hint", text: t("form.expertiseHint", { n: expCount }) + " " + t("form.picked", { n: ch.expertise.length, max: expCount }) }),
+      ch.expertise.length > expCount ? h("p", { cls: "warn", text: t("form.expertiseOver", { n: expCount }) }) : null,
+      profSkills.length ? h("div", { cls: "checks" }, profSkills.map((s) => {
+        const on = ch.expertise.includes(s.id);
+        const blocked = !on && ch.expertise.length >= expCount;
+        return h("label", { cls: "check" + (blocked ? " blocked" : "") }, [
+          h("input", { type: "checkbox", id: "f-ex-" + s.id, checked: on, disabled: blocked, onchange: (e) => {
+            ch.expertise = e.target.checked ? [...new Set([...ch.expertise, s.id])] : ch.expertise.filter((x) => x !== s.id);
+            draw();
+          } }), s[lang()],
+        ]);
+      })) : h("p", { cls: "hint", text: t("form.expertiseFirst") }),
     ]) : null;
-    const skills = h("div", { cls: "card stack" }, [
+    const total = c.slots.reduce((n, x) => n + x.count, 0);
+    const skills = h("div", { cls: "card stack", id: "f-skills" }, [
       h("h4", { text: t("form.skills") }),
-      h("p", { cls: "hint", text: t("form.skillsHint", { cls: tr(cls().name), n: choices.count }) + (cls().id === "barbarian" && ch.level >= 3 ? " " + t("form.primalHint") : "") }),
+      h("p", { cls: "hint", text: t("form.skillsRules") }),
+      budget,
+      h("p", { cls: "picked" + (chosen.length === total && fit.ok ? " done" : ""), text: t("form.picked", { n: chosen.length, max: total }) }),
+      fit.ok ? null : h("p", { cls: "warn", text: t("form.skillsOver") }),
       skillGrid, expertGrid,
     ]);
 
@@ -226,7 +273,7 @@ export function renderForm(root, go, id) {
       const fromBg = bg?.feat === k;
       return h("label", { cls: "check" + (fromBg ? " locked" : "") }, [
         h("input", { type: "checkbox", id: "f-ft-" + k, checked: fromBg || ch.feats.includes(k), disabled: fromBg,
-          onchange: (e) => { ch.feats = e.target.checked ? [...new Set([...ch.feats, k])] : ch.feats.filter((x) => x !== k); refreshScores(); } }),
+          onchange: (e) => { ch.feats = e.target.checked ? [...new Set([...ch.feats, k])] : ch.feats.filter((x) => x !== k); draw(); } }),
         tr(f.name), fromBg ? h("small", { text: t("form.fromBg") }) : null,
       ]);
     }));
@@ -290,6 +337,9 @@ export function renderForm(root, go, id) {
       e.preventDefault();
       if (!ch.name.trim()) { toast(t("form.nameRequired")); root.querySelector("#f-name").focus(); return; }
       if (method === "roll" && !ch.rolled) { toast(t("form.rollFirst")); return; }
+      const check = compute(structuredClone(ch));
+      if (!check.skillFit.ok) { toast(t("form.skillsOver")); root.querySelector("#f-skills")?.scrollIntoView({ block: "start" }); return; }
+      if (ch.expertise.length > check.expertiseMax) { toast(t("form.expertiseOver", { n: check.expertiseMax })); root.querySelector("#f-skills")?.scrollIntoView({ block: "start" }); return; }
       ch.name = ch.name.trim(); ch.player = ch.player.trim();
       ch.abilities = finalAbilities(ch);
       ch.schema = 2;

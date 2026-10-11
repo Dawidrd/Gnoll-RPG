@@ -50,6 +50,7 @@ export const SPECIES = {
   },
   human: {
     source: "srd52", name: { pl: "Człowiek (Human)", en: "Human" }, speed: 30, darkvision: 0,
+    skillChoice: { id: "species", label: { pl: "Człowiek: Skillful", en: "Human: Skillful" }, count: 1, from: null },
     resources: () => [{ id: "inspiration", max: 1, recharge: "long", name: { pl: "Heroic Inspiration", en: "Heroic Inspiration" } }],
     features: [
       { lv: 1, id: "resourceful", name: { pl: "Resourceful (Zaradność)", en: "Resourceful" },
@@ -75,6 +76,7 @@ export const SPECIES = {
   },
   elf: {
     source: "srd52", name: { pl: "Elf", en: "Elf" }, speed: 30, darkvision: 60,
+    skillChoice: { id: "species", label: { pl: "Elf: Keen Senses", en: "Elf: Keen Senses" }, count: 1, from: ["insight", "perception", "survival"] },
     features: [
       { lv: 1, id: "darkvision", name: { pl: "Darkvision (Widzenie w ciemności)", en: "Darkvision" }, desc: () => ({ pl: "60 ft.", en: "60 ft." }) },
       { lv: 1, id: "fey", name: { pl: "Fey Ancestry", en: "Fey Ancestry" },
@@ -122,5 +124,6 @@ export const SPECIES = {
   },
   other: {
     source: "homebrew", name: { pl: "Inna (własna)", en: "Other (custom)" }, speed: 30, darkvision: 0, custom: true, features: [],
+    skillChoice: { id: "species", label: { pl: "Rasa własna (jeśli daje umiejętność)", en: "Custom species (if it grants a skill)" }, count: 1, from: null },
   },
 };

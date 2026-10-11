@@ -17,6 +17,7 @@ export const monk = {
   subclasses: {
     mercy: {
       source: "phb2024", name: { pl: "Warrior of Mercy (Wojownik Miłosierdzia)", en: "Warrior of Mercy" },
+      grantedSkills: ["insight", "medicine"],
       features: [
         { lv: 3, id: "hand-of-harm", name: { pl: "Hand of Harm (Dłoń krzywdy)", en: "Hand of Harm" },
           desc: (c) => ({ pl: `Raz na turę po trafieniu ciosem, za 1 FP: dodatkowe 1${martialDie(c.level)} ${signed(c.mods.wis)} obrażeń nekrotycznych.`,

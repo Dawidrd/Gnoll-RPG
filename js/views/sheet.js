@@ -117,7 +117,7 @@ export function renderSheet(root, go, id, tab) {
         h("span", { cls: "absave", text: `${t("char.save")} ${signed(c.saves[a].value)}` }),
       ])));
       const skills = h("div", { cls: "skills" }, c.skills.map((s) => h("div", { cls: "skill" + (s.prof ? " prof" : "") }, [
-        h("span", {}, [s[lang()], s.expert ? h("small", { cls: "lvtag", text: t("char.expertTag") }) : null, s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null]), h("b", { text: signed(s.value) }),
+        h("span", {}, [s[lang()], s.expert ? h("small", { cls: "lvtag", text: t("char.expertTag") }) : null, s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null, s.fromSub ? h("small", { cls: "lvtag", text: t("form.fromSub") }) : null]), h("b", { text: signed(s.value) }),
       ])));
       const featList = (list) => h("dl", { cls: "qa gl" }, list.flatMap((f) => [
         h("dt", {}, [tr(f.name), " ", h("small", { cls: "lvtag", text: `${f.lv}` })]), h("dd", {}, [h("p", { text: tr(f.text) })]),

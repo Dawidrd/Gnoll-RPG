@@ -15,6 +15,9 @@ export const barbarian = {
   saves: ["str", "con"],
   skillChoices: { count: 2, from: ["animal", "athletics", "intimidation", "nature", "perception", "survival"] },
   armorTraining: ["light", "medium", "shield"],
+  // Primal Knowledge (level 3): one more skill from the class list.
+  extraSkills: (L) => (L >= 3 ? [{ id: "primal", label: { pl: "Primal Knowledge", en: "Primal Knowledge" }, count: 1,
+    from: ["animal", "athletics", "intimidation", "nature", "perception", "survival"] }] : []),
   role: {
     pl: "Pierwsza linia drużyny. W Szale przyjmuje połowę obrażeń fizycznych i mocno oddaje, a Lekkomyślny atak daje mu Przewagę kosztem obrony.",
     en: "The party's front line. While raging they take half physical damage and hit hard; Reckless Attack trades defense for Advantage.",

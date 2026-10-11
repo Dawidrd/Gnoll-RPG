@@ -5,6 +5,7 @@ import { barbarian } from "./classes/barbarian.js";
 import { rogue } from "./classes/rogue.js";
 import { cleric } from "./classes/cleric.js";
 import { ARMOR, armorClass } from "./armor.js";
+import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
 import { SPECIES } from "./species.js";
 import { BACKGROUNDS, TOOLS, backgroundBonus } from "./backgrounds.js";
 
@@ -83,18 +84,22 @@ export function compute(raw) {
   const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor;
   const darkvision = sp.custom ? ch.customSpecies?.darkvision || 0 : sp.darkvision;
 
-  const bgSkills = bg?.skills || [];
+  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
+  const granted = grantedSkills({ cls, bg, subclass });
+  const slots = skillSlots({ cls, sp, bg, featIds, level });
+  const skillFit = fitSkills((ch.skills || []).filter((x) => !granted.includes(x)), slots);
   const saves = Object.fromEntries(ABILITIES.map((a) => [a, { prof: cls.saves.includes(a), value: mods[a] + (cls.saves.includes(a) ? pb : 0) }]));
   const skills = SKILLS.map((s) => {
-    const fromBg = bgSkills.includes(s.id);
-    const prof = fromBg || (ch.skills || []).includes(s.id);
+    const isGranted = granted.includes(s.id);
+    const fromBg = (bg?.skills || []).includes(s.id);
+    const fromSub = isGranted && !fromBg;
+    const prof = isGranted || (ch.skills || []).includes(s.id);
     const expert = prof && (ch.expertise || []).includes(s.id);
     const extra = cls.skillBonus ? cls.skillBonus(ctx, s.id) : 0;
-    return { ...s, prof, fromBg, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
+    return { ...s, prof, fromBg, fromSub, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
   });
   const perception = skills.find((s) => s.id === "perception").value;
 
-  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   const spellcasting = cls.spellcasting ? cls.spellcasting(level, ctx) : subclass?.spellcasting ? subclass.spellcasting(level, ctx) : null;
   const spells = spellcasting ? {
     ...spellcasting,
@@ -118,6 +123,7 @@ export function compute(raw) {
   const tools = [cls.classTools || null, bg?.tool ? TOOLS[bg.tool] : null, ch.tools || null].filter(Boolean);
 
   return {
+    granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0,
     cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
     passivePerception: 10 + perception, resources,

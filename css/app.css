@@ -231,3 +231,14 @@ td b { color: #f1e6d1; }
 .acline b { color: var(--bone); font-size: 1.3rem; }
 .warn { font-family: var(--f-ui); font-size: .88rem; color: #f0a0a6; border-left: 2px solid var(--blood); padding-left: 8px; }
 details summary { cursor: pointer; }
+
+/* Skill budget */
+.budget { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-width: none; }
+.budget li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; padding: 6px 10px; border: 1px solid var(--seam); border-radius: var(--r); background: var(--crypt); font-family: var(--f-ui); font-size: .92rem; }
+.budget li b { font-variant-numeric: tabular-nums; color: var(--gold); }
+.budget li.full b { color: var(--moss); }
+.budget li small { grid-column: 1 / -1; color: var(--ash); font-size: .78rem; }
+.picked { font-family: var(--f-ui); color: var(--bone-dim); }
+.picked.done { color: var(--moss); }
+.check.blocked { opacity: .42; }
+.check input:disabled { cursor: not-allowed; }
