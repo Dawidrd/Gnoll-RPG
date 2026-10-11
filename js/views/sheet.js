@@ -8,6 +8,7 @@ import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
 import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
 import { glossify } from "../glossary.js";
+import { CATALYSTS } from "../rules/feats-ravenloft.js";
 
 const TABS = ["start", "character", "levelup", "notes"];
 let lastHp = null; // undo snapshot for the open character
@@ -103,6 +104,9 @@ export function renderSheet(root, go, id, tab) {
         [t("sum.pb"), signed(c.pb), ""],
         [t("sum.passive"), String(c.passivePerception), ""],
         [t("sum.dark"), c.darkvision ? `${c.darkvision} ft` : t("sum.none"), ""],
+        ...(c.climb ? [[t("sum.climb"), `${c.speed} ft`, c.level >= 3 ? t("sum.climbWalls") : ""]] : []),
+        ...(c.blindsight ? [[t("sum.blindsight"), `${c.blindsight} ft`, ""]] : []),
+        ...(c.deathSaves ? [[t("sum.deathSaves"), t(c.deathSaves === "adv" ? "char.saveAdv" : "sum.disadv"), ""]] : []),
         ...(c.spells ? [[t("char.spellDc"), String(c.spells.dc), t("char.spellAttack") + " " + signed(c.spells.attack)]] : []),
         ...(c.resistances.length ? [[t("sum.resist"), c.resistances.map((d) => tr(DAMAGE_NAMES[d])).join(", "), t("sum.resistNote")]] : []),
         ...(c.speciesMagic?.dc != null ? [[t("sum.speciesMagic"), "DC " + c.speciesMagic.dc, t("char.spellAttack") + " " + signed(c.speciesMagic.attack) + " · " + ABILITY_NAMES[c.speciesMagic.ability].short[lang()]]] : []),
@@ -117,7 +121,10 @@ export function renderSheet(root, go, id, tab) {
         h("ul", {}, [...errors, ...todo].slice(0, 6).map((x) => h("li", { text: msg(x) }))),
         h("a", { cls: "btn gold", href: `#/edit/${ch.id}`, text: t("sheet.todoFix") }),
       ]) : null;
-      return [banner, h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table])];
+      // The price of Dark Gifts: what happens on a natural 1 (or other trigger), with the DC worked out.
+      const flawBlk = c.flaws.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.flaws") }), h("dl", { cls: "qa gl" },
+        c.flaws.flatMap((f) => [h("dt", { text: tr(f.name) }), h("dd", {}, [h("p", { text: tr(f.text) })])]))]) : null;
+      return [banner, h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), flawBlk];
     }
 
     function tabCharacter() {
@@ -148,9 +155,13 @@ export function renderSheet(root, go, id, tab) {
       if (c.feats.length || ch.featsOther) {
         extra.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.feats") }), h("dl", { cls: "qa gl" }, [
           ...c.feats.flatMap((f) => [h("dt", {}, [tr(f.name), f.fromBackground ? [" ", h("small", { cls: "lvtag", text: t("form.fromBg") })] : null,
+            f.darkGift ? [" ", h("small", { cls: "lvtag", text: "Dark Gift" })] : null,
             f.atLevel ? [" ", h("small", { cls: "lvtag", text: t("lvl.tag", { n: f.atLevel }) })] : null].flat()), h("dd", {}, [
             f.inc && Object.keys(f.inc).length ? h("p", { cls: "hint", text: Object.entries(f.inc).map(([a, n]) => `${ABILITY_NAMES[a][lang()]} +${n}`).join(", ") }) : null,
             h("p", { text: tr(f.desc) }),
+            f.catalyst && f.choice?.catalyst ? h("p", { cls: "hint", text: `${t("form.catalyst")}: ${tr(CATALYSTS[f.choice.catalyst])}` }) : null,
+            f.expertisePick && f.choice?.expertise ? h("p", { cls: "hint", text: `${t("form.featExpertise")}: ${c.skills.find((x) => x.id === f.choice.expertise)?.[lang()] || ""}` }) : null,
+            c.flaws.some((x) => x.id === f.id) ? h("p", { cls: "warn small", text: `${t("form.flaw")}: ${tr(c.flaws.find((x) => x.id === f.id).text)}` }) : null,
             f.spellAbility && (f.choice.ability || f.choice.spells) ? h("p", { cls: "hint", text: [f.choice.ability ? t("form.spellAbility") + ": " + ABILITY_NAMES[f.choice.ability][lang()] : "", f.choice.spells || ""].filter(Boolean).join(" · ") }) : null,
           ])]),
           ch.featsOther ? h("dd", {}, [h("p", { cls: "pre", text: ch.featsOther })]) : null,
@@ -176,16 +187,17 @@ export function renderSheet(root, go, id, tab) {
           c.spells.always.length ? h("dd", {}, [h("p", { text: c.spells.always.join(", ") })]) : null,
         ])]) : null,
         c.speciesFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesFeatures") }), featList(c.speciesFeatures)]) : null,
-        c.speciesMagic ? speciesMagicBlock(c.speciesMagic) : null,
+        c.speciesMagic ? magicBlock(c.speciesMagic, t("char.speciesSpells"), true) : null,
+        ...c.featMagic.map((m) => magicBlock(m, `${t("char.featSpells")}: ${tr(m.label).split(" (")[0]}`, m.needsAbility)),
         ...extra,
       ];
     }
 
     /** Spells from species traits: always prepared, cantrips at will, the rest free once per Long Rest (or PB times). */
-    function speciesMagicBlock(m) {
+    function magicBlock(m, title, needsAbility) {
       const uses = (x) => x.uses === "atwill" ? t("spell.atWill") : x.uses === "pb" ? t("spell.pbPerLong", { n: c.pb }) : t("spell.oncePerLong");
-      return h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesSpells") }), h("dl", { cls: "qa gl" }, [
-        h("dt", { text: m.ability ? `${t("form.spellAbility")}: ${ABILITY_NAMES[m.ability][lang()]} · DC ${m.dc} · ${t("char.spellAttack")} ${signed(m.attack)}` : t("char.speciesSpellsNoAbility") }),
+      return h("section", { cls: "blk" }, [h("div", { cls: "orn", text: title }), h("dl", { cls: "qa gl" }, [
+        !needsAbility ? null : h("dt", { text: m.ability ? `${t("form.spellAbility")}: ${ABILITY_NAMES[m.ability][lang()]} · DC ${m.dc} · ${t("char.spellAttack")} ${signed(m.attack)}` : t("char.speciesSpellsNoAbility") }),
         h("dd", {}, [h("p", { cls: "hint", text: t("char.speciesSpellsRule") })]),
         ...m.spells.flatMap((x) => [
           h("dt", {}, [tr(x.name), " ", h("small", { cls: "lvtag", text: x.circle ? t("spell.circle", { n: x.circle }) : t("spell.cantrip") }),
@@ -379,6 +391,7 @@ export function renderSheet(root, go, id, tab) {
           h("button", { type: "button", cls: "btn blood", text: t("death.two"), onclick: () => { snap(); ch.death = { ...d, fail: Math.min(3, d.fail + 2) }; save(); } }),
           h("button", { type: "button", cls: "btn", text: t("death.nat20"), onclick: () => { snap(); ch.hp.cur = 1; ch.death = { ok: 0, fail: 0 }; save(); toast(t("death.up")); } }),
         ]),
+        c.deathSaves ? h("p", { cls: "note", text: t(c.deathSaves === "adv" ? "death.adv" : "death.dis") }) : null,
         h("p", { cls: "hint", text: t("death.hint") }),
       ]);
     }

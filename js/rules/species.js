@@ -77,6 +77,21 @@ export const SPECIES_SPELLS = {
     desc: () => L("Dostajesz 2d4 + 4 tymczasowych HP.", "You gain 2d4 + 4 Temporary Hit Points.") },
   "ray-of-enfeeblement": { circle: 2, conc: true, name: L("Ray of Enfeeblement (Promień osłabienia)", "Ray of Enfeeblement"),
     desc: () => L("Cel w zasięgu 60 ft rzuca KON; porażka = Utrudnienie na testy SIŁ i słabsze obrażenia, ponawia rzut co turę. Do 1 minuty.", "A target within 60 ft makes a CON save; on a fail it has Disadvantage on STR tests and deals less damage, repeating the save each turn. Up to 1 minute.") },
+  // Ravenloft species and Dark Gifts
+  "disguise-self": { circle: 1, name: L("Disguise Self (Przebranie)", "Disguise Self"),
+    desc: (c) => L("Iluzja zmienia Twój wygląd (ubiór, twarz, wzrost o ±1 ft) na godzinę. Kto bada Cię akcją Study, rzuca INT (Investigation) przeciw DC Twoich czarów.", "An illusion changes your look (clothes, face, height by ±1 ft) for 1 hour. A creature that uses the Study action makes an INT (Investigation) check against your spell DC.") },
+  hex: { circle: 1, conc: true, name: L("Hex (Klątwa)", "Hex"),
+    desc: () => L("Akcja bonusowa, cel w 90 ft: gdy trafisz go atakiem, +1k6 obrażeń nekrotycznych; ma Utrudnienie na testy wybranej cechy. Gdy cel spadnie do 0 HP, przenosisz klątwę akcją bonusową. Do godziny.", "Bonus Action, a target within 90 ft: when you hit it with an attack, +1d6 Necrotic damage; it has Disadvantage on checks with one ability you choose. If it drops to 0 HP, move the curse as a Bonus Action. Up to 1 hour.") },
+  message: { circle: 0, name: L("Message (Wiadomość)", "Message"),
+    desc: () => L("Szepczesz wiadomość do istoty w zasięgu 120 ft; tylko ona ją słyszy i może odszepnąć.", "Whisper a message to a creature within 120 ft; only it hears, and it can whisper back.") },
+  augury: { circle: 2, ritual: true, name: L("Augury (Wróżba)", "Augury"),
+    desc: () => L("Pytasz o plan na najbliższe 30 minut i dostajesz omen: pomyślność, nieszczęście, jedno i drugie albo nic. Rytuał.", "Ask about a course of action in the next 30 minutes and get an omen: weal, woe, both or indifference. Ritual.") },
+  "mage-hand": { circle: 0, name: L("Mage Hand (Magiczna dłoń)", "Mage Hand"),
+    desc: () => L("Widmowa dłoń w zasięgu 30 ft na minutę: przenosi do 10 funtów, otwiera drzwi i pojemniki. Nie atakuje.", "A spectral hand within 30 ft for 1 minute: carries up to 10 lb, opens doors and containers. It can't attack.") },
+  "alter-self": { circle: 2, conc: true, name: L("Alter Self (Zmiana siebie)", "Alter Self"),
+    desc: (c) => L("Na godzinę jedna z przemian: życie pod wodą (oddychanie i pływanie), zmieniony wygląd albo naturalna broń (1k6 + cecha czarowania). Z Second Skin bez Koncentracji.", "For 1 hour, one change: aquatic adaptation (breathe and swim), a changed appearance, or natural weapons (1d6 + spellcasting modifier). Through Second Skin it needs no Concentration.") },
+  "beast-sense": { circle: 2, conc: true, ritual: true, name: L("Beast Sense (Zmysły zwierzęcia)", "Beast Sense"),
+    desc: () => L("Dotykasz chętnego zwierzęcia (Beast) i przez godzinę widzisz i słyszysz jego zmysłami. Rytuał.", "Touch a willing Beast and for 1 hour perceive through its senses. Ritual.") },
   "hellish-rebuke": { circle: 1, name: L("Hellish Rebuke (Piekielna odpłata)", "Hellish Rebuke"),
     desc: () => L("Reakcja, gdy istota w zasięgu 60 ft zada Ci obrażenia: rzuca ZRĘ, 2d10 od ognia (sukces = połowa).", "Reaction when a creature within 60 ft damages you: it makes a DEX save, 2d10 fire damage (half on a success).") },
 };
@@ -319,6 +334,86 @@ export const SPECIES = {
   },
 };
 
+
+export const REBORN_RESISTANCES = { cold: DAMAGE_NAMES.cold, necrotic: DAMAGE_NAMES.necrotic, poison: DAMAGE_NAMES.poison };
+const sizesMS = ["medium", "small"];
+
+// Ravenloft: The Horrors Within — offered only when the game type is Ravenloft.
+Object.assign(SPECIES, {
+  dhampir: {
+    source: "ravenloft", name: L("Dhampir", "Dhampir"), speed: 35, darkvision: 60, sizes: sizesMS, type: "humanoid",
+    climb: true,
+    resist: () => ["necrotic"],
+    resources: (c) => [{ id: "bite", max: c.pb, recharge: "long", name: L("Vampiric Bite: wzmocnienie", "Vampiric Bite: empower") }],
+    summary: (c) => [{ label: L("Vampiric Bite", "Vampiric Bite"), value: `1d4${c.mods.con >= 0 ? "+" : ""}${c.mods.con}`,
+      note: L(`kłute, zamiast zwykłego ciosu; wzmocnienie ${c.pb}× na długi odpoczynek`, `piercing, instead of a normal Unarmed Strike; empower ${c.pb}× per long rest`) }],
+    features: [
+      darkvisionFeature(60),
+      { lv: 1, id: "spider-climb", name: L("Spider Climb (Pajęcza wspinaczka)", "Spider Climb"),
+        desc: (c) => c.level >= 3 ? L("Wspinasz się z pełną szybkością, także po pionowych ścianach i sufitach, z wolnymi rękami.", "Climb Speed equal to your Speed, including vertical surfaces and ceilings, with your hands free.")
+          : L("Wspinasz się z pełną szybkością. Od 3. poziomu także po ścianach i sufitach z wolnymi rękami.", "Climb Speed equal to your Speed. From level 3 also along walls and ceilings with your hands free.") },
+      { lv: 1, id: "trace", name: L("Trace of Undeath (Ślad nieżycia)", "Trace of Undeath"),
+        desc: () => L("Odporność na obrażenia nekrotyczne.", "Resistance to Necrotic damage.") },
+      { lv: 1, id: "bite", name: L("Vampiric Bite (Wampirze ugryzienie)", "Vampiric Bite"),
+        desc: (c) => L(`Gdy trafiasz ciosem (Unarmed Strike) i zadajesz obrażenia, możesz ugryźć: 1k4 + KON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}) kłutych zamiast zwykłych. Jeśli cel nie jest Constructem ani Undeadem, możesz się wzmocnić (${c.pb}× na długi odpoczynek): Drain — odzyskujesz tyle HP, ile zadałeś; Strengthen — premia równa tym obrażeniom do następnego testu cechy lub ataku w ciągu minuty.`,
+          `When you deal damage with an Unarmed Strike you can bite: 1d4 + CON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}) piercing instead of the normal damage. If the target isn't a Construct or Undead you can empower yourself (${c.pb}× per long rest): Drain — regain HP equal to the damage; Strengthen — that much bonus to your next ability check or attack roll within a minute.`) },
+    ],
+  },
+  hexblood: {
+    source: "ravenloft", name: L("Hexblood (Krew wiedźmy)", "Hexblood"), speed: 30, darkvision: 60, sizes: sizesMS, type: "fey",
+    choices: [abilityChoice],
+    spellAbility: "choose",
+    spells: () => [spell("disguise-self", 1, "long"), spell("hex", 1, "long")],
+    resources: () => [{ id: "eerie-token", max: 1, recharge: "long", name: L("Eerie Token (Upiorny żeton)", "Eerie Token") }],
+    features: [
+      { lv: 1, id: "fey-type", name: L("Typ istoty: Fey", "Creature type: Fey"),
+        desc: () => L("Jesteś istotą typu Fey, nie Humanoid. Czary działające tylko na humanoidy (np. Charm Person, Hold Person) Cię nie dotyczą, a te na Fey — tak.", "You are a Fey, not a Humanoid. Spells that affect only Humanoids (such as Charm Person or Hold Person) don't affect you; those that target Fey do.") },
+      darkvisionFeature(60),
+      { lv: 1, id: "eerie-token", name: L("Eerie Token (Upiorny żeton)", "Eerie Token"),
+        desc: () => L("Akcja bonusowa: tworzysz żeton (kosmyk włosów, paznokieć). Dopóki istnieje (do długiego odpoczynku), w zasięgu 10 mil możesz akcją Magic: wysłać telepatycznie do 25 słów temu, kto go trzyma, albo przez minutę widzieć i słyszeć z miejsca żetonu (potem żeton znika). Raz na długi odpoczynek.",
+          "Bonus Action: make a token (a lock of hair, a nail). While it lasts (until a long rest), within 10 miles you can take a Magic action to send a telepathic message of up to 25 words to whoever holds it, or see and hear from the token for 1 minute (then it crumbles). Once per long rest.") },
+      { lv: 1, id: "hex-magic", name: L("Hex Magic (Magia klątw)", "Hex Magic"),
+        desc: () => L("Disguise Self i Hex masz zawsze przygotowane; każdy rzucasz raz na długi odpoczynek bez slotu (albo ze slotów).", "Disguise Self and Hex are always prepared; cast each once per long rest without a slot (or with your slots).") },
+    ],
+  },
+  lupin: {
+    source: "ravenloft", name: L("Lupin (Wilkołaczy)", "Lupin"), speed: 30, darkvision: 60, sizes: sizesMS, type: "humanoid",
+    unarmed: L("cięte", "slashing"),
+    skillChoice: { id: "species", label: L("Lupin: Werewolf Instincts", "Lupin: Werewolf Instincts"), count: 1, from: ["perception", "stealth", "survival"] },
+    resources: (c) => [{ id: "howl", max: c.pb, recharge: "long", name: L("Howl (Wycie)", "Howl") }],
+    summary: (c) => [{ label: L("Howl", "Howl"), value: `DC ${8 + c.mods.con + c.pb}`,
+      note: L(`akcja bonusowa, 15 ft, rzut MĄD; ${c.pb}× na długi odpoczynek`, `Bonus Action, 15 ft, WIS save; ${c.pb}× per long rest`) }],
+    features: [
+      darkvisionFeature(60),
+      { lv: 1, id: "pounce", name: L("Feral Pounce (Dziki skok)", "Feral Pounce"),
+        desc: () => L("Twoje ciosy (Unarmed Strike) zadają obrażenia cięte zamiast obuchowych. Raz na turę, gdy trafisz ciosem w akcji Attack, możesz jednocześnie zadać obrażenia i pchnąć (Damage i Shove).", "Your Unarmed Strikes deal Slashing damage instead of Bludgeoning. Once per turn, when you hit with an Unarmed Strike as part of the Attack action, you can use both the Damage and the Shove options.") },
+      { lv: 1, id: "howl", name: L("Howl (Wycie)", "Howl"),
+        desc: (c) => L(`Akcja bonusowa: wybrane istoty w promieniu 15 ft rzucają MĄD przeciw DC ${8 + c.mods.con + c.pb}; porażka = Utrudnienie na ataki i rzuty obronne do początku Twojej następnej tury. ${c.pb}× na długi odpoczynek.`,
+          `Bonus Action: creatures you choose within 15 ft make a WIS save against DC ${8 + c.mods.con + c.pb} or have Disadvantage on attack rolls and saving throws until the start of your next turn. ${c.pb}× per long rest.`) },
+      { lv: 1, id: "instincts", name: L("Werewolf Instincts (Wilcze instynkty)", "Werewolf Instincts"),
+        desc: () => L("Biegłość w Perception, Stealth albo Survival.", "Proficiency in Perception, Stealth or Survival.") },
+    ],
+  },
+  reborn: {
+    source: "ravenloft", name: L("Reborn (Odrodzony)", "Reborn"), speed: 30, darkvision: 0, sizes: sizesMS, type: "humanoid",
+    deathSaves: "adv",
+    choices: [{ key: "endurance", label: L("Strange Endurance: odporność", "Strange Endurance: resistance"), options: REBORN_RESISTANCES }],
+    resist: (c) => (REBORN_RESISTANCES[c.choice.endurance] ? [c.choice.endurance] : []),
+    skillChoice: { id: "species", label: L("Reborn: Knowledge from a Past Life", "Reborn: Knowledge from a Past Life"), count: 1, from: null },
+    resources: (c) => [{ id: "past-life", max: c.pb, recharge: "long", name: L("Knowledge from a Past Life (+1k6)", "Knowledge from a Past Life (+1d6)") }],
+    features: [
+      { lv: 1, id: "escaped-death", name: L("Escaped Death (Ucieczka przed śmiercią)", "Escaped Death"),
+        desc: () => L("Przewaga na rzuty przeciw śmierci.", "Advantage on Death Saving Throws.") },
+      { lv: 1, id: "everlasting", name: L("Everlasting (Wieczny)", "Everlasting"),
+        desc: () => L("Brak Exhaustion od głodu, pragnienia i duszenia się. Nie śpisz, magia Cię nie uśpi; długi odpoczynek to 4 godziny bezruchu w pełnej świadomości.", "No Exhaustion from hunger, thirst or suffocation. You don't sleep and magic can't put you to sleep; a Long Rest is 4 hours of motionless stillness, fully aware.") },
+      { lv: 1, id: "past-life", name: L("Knowledge from a Past Life (Wiedza z poprzedniego życia)", "Knowledge from a Past Life"),
+        desc: (c) => L(`Biegłość w jednej dowolnej umiejętności. Gdy oblejesz test cechy, możesz dodać 1k6 do k20 — ${c.pb}× na długi odpoczynek.`, `Proficiency in one skill of your choice. When you fail an ability check you can add 1d6 to the d20 — ${c.pb}× per long rest.`) },
+      { lv: 1, id: "endurance", name: L("Strange Endurance (Dziwna wytrzymałość)", "Strange Endurance"),
+        desc: (c) => REBORN_RESISTANCES[c.choice.endurance] ? L(`Odporność: ${REBORN_RESISTANCES[c.choice.endurance].pl}.`, `Resistance to ${REBORN_RESISTANCES[c.choice.endurance].en} damage.`) : L("Odporność do wyboru: zimno, nekrotyczne albo trucizna.", "Resistance of your choice: Cold, Necrotic or Poison.") },
+    ],
+  },
+});
+
 export const CREATURE_TYPES = { humanoid: L("Humanoid (humanoid)", "Humanoid"), fey: L("Fey (istota baśniowa)", "Fey") };
 
 /** Species details for the chosen options: speed, darkvision, resistances, spells with their uses. */
@@ -330,6 +425,7 @@ export function speciesTraits(sp, c) {
     darkvision: sp.darkvisionFor ? sp.darkvisionFor(c) : sp.darkvision,
     resist: sp.resist ? sp.resist(c) : [],
     saveAdvantage: sp.saveAdvantage || [],
+    deathSaves: sp.deathSaves || "", climb: !!sp.climb, unarmed: sp.unarmed || null,
     magic: spells.length ? { ability, dc: ability ? 8 + c.mods[ability] + c.pb : null, attack: ability ? c.mods[ability] + c.pb : null, spells } : null,
     spellResources: spells.filter((s) => s.uses !== "atwill").map((s) => ({ id: "sp-" + s.id, max: s.uses === "pb" ? c.pb : 1, recharge: "long", name: s.name, spell: true })),
     missing: (sp.choices || []).filter((x) => !x.options[c.choice[x.key]]),

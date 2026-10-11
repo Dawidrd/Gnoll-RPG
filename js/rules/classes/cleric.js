@@ -117,6 +117,19 @@ export const cleric = {
             en: "Channel Divinity (bonus action): an illusion of you for a minute. You can cast spells from its space and have Advantage on attacks against enemies next to it; move it with a bonus action." }) },
       ],
     },
+    grave: {
+      // Ravenloft: The Horrors Within
+      source: "ravenloft", name: { pl: "Grave Domain (Domena Grobu)", en: "Grave Domain" },
+      domainSpells: domain({ 3: ["Detect Evil and Good", "False Life", "Gentle Repose", "Ray of Enfeeblement", "Spare the Dying"], 5: ["Revivify", "Vampiric Touch"] }),
+      features: [
+        { lv: 3, id: "circle-of-mortality", name: { pl: "Circle of Mortality (Krąg śmiertelności)", en: "Circle of Mortality" },
+          desc: () => ({ pl: "Pull of Death: raz na turę, gdy czarem albo trafieniem atakiem zadasz obrażenia istocie, której brakuje choć 1 HP, dostaje ona +1k4 nekrotycznych. Return to Life: Spare the Dying rzucasz akcją bonusową, a leczenie czarem albo Channel Divinity istoty na 0 HP liczysz z maksymalnych wyników kości.",
+            en: "Pull of Death: once per turn, when a spell or an attack hit damages a creature missing any HP, it takes +1d4 Necrotic. Return to Life: you cast Spare the Dying as a Bonus Action, and healing with a spell or Channel Divinity on a creature at 0 HP uses the maximum of each die." }) },
+        { lv: 3, id: "path-to-the-grave", name: { pl: "Path to the Grave (Ścieżka do grobu)", en: "Path to the Grave" },
+          desc: (c) => ({ pl: `Channel Divinity, akcja bonusowa: przeklinasz widoczną istotę w 30 ft do początku Twojej następnej tury — ma Utrudnienie na ataki i rzuty obronne. Gdy Ty albo sojusznik trafi ją atakiem, możesz zakończyć klątwę: +${c.level} obrażeń nekrotycznych albo promienistych.`,
+            en: `Channel Divinity, Bonus Action: curse a creature you can see within 30 ft until the start of your next turn — it has Disadvantage on attack rolls and saving throws. When you or an ally hits it with an attack, you can end the curse for +${c.level} Necrotic or Radiant damage.` }) },
+      ],
+    },
     war: {
       source: "phb2024", name: { pl: "War Domain (Domena Wojny)", en: "War Domain" },
       domainSpells: domain({ 3: ["Guiding Bolt", "Magic Weapon", "Shield of Faith", "Spiritual Weapon"], 5: ["Crusader's Mantle", "Spirit Guardians"] }),

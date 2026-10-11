@@ -84,7 +84,8 @@ export const monk = {
     const dc = 8 + c.mods.wis + c.pb;
     const rows = [
       { label: { pl: "Cios", en: "Unarmed strike" }, value: `${signed(hit)}, 1${die}${signed(c.mods.dex)}`,
-        note: { pl: "Obuchowe; także jako akcja bonusowa", en: "Bludgeoning; also as a bonus action" } },
+        note: c.unarmed ? { pl: `${c.unarmed.pl[0].toUpperCase() + c.unarmed.pl.slice(1)}; także jako akcja bonusowa`, en: `${c.unarmed.en[0].toUpperCase() + c.unarmed.en.slice(1)}; also as a bonus action` }
+          : { pl: "Obuchowe; także jako akcja bonusowa", en: "Bludgeoning; also as a bonus action" } },
     ];
     if (c.level >= 5) rows.push({ label: { pl: "Ataki w akcji Attack", en: "Attacks per Attack action" }, value: "2", note: { pl: "Extra Attack", en: "Extra Attack" } });
     if (c.level >= 2) rows.push({ label: { pl: "DC technik", en: "Focus save DC" }, value: String(dc),

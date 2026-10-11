@@ -23,6 +23,11 @@ export const BACKGROUNDS = {
   scribe: bg("Skryba", "Scribe", ["dex", "int", "wis"], "skilled", ["investigation", "perception"], "calligrapher"),
   soldier: bg("Żołnierz", "Soldier", ["str", "dex", "con"], "savage-attacker", ["athletics", "intimidation"], "gaming", "srd52"),
   wayfarer: bg("Wędrowiec", "Wayfarer", ["dex", "wis", "cha"], "lucky", ["insight", "stealth"], "thieves"),
+  // Ravenloft: The Horrors Within. featOptions = Origin feats on offer; darkGift = any Dark Gift may be taken instead.
+  "haunted-one": { ...bg("Nawiedzony", "Haunted One", ["con", "wis", "cha"], null, ["arcana", "survival"], "gaming", "ravenloft"), featOptions: ["survivor"], darkGift: true },
+  investigator: { ...bg("Śledczy", "Investigator", ["int", "wis", "cha"], null, ["insight", "investigation"], "disguise", "ravenloft"), featOptions: ["sharp-eye"], darkGift: true },
+  "mist-wanderer": { ...bg("Wędrowiec Mgieł", "Mist Wanderer", ["dex", "con", "wis"], null, ["survival", "stealth"], "artisan", "ravenloft"), featOptions: [], darkGift: true, recommended: "mist-walker" },
+  "spirit-medium": { ...bg("Medium", "Spirit Medium", ["con", "int", "wis"], null, ["insight", "religion"], "gaming", "ravenloft"), featOptions: [], darkGift: true, recommended: "gathered-whispers" },
   // Kept only so characters made before 0.4 still load; not offered in the creator.
   custom: { name: { pl: "Własne tło (stara wersja)", en: "Custom background (old version)" }, abilities: ["str", "dex", "con", "int", "wis", "cha"], feat: null, skills: [], tool: null, source: "homebrew", custom: true, legacy: true },
 };

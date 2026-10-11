@@ -13,6 +13,7 @@ import { POINT_BUY, pointsSpent } from "../rules/identity.js";
 import { backgroundBonus } from "../rules/backgrounds.js";
 import { fitSkills, trimSkills } from "../rules/skills.js";
 import { randomName } from "../rules/names.js";
+import { CATALYSTS } from "../rules/feats-ravenloft.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 
@@ -32,6 +33,8 @@ export function renderForm(root, go, id) {
   const seg = (options, current, onpick, disabled = () => false) => h("div", { cls: "seg", role: "group" }, options.map(([k, label]) =>
     h("button", { type: "button", "aria-pressed": k === current ? "true" : "false", disabled: disabled(k), text: label, onclick: () => onpick(k) })));
   const cls = () => CLASSES[ch.classId];
+  // Ravenloft content is offered only in a Ravenloft game; a current pick stays visible so its error can be read.
+  const offered = (x, current) => x.source !== "ravenloft" || ch.setting === "ravenloft" || current;
   const card = (title, kids, extra = {}) => h("section", { cls: "card stack", ...extra }, [title ? h("h4", { text: title }) : null, ...kids]);
 
   // After a change, drop picks that no longer fit their sources (and tell the player).
@@ -62,8 +65,7 @@ export function renderForm(root, go, id) {
     }
     const featSlotIds = new Set(c.featSlots.map((x) => x.id));
     for (const k of Object.keys(ch.featPicks)) if (!featSlotIds.has(k)) { dropped.push(tr(FEATS[ch.featPicks[k]]?.name)); delete ch.featPicks[k]; }
-    const bgFeat = BACKGROUNDS[ch.background]?.feat;
-    ch.legacyFeats = (ch.legacyFeats || []).filter((x) => x !== bgFeat && !Object.values(ch.featPicks).includes(x));
+    ch.legacyFeats = (ch.legacyFeats || []).filter((x) => x !== c.bgFeatId && !Object.values(ch.featPicks).includes(x));
     if (!SPECIES[ch.speciesId].sizes.includes(ch.size)) ch.size = "";
     if (dropped.length) toast(t("form.dropped", { list: dropped.join(", ") }));
   }
@@ -136,7 +138,8 @@ export function renderForm(root, go, id) {
     } }, Array.from({ length: cls().maxLevel }, (_, i) => h("option", { value: i + 1, text: i + 1, selected: i + 1 === ch.level })));
     const subSel = h("select", { id: "f-subclass", onchange: (e) => { ch.subclass = e.target.value; draw(); } }, [
       h("option", { value: "", text: t("form.subclassNone") }),
-      ...Object.entries(cls().subclasses || {}).map(([k, s]) => h("option", { value: k, text: tr(s.name), selected: k === ch.subclass })),
+      ...Object.entries(cls().subclasses || {}).filter(([k, s]) => offered(s, k === ch.subclass))
+        .map(([k, s]) => h("option", { value: k, text: tr(s.name) + (s.source === "ravenloft" ? " · Ravenloft" : ""), selected: k === ch.subclass })),
       ch.subclass === "custom" ? h("option", { value: "custom", text: `${ch.subclassCustom || "?"} (${t("form.oldVersion")})`, selected: true, disabled: true }) : null,
     ]);
     const choiceFields = Object.entries(cls().choices || {}).map(([k, d]) => {
@@ -168,24 +171,29 @@ export function renderForm(root, go, id) {
       ch.bgIncrease = { mode: "21", plus2: b ? b.abilities[0] : "", plus1: b ? b.abilities[1] : "" };
       if (b) ch.skills = ch.skills.filter((s) => !b.skills.includes(s));
       delete ch.toolPicks.bg;
+      delete ch.featPicks.bg;
       draw();
     } }, [
       h("option", { value: "", text: t("form.bgNone") }),
-      ...Object.entries(BACKGROUNDS).filter(([, b]) => !b.legacy).map(([k, b]) => h("option", { value: k, text: tr(b.name), selected: k === ch.background })),
+      ...Object.entries(BACKGROUNDS).filter(([k, b]) => !b.legacy && offered(b, k === ch.background))
+        .map(([k, b]) => h("option", { value: k, text: tr(b.name) + (b.source === "ravenloft" ? " · Ravenloft" : ""), selected: k === ch.background })),
       bg?.legacy ? h("option", { value: ch.background, text: tr(bg.name), selected: true, disabled: true }) : null,
     ]);
     const bgParts = [field(t("form.background"), bgSel, "wide")];
     if (bg && !bg.legacy) bgParts.push(h("p", { cls: "bgsum" }, [
       h("span", {}, [h("b", { text: t("form.bgAbilities") + ": " }), bg.abilities.map(short).join(", "), " ", h("small", { text: t("form.bgAbilitiesNote") })]),
-      h("span", {}, [h("b", { text: t("form.bgFeat") + ": " }), tr(FEATS[bg.feat].name)]),
+      h("span", {}, [h("b", { text: t("form.bgFeat") + ": " }), bg.feat ? tr(FEATS[bg.feat].name) : [...(bg.featOptions || []).map((x) => tr(FEATS[x].name)), bg.darkGift ? t("form.darkGiftAny") : null].filter(Boolean).join(t("form.or"))]),
       h("span", {}, [h("b", { text: t("form.bgSkills") + ": " }), bg.skills.map(skillName).join(", ")]),
       h("span", {}, [h("b", { text: t("form.bgTool") + ": " }), TOOL_GROUPS[bg.tool] ? t("form.oneKindOf", { group: tr(TOOL_GROUPS[bg.tool].name) }) : tr(TOOLS[bg.tool])]),
     ]));
+    const bgSlot = c.featSlots.find((x) => x.id === "bg");
+    if (bgSlot && !bgSlot.fixed) bgParts.push(featSlotSelect(c, bgSlot));
     const bgTools = c.toolSlots.filter((s) => s.id === "bg").map((s) => toolSlotUI(c, s, true));
 
     const sp = SPECIES[ch.speciesId];
     const spSel = h("select", { id: "f-species", onchange: (e) => { ch.speciesId = e.target.value; ch.size = ""; ch.speciesChoice = {}; draw(); } }, [
-      ...Object.entries(SPECIES).filter(([, s]) => !s.legacy).map(([k, s]) => h("option", { value: k, text: tr(s.name), selected: k === ch.speciesId })),
+      ...Object.entries(SPECIES).filter(([k, s]) => !s.legacy && offered(s, k === ch.speciesId))
+        .map(([k, s]) => h("option", { value: k, text: tr(s.name) + (s.source === "ravenloft" ? " · Ravenloft" : ""), selected: k === ch.speciesId })),
       sp.legacy ? h("option", { value: ch.speciesId, text: `${ch.customSpecies?.name || "?"} (${t("form.oldVersion")})`, selected: true, disabled: true }) : null,
     ]);
     const spParts = [h("div", { cls: "row" }, [field(t("form.species"), spSel)])];
@@ -396,25 +404,43 @@ export function renderForm(root, go, id) {
     ], { id: "f-skills" });
   }
 
+  /** One feat slot: Origin feats (or the background's options), plus Dark Gifts in a Ravenloft game. */
+  function featSlotSelect(c, sl) {
+    const cur = (ch.featPicks || {})[sl.id] || "";
+    const taken = c.featInstances.filter((f) => f.source !== sl.id).map((f) => f.id);
+    const ravenloft = ch.setting === "ravenloft";
+    const opt = (k, f, suffix = "") => h("option", { value: k, text: tr(f.name) + suffix + (k === sl.recommended ? ` (${t("form.recommended")})` : ""),
+      selected: k === cur, disabled: taken.includes(k) && !f.repeatable });
+    const base = Object.entries(FEATS).filter(([k, f]) => (sl.options ? sl.options.includes(k) : f.category === sl.category) && (f.source !== "ravenloft" || ravenloft));
+    const gifts = sl.darkGift ? Object.entries(FEATS).filter(([, f]) => f.category === "dark-gift") : [];
+    const first = sl.default ? h("option", { value: "", text: `${tr(FEATS[sl.default].name)} (${t("form.fromBg")})` }) : h("option", { value: "", text: t(sl.options && !sl.options.length ? "form.darkGiftChoose" : "form.featChoose") });
+    const sel = h("select", { id: "f-feat-" + sl.id, onchange: (e) => { if (e.target.value) ch.featPicks[sl.id] = e.target.value; else delete ch.featPicks[sl.id]; draw(); } }, [
+      first,
+      ...base.filter(([k]) => k !== sl.default).map(([k, f]) => opt(k, f)),
+      gifts.length ? h("optgroup", { label: t("form.darkGifts") }, gifts.map(([k, f]) => opt(k, f))) : null,
+      cur && !FEATS[cur] ? h("option", { value: cur, text: cur, selected: true, disabled: true }) : null,
+    ]);
+    const kids = [field(sl.id === "bg" ? t("form.bgFeatPick") : tr(sl.label), sel, "wide")];
+    if (sl.darkGift) kids.push(h("p", { cls: "hint", text: t(sl.default ? "form.darkGiftSwap" : "form.darkGiftHint") }));
+    const pick = FEATS[sl.pick];
+    if (pick && sl.id === "bg") kids.push(h("p", { cls: "small", text: tr(pick.desc) }));
+    const flaw = c.flaws.find((x) => x.id === sl.pick);
+    if (flaw && sl.id === "bg") kids.push(h("p", { cls: "warn small" }, [h("b", { text: t("form.flaw") + ": " }), tr(flaw.text)]));
+    return h("div", { cls: "stack" }, kids);
+  }
+
   function featsUI(c, bg) {
     const parts = [h("p", { cls: "hint", text: t("form.featsRule") })];
-    if (bg?.feat) parts.push(h("p", { cls: "featline" }, [h("b", { text: tr(FEATS[bg.feat].name) }), " ", h("small", { cls: "lvtag", text: t("form.fromBg") })]));
-    for (const sl of c.featSlots) {
-      const cur = ch.featPicks[sl.id] || "";
-      const taken = c.featInstances.filter((f) => f.source !== sl.id).map((f) => f.id);
-      parts.push(field(tr(sl.label), h("select", { id: "f-feat-" + sl.id, onchange: (e) => {
-        if (e.target.value) ch.featPicks[sl.id] = e.target.value; else delete ch.featPicks[sl.id]; draw();
-      } }, [
-        h("option", { value: "", text: t("form.featChoose") }),
-        ...Object.entries(FEATS).filter(([, f]) => f.category === sl.category).map(([k, f]) => h("option", {
-          value: k, text: tr(f.name), selected: k === cur, disabled: taken.includes(k) && !f.repeatable,
-        })),
-      ]), "wide"));
-    }
+    if (c.bgFeatId) parts.push(h("p", { cls: "featline" }, [h("b", { text: tr(FEATS[c.bgFeatId].name) }), " ", h("small", { cls: "lvtag", text: t("form.fromBg") })]));
+    for (const sl of c.featSlots.filter((x) => x.id !== "bg")) parts.push(featSlotSelect(c, sl));
     for (const f of c.feats) {
       const choice = ch.featChoices[f.id] || {};
       const box = [h("b", { text: tr(f.name) }), h("p", { cls: "small", text: tr(f.desc) })];
-      if (f.spellAbility) {
+      if (f.spellAbility && f.innate) {
+        box.push(h("div", { cls: "row" }, [field(t("form.spellAbility"), h("select", { id: "f-fa-" + f.id, onchange: (e) => { ch.featChoices[f.id] = { ...choice, ability: e.target.value }; draw(); } }, [
+          h("option", { value: "", text: "—" }), ...["int", "wis", "cha"].map((a) => h("option", { value: a, text: ABILITY_NAMES[a][lang()], selected: choice.ability === a })),
+        ]))]));
+      } else if (f.spellAbility) {
         box.push(h("div", { cls: "row" }, [
           field(t("form.spellAbility"), h("select", { id: "f-fa-" + f.id, onchange: (e) => { ch.featChoices[f.id] = { ...choice, ability: e.target.value }; draw(); } }, [
             h("option", { value: "", text: "—" }), ...["int", "wis", "cha"].map((a) => h("option", { value: a, text: ABILITY_NAMES[a][lang()], selected: choice.ability === a })),
@@ -423,7 +449,23 @@ export function renderForm(root, go, id) {
         h("p", { cls: "hint", text: t("form.featSpellsHint") }));
       }
       if (f.skillsOrTools) box.push(h("p", { cls: "hint", text: t("form.skilledHint") }));
-      if (f.spellAbility || f.skillsOrTools) parts.push(h("div", { cls: "featbox" }, box));
+      if (f.skillSlot) box.push(h("p", { cls: "hint", text: t("form.featSkillsHint", { n: f.skillSlot.count }) }));
+      if (f.language) box.push(h("p", { cls: "hint", text: t("form.featLanguageHint", { n: f.language }) }));
+      if (f.expertisePick) {
+        const prof = c.skills.filter((x) => x.prof).map((x) => x.id);
+        box.push(field(t("form.featExpertise"), h("select", { id: "f-fx-" + f.id, onchange: (e) => { ch.featChoices[f.id] = { ...choice, expertise: e.target.value }; draw(); } }, [
+          h("option", { value: "", text: "—" }), ...SKILLS.filter((x) => prof.includes(x.id)).map((x) => h("option", { value: x.id, text: x[lang()], selected: choice.expertise === x.id })),
+        ]), "wide"), h("p", { cls: "hint", text: t("form.featExpertiseHint") }));
+      }
+      if (f.catalyst) {
+        box.push(choice.catalyst
+          ? h("p", { cls: "rollres", id: "f-catalyst" }, [t("form.catalyst") + ": ", h("b", { text: `${choice.catalyst} — ${tr(CATALYSTS[choice.catalyst])}` })])
+          : h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "f-catalyst-roll", text: t("form.catalystRoll"), onclick: () => { ch.featChoices[f.id] = { ...choice, catalyst: rollDie(6) }; draw(); } }),
+            h("span", { cls: "hint", text: t("form.catalystHint") })]));
+      }
+      const flaw = c.flaws.find((x) => x.id === f.id);
+      if (flaw) box.push(h("p", { cls: "warn small" }, [h("b", { text: t("form.flaw") + ": " }), tr(flaw.text)]));
+      if (f.spellAbility || f.skillsOrTools || f.darkGift || f.skillSlot || f.expertisePick) parts.push(h("div", { cls: "featbox" }, box));
     }
     for (const f of c.featInstances.filter((x) => x.source === "legacy")) {
       parts.push(h("p", { cls: "warn" }, [t("form.legacyFeat", { name: tr(FEATS[f.id].name) }), " ",

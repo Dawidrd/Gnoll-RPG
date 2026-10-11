@@ -76,7 +76,21 @@ const STYLES = {
       ["kalathi", "akanu", "vathi", "olavi", "ganu", "ilian", "muni", "athai"]],
   },
 };
-STYLES.other ={ first: [[...STYLES.human.first[0], ...STYLES.elf.first[0]], [...STYLES.human.first[1], ...STYLES.dwarf.first[1]]], last: STYLES.human.last };
+// Ravenloft: dhampirs and reborn keep the names of the people they came from; lupins and hexbloods get a style of their own.
+STYLES.lupin = {
+  first: [["Ar", "Bra", "Dra", "Fen", "Gre", "Hro", "Kor", "Lu", "Mar", "Rul", "Sko", "Ul", "Vuk", "Zor"],
+    ["ak", "dan", "ga", "kov", "lan", "mir", "nak", "rek", "ska", "vik", "ya", "zan"]],
+  last: [["Ash", "Blood", "Grey", "Moon", "Night", "Silver", "Thorn", "Winter", "Black", "Mist"], ["fang", "howl", "mane", "pelt", "claw", "tooth", "run", "coat"]],
+};
+STYLES.hexblood = {
+  first: [["Ag", "Bel", "Cor", "Ess", "Hag", "Ise", "Mor", "Nim", "Rav", "Sab", "Vel", "Wyl"],
+    ["a", "e", "i", ""], ["dra", "lith", "mora", "na", "ra", "thea", "wen", "zel", "rys", "beth"]],
+  last: null,
+  virtue: { pl: ["Ciernica", "Gałązka", "Szept", "Kruczyca", "Jemioła", "Mgiełka", "Znamię", "Węzeł"], en: ["Thistle", "Bramble", "Whisper", "Raven", "Mistletoe", "Mist", "Mark", "Knot"] },
+};
+STYLES.dhampir = STYLES.human;
+STYLES.reborn = STYLES.human;
+STYLES.other = { first: [[...STYLES.human.first[0], ...STYLES.elf.first[0]], [...STYLES.human.first[1], ...STYLES.dwarf.first[1]]], last: STYLES.human.last };
 
 /** A random name in the style of the given species. */
 export function randomName(speciesId, lang = "en") {

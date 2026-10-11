@@ -88,6 +88,19 @@ export const rogue = {
           desc: () => ({ pl: "Masz zestaw do przebrań i zestaw trucicielski oraz biegłość w nich.", en: "You have a Disguise Kit and a Poisoner's Kit and are proficient with both." }) },
       ],
     },
+    phantom: {
+      // Ravenloft: The Horrors Within
+      source: "ravenloft", name: { pl: "Phantom (Upiór)", en: "Phantom" },
+      resources: (c) => [{ id: "wails", max: Math.max(1, c.mods.dex), recharge: "long", name: { pl: "Wails from the Grave (Zawodzenie z grobu)", en: "Wails from the Grave" } }],
+      features: [
+        { lv: 3, id: "wails", name: { pl: "Wails from the Grave (Zawodzenie z grobu)", en: "Wails from the Grave" },
+          desc: (c) => ({ pl: `Zaraz po zadaniu Sneak Attack w swojej turze wybierasz drugą widoczną istotę w 30 ft od pierwszej: dostaje ${Math.ceil(Math.ceil(c.level / 2) / 2)}k6 obrażeń nekrotycznych (połowa kości Sneak Attack, w górę). ${Math.max(1, c.mods.dex)}× na długi odpoczynek (modyfikator ZRĘ, co najmniej 1).`,
+            en: `Right after you deal Sneak Attack damage on your turn, pick a second creature you can see within 30 ft of the first: it takes ${Math.ceil(Math.ceil(c.level / 2) / 2)}d6 Necrotic damage (half your Sneak Attack dice, rounded up). ${Math.max(1, c.mods.dex)}× per long rest (DEX modifier, at least 1).` }) },
+        { lv: 3, id: "whispers", name: { pl: "Whispers of the Dead (Szepty zmarłych)", en: "Whispers of the Dead" },
+          desc: () => ({ pl: "Po każdym krótkim lub długim odpoczynku wybierasz jedną umiejętność albo narzędzie, w którym nie masz biegłości, i dostajesz ją do następnej takiej zmiany. Wpisz bieżący wybór w notatkach.",
+            en: "After each short or long rest, choose one skill or tool proficiency you lack and gain it until you choose again. Note your current pick in Notes." }) },
+      ],
+    },
     soulknife: {
       source: "phb2024", name: { pl: "Soulknife (Psioniczne Ostrze)", en: "Soulknife" },
       resources: (c) => [{ id: "psi", max: psiDice(c.level), recharge: "long", shortRegain: 1, name: { pl: `Kości psioniczne (k${psiDie(c.level)})`, en: `Psionic Energy Dice (d${psiDie(c.level)})` } }],

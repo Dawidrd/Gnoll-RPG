@@ -7,12 +7,13 @@ export function grantedSkills({ cls, bg, subclass }) {
 }
 
 /** Choice slots in a sensible order: restricted lists first, "any skill" last. */
-export function skillSlots({ cls, sp, bg, skilledCount = 0, level }) {
+export function skillSlots({ cls, sp, bg, skilledCount = 0, level, extra = [] }) {
   const slots = [{ id: "class", label: cls.name, count: cls.skillChoices.count, from: cls.skillChoices.from }];
   if (cls.extraSkills) slots.push(...cls.extraSkills(level));
   if (sp?.skillChoice) slots.push(sp.skillChoice);
   if (bg?.custom) slots.push({ id: "bg", label: bg.name, count: 2, from: null });
   if (skilledCount > 0) slots.push({ id: "skilled", label: { pl: "Feat Skilled", en: "Skilled feat" }, count: skilledCount, from: null });
+  slots.push(...extra);
   return slots.filter((s) => s.count > 0).sort((a, b) => (a.from ? 0 : 1) - (b.from ? 0 : 1));
 }
 

@@ -9,6 +9,7 @@
 - Kreator w 5 krokach z rozdziału 2 Podręcznika Gracza 2024: klasa → pochodzenie → cechy → charakter → szczegóły
 - Limity z podręcznika wbudowane w kreator (umiejętności, języki, narzędzia, featy, point buy, jeden rzut 4k6); lista „Do uzupełnienia”
 - Barbarzyńca, Kleryk, Mnich, Łotr (poziomy 1–5) z podklasami; 16 teł; wszystkie 10 gatunków z PHB z liniami elfów i gnomów, dziedzictwami tieflingów i przodkami goliatów; czary z gatunku z DC, użyciami i odpornościami na karcie
+- Tryb Ravenloft (The Horrors Within): gatunki Dhampir, Hexblood, Lupin, Reborn; tła Haunted One, Investigator, Mist Wanderer, Spirit Medium; featy Sharp Eye i Survivor; 9 Dark Gifts z ceną liczoną na karcie; podklasy Grave Domain i Phantom. W grze standardowej te opcje są niedostępne
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
@@ -50,6 +51,7 @@ js/config.js                              nazwa, wersja, link do wsparcia
 js/i18n.js, js/lang/{pl,en}.js            teksty interfejsu
 js/rules/core.js                          matematyka 5e, umiejętności, featy pochodzenia
 js/rules/feats-general.js                 featy ogólne i stylu walki (od 4. poziomu)
+js/rules/feats-ravenloft.js               featy pochodzenia z Ravenloftu i Dark Gifts
 js/rules/classes/monk.js                  klasa: zdolności, zasoby, awans
 js/rules/species.js                       gatunki, linie i dziedzictwa, czary z gatunku
 js/rules/backgrounds.js                   tła

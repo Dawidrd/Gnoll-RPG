@@ -6,7 +6,7 @@ import { rogue } from "./classes/rogue.js";
 import { cleric } from "./classes/cleric.js";
 import { ARMOR, armorClass } from "./armor.js";
 import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
-import { SPECIES, speciesTraits } from "./species.js";
+import { SPECIES, SPECIES_SPELLS, speciesTraits } from "./species.js";
 import { BACKGROUNDS, backgroundBonus } from "./backgrounds.js";
 import { TOOLS, TOOL_GROUPS, toolOptions, ALL_TOOLS } from "./tools.js";
 import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./identity.js";
@@ -178,6 +178,14 @@ export function normalize(ch) {
   return ch;
 }
 
+/** Can this feat fill this slot? Listed options, or the slot's category, or (in Ravenloft) a Dark Gift. */
+export function featAllowed(slot, id, ravenloft) {
+  const f = FEATS[id];
+  if (!f || (f.source === "ravenloft" && !ravenloft)) return false;
+  if (slot.darkGift && f.category === "dark-gift") return true;
+  return slot.options ? slot.options.includes(id) : f.category === slot.category;
+}
+
 export function compute(raw) {
   const ch = normalize(raw);
   const cls = CLASSES[ch.classId];
@@ -200,16 +208,30 @@ export function compute(raw) {
   const worn = armorClass({ armorId: ch.armor, shield: !!ch.shield, mods, unarmored: cls.unarmored ? cls.unarmored(ctx) : null, training, strScore: abilities.str });
   ctx.armor = { wearing: worn.wearing, heavy: worn.heavy, shield: !!ch.shield };
 
-  // Feats: one from the background, one per feat slot (e.g. human Versatile), plus pre-0.4 extras until removed.
-  const featSlots = [...(sp.featSlot ? [sp.featSlot] : [])];
+  // Feats: the background's feat, one per species slot (Human Versatile), plus pre-0.4 extras until removed.
+  // In Ravenloft any Origin feat may be swapped for a Dark Gift (with the DM's permission); Ravenloft content needs Ravenloft.
+  const ravenloft = (ch.setting || "standard") === "ravenloft";
+  const featSlots = [];
+  if (bg && !bg.legacy) {
+    const options = bg.feat ? [bg.feat] : bg.featOptions || [];
+    const darkGift = ravenloft && (!!bg.feat || !!bg.darkGift);
+    featSlots.push({ id: "bg", step: 2, label: bg.name, options, darkGift, default: bg.feat || null, recommended: bg.recommended || null,
+      fixed: !darkGift && options.length === 1 ? options[0] : null });
+  }
+  if (sp.featSlot) featSlots.push({ ...sp.featSlot, step: 5, options: null, darkGift: ravenloft, default: null });
+  for (const sl of featSlots) {
+    const raw = (ch.featPicks || {})[sl.id];
+    sl.pick = raw || sl.default || "";
+    sl.valid = !!sl.pick && featAllowed(sl, sl.pick, ravenloft);
+  }
+  const bgFeatId = featSlots.find((sl) => sl.id === "bg" && sl.valid)?.pick || null;
   const featInstances = [
-    ...(bg?.feat ? [{ id: bg.feat, source: "bg" }] : []),
-    ...featSlots.filter((sl) => (ch.featPicks || {})[sl.id]).map((sl) => ({ id: ch.featPicks[sl.id], source: sl.id })),
-    ...(ch.legacyFeats || []).filter((id) => id !== bg?.feat && !Object.values(ch.featPicks || {}).includes(id)).map((id) => ({ id, source: "legacy" })),
+    ...featSlots.filter((sl) => sl.valid).map((sl) => ({ id: sl.pick, source: sl.id })),
+    ...(ch.legacyFeats || []).filter((id) => id !== bgFeatId && !Object.values(ch.featPicks || {}).includes(id)).map((id) => ({ id, source: "legacy" })),
   ].filter((f) => FEATS[f.id]);
   const featIds = [...new Set(featInstances.map((f) => f.id))];
   const feats = [
-    ...featIds.map((id) => ({ id, ...FEATS[id], fromBackground: bg?.feat === id, choice: (ch.featChoices || {})[id] || {} })),
+    ...featIds.map((id) => ({ id, ...FEATS[id], fromBackground: bgFeatId === id, choice: (ch.featChoices || {})[id] || {} })),
     ...asiLevels.filter((L) => ch.levelChoices?.[L]).map((L) => {
       const lc = ch.levelChoices[L];
       const id = lc.kind === "asi" ? "asi" : lc.feat;
@@ -231,6 +253,9 @@ export function compute(raw) {
   const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
   // Species options (lineage, legacy, ancestry, spellcasting ability) shape speed, darkvision, resistances and species spells.
   const spt = speciesTraits(sp, ctx);
+  ctx.unarmed = spt.unarmed; // e.g. Lupin claws: slashing Unarmed Strikes
+  // Origin feats and Dark Gifts, with the player's sub-choices (spell ability, skills, Expertise, catalyst).
+  const originFeats = featIds.map((id) => ({ id, ...FEATS[id], choice: (ch.featChoices || {})[id] || {} }));
 
   const initiative = mods.dex + feats.reduce((s, f) => s + (f.initiativeBonus ? f.initiativeBonus(ctx) : 0), 0);
   const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : spt.speed;
@@ -243,15 +268,21 @@ export function compute(raw) {
   const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   // Skills from feats: Skill Expert gives a proficiency; Keen Mind and Observant give proficiency or, if you have it, Expertise.
   const featSkillGrants = levelFeats.filter((lf) => FEATS[lf.id].skillPick && lf.pick.skill).map((lf) => lf.pick.skill);
-  const baseGranted = [...new Set([...grantedSkills({ cls, bg, subclass }), ...featSkillGrants])];
-  const featExpertise = levelFeats.filter((lf) => FEATS[lf.id].expertisePick && lf.pick.expertise).map((lf) => lf.pick.expertise);
+  const originGrants = originFeats.filter((f) => f.grants?.skill).map((f) => f.grants.skill); // Aberrant Anatomy: Perception
+  const baseGranted = [...new Set([...grantedSkills({ cls, bg, subclass }), ...featSkillGrants, ...originGrants])];
+  const featExpertise = [...levelFeats.filter((lf) => FEATS[lf.id].expertisePick && lf.pick.expertise).map((lf) => lf.pick.expertise),
+    ...originFeats.filter((f) => f.grants?.expertise).map((f) => f.grants.expertise)];
   const loreGrants = [];
   for (const lf of levelFeats.filter((x) => FEATS[x.id].lore && x.pick.lore)) {
     if (baseGranted.includes(lf.pick.lore) || (ch.skills || []).includes(lf.pick.lore)) featExpertise.push(lf.pick.lore);
     else loreGrants.push(lf.pick.lore);
   }
   const granted = [...new Set([...baseGranted, ...loreGrants])];
-  const featGranted = [...featSkillGrants, ...loreGrants];
+  const featGranted = [...featSkillGrants, ...loreGrants, ...originGrants];
+  // Echoing Soul: Expertise in one skill you're proficient in.
+  for (const f of originFeats.filter((x) => x.expertisePick && x.choice.expertise)) {
+    if (granted.includes(f.choice.expertise) || (ch.skills || []).includes(f.choice.expertise)) featExpertise.push(f.choice.expertise);
+  }
   // Tools: fixed ones, plus "choose one kind" slots from background, class and feats.
   const toolPicks = ch.toolPicks || {};
   const toolSlots = [];
@@ -268,11 +299,13 @@ export function compute(raw) {
   const langAuto = ["common", ...(cls.languages?.auto || [])];
   const langSlots = [{ id: "origin", label: { pl: "Pochodzenie: 2 języki standardowe", en: "Origin: 2 standard languages" }, count: 2, from: STANDARD_PICKS }];
   if (cls.languages?.pick) langSlots.push({ ...cls.languages.pick, from: cls.languages.pick.from === "any" ? ANY_PICKS : cls.languages.pick.from });
+  for (const f of originFeats.filter((x) => x.language)) langSlots.push({ id: "feat-" + f.id, label: f.name, count: f.language, from: ANY_PICKS });
   const langChosen = (ch.languages || []).filter((x) => !langAuto.includes(x));
   const languages = { auto: langAuto, slots: langSlots, chosen: langChosen, total: langSlots.reduce((n, x) => n + x.count, 0),
     fit: fitSkills(langChosen, langSlots), known: [...langAuto, ...langChosen] };
 
-  const slots = skillSlots({ cls, sp, bg, skilledCount: Math.max(0, skilledCount - skilledTools.length), level });
+  const featSkillSlots = originFeats.filter((f) => f.skillSlot).map((f) => ({ id: "feat-" + f.id, label: f.name, count: f.skillSlot.count, from: f.skillSlot.from }));
+  const slots = skillSlots({ cls, sp, bg, skilledCount: Math.max(0, skilledCount - skilledTools.length), level, extra: featSkillSlots });
   const skillFit = fitSkills((ch.skills || []).filter((x) => !granted.includes(x)), slots);
   const saveProfs = [...cls.saves, ...levelFeats.filter((lf) => FEATS[lf.id].saveFromIncrease && lf.pick.inc).map((lf) => lf.pick.inc)];
   const saves = Object.fromEntries(ABILITIES.map((a) => [a, { prof: saveProfs.includes(a), value: mods[a] + (saveProfs.includes(a) ? pb : 0) }]));
@@ -297,12 +330,21 @@ export function compute(raw) {
   const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: "long", slot: i + 1,
     name: { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
 
+  // Spells from feats (Dark Gifts): always prepared, cantrips at will, others once per long rest.
+  const featMagic = originFeats.filter((f) => f.innate).map((f) => {
+    const ability = f.spellAbility && ["int", "wis", "cha"].includes(f.choice.ability) ? f.choice.ability : "";
+    const list = f.innate.map((x) => ({ ...x, at: 1, ...SPECIES_SPELLS[x.id], text: SPECIES_SPELLS[x.id].desc(ctx) }));
+    return { id: f.id, label: f.name, needsAbility: !!f.spellAbility, ability, dc: ability ? 8 + mods[ability] + pb : null, attack: ability ? mods[ability] + pb : null, spells: list };
+  });
+  const featSpellRes = featMagic.flatMap((g) => g.spells.filter((x) => x.uses !== "atwill").map((x) => ({ id: `ft-${g.id}-${x.id}`, max: x.uses === "pb" ? pb : 1, recharge: "long", name: x.name, spell: true })));
+
   const resources = [
     ...(cls.resources ? cls.resources(ctx) : []),
     ...(subclass?.resources ? subclass.resources(ctx) : []),
     ...slotRes,
     ...(sp.resources ? sp.resources(ctx) : []),
     ...spt.spellResources,
+    ...featSpellRes,
     ...feats.filter((f) => f.resource).map((f) => f.resource(ctx)),
   ].filter((r) => r.max > 0).map((r) => ({ ...r, used: clamp((ch.used || {})[r.id] || 0, 0, r.max) }));
 
@@ -312,6 +354,18 @@ export function compute(raw) {
 
   const tools = toolIds.map((id) => TOOLS[id]);
 
+  // Death saves: Reborn have Advantage, Touch of Death gives Disadvantage (both cancel out).
+  const dsMods = [spt.deathSaves, ...originFeats.map((f) => f.deathSaves || "")].filter(Boolean);
+  const deathSaves = dsMods.includes("adv") && dsMods.includes("dis") ? "" : dsMods[0] || "";
+  const blindsight = Math.max(0, ...originFeats.map((f) => f.senses?.blindsight || 0));
+  const flaws = originFeats.filter((f) => f.flaw).map((f) => ({ id: f.id, name: f.name, save: f.flaw.save || "", text: f.flaw.text(ctx) }));
+  // Content from The Horrors Within needs the Ravenloft game type.
+  const ravenloftOnly = ravenloft ? [] : [
+    ...(sp.source === "ravenloft" ? [{ step: 2, name: sp.name }] : []),
+    ...(bg?.source === "ravenloft" ? [{ step: 2, name: bg.name }] : []),
+    ...(cls.subclasses?.[ch.subclass]?.source === "ravenloft" && level >= cls.subclassLevel ? [{ step: 1, name: cls.subclasses[ch.subclass].name }] : []),
+  ];
+
   const result = {
     asiLevels, levelProblems: Object.fromEntries(asiLevels.map((L) => [L, levelChoiceProblems(ch, L)])),
     setting: ch.setting || "standard", size, alignment: ch.alignment || "", languages, toolSlots, toolIds, fixedTools,
@@ -319,6 +373,7 @@ export function compute(raw) {
     granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0,
     cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
+    featMagic, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
     speciesSpeed: spt.speed, creatureType: sp.type || "humanoid", resistances: spt.resist, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],

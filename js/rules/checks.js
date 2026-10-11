@@ -2,7 +2,7 @@
 // Each item: { step: 1–5, key: i18n key, vars }. Errors block saving; todo items don't.
 import { ABILITIES, FEATS, SKILLS } from "./core.js";
 import { STANDARD_ARRAY } from "./core.js";
-import { POINT_BUY, pointsSpent } from "./identity.js";
+import { POINT_BUY, pointsSpent, ALIGNMENTS } from "./identity.js";
 
 const sortNums = (a) => [...a].sort((x, y) => x - y).join(",");
 
@@ -50,7 +50,7 @@ export function review(ch, c) {
   }
 
   // Step 4: identity
-  if (!ch.alignment) T(4, "todo.alignment");
+  if (!ALIGNMENTS[ch.alignment]) T(4, "todo.alignment");
   if (!ch.name?.trim()) T(4, "todo.name");
 
   // Step 5: details
@@ -61,11 +61,18 @@ export function review(ch, c) {
   if ((ch.expertise || []).length > c.expertiseMax) E(5, "err.expertise", { n: c.expertiseMax });
   else if ((ch.expertise || []).length < c.expertiseMax) T(5, "todo.expertise", { n: c.expertiseMax - (ch.expertise || []).length });
   for (const s of c.featSlots) {
-    const id = (ch.featPicks || {})[s.id];
-    if (!id) T(5, "todo.feat", { what: s.label });
-    else if (!FEATS[id] || FEATS[id].category !== s.category) E(5, "err.featCategory", { what: s.label });
-    else if (c.featInstances.filter((f) => f.id === id).length > 1 && !FEATS[id].repeatable) E(5, "err.featTwice", { name: FEATS[id].name });
+    const id = s.pick;
+    if (!id) T(s.step, "todo.feat", { what: s.label });
+    else if (!s.valid) E(s.step, "err.featCategory", { what: s.label });
+    else if (c.featInstances.filter((f) => f.id === id).length > 1 && !FEATS[id].repeatable) E(s.step, "err.featTwice", { name: FEATS[id].name });
+    if (s.valid && FEATS[id].darkGift) notices.push({ step: s.step, key: "note.darkGift", vars: { name: FEATS[id].name } });
   }
+  for (const f of c.originFeats || []) {
+    const prof = c.skills.filter((x) => x.prof).map((x) => x.id);
+    if (f.expertisePick && (!f.choice.expertise || !prof.includes(f.choice.expertise))) T(5, "todo.featExpertisePick", { name: f.name });
+    if (f.catalyst && !f.choice.catalyst) T(5, "todo.catalyst", { name: f.name });
+  }
+  for (const x of c.ravenloftOnly || []) E(x.step, "err.ravenloftOnly", { name: x.name });
   for (const f of c.featInstances.filter((x) => x.source === "legacy")) E(5, "err.legacyFeat", { name: FEATS[f.id]?.name || f.id });
   for (const f of c.featInstances) {
     if (FEATS[f.id]?.spellAbility && !(ch.featChoices?.[f.id]?.ability)) T(5, "todo.featAbility", { name: FEATS[f.id].name });

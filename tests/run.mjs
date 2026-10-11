@@ -139,7 +139,7 @@ test("Tarhun leveled 1 → 5 matches the numbers worked out by hand", () => {
   // Monk, Dragonborn (gold), Wayfarer; rolled 11 14 12 6 13 9; background +2 DEX +1 WIS.
   const ch = make({ name: "Tarhun", classId: "monk", speciesId: "dragonborn", speciesChoice: { ancestry: "gold" }, background: "wayfarer",
     abilityMethod: "roll", rolled: [11, 14, 12, 6, 13, 9].map((total) => ({ total })), abilityBase: { str: 11, dex: 14, con: 12, int: 6, wis: 13, cha: 9 },
-    bgIncrease: { mode: "21", plus2: "dex", plus1: "wis" }, skills: ["acrobatics", "athletics"], alignment: "ng", languages: ["draconic", "elvish"], toolPicks: { class: ["flute"] } });
+    bgIncrease: { mode: "21", plus2: "dex", plus1: "wis" }, skills: ["acrobatics", "athletics"], alignment: "NG", languages: ["draconic", "elvish"], toolPicks: { class: ["flute"] } });
   const at = (patch) => { Object.assign(ch, patch); const c = run(ch); eq(c.review.todo.length + c.review.errors.length, 0, `level ${ch.level} complete`); return c; };
   let c = at({});
   eq([c.hpMax, c.ac.value, c.speed, c.initiative], [8 + 1, 10 + 3 + 2, 30, 3], "L1");
@@ -208,6 +208,68 @@ test("Gnome: Small, Advantage on INT/WIS/CHA saves, rock gnome devices", () => {
   const f = sp("gnome", { lineage: "forest", ability: "int" }, 5, { size: "" });
   eq(f.speciesFeatures.some((x) => x.id === "clockwork"), false);
   eq(f.resources.find((r) => r.id === "sp-speak-with-animals").max, 3, "PB at level 5");
+});
+
+// --- Ravenloft: The Horrors Within, chapter 1 ---
+const rv = (over = {}) => make({ setting: "ravenloft", classId: "monk", size: "medium", ...over });
+const errKeys = (c) => keys(c.review.errors);
+test("Ravenloft content needs the Ravenloft game type", () => {
+  eq(errKeys(run(make({ speciesId: "lupin", size: "medium" }))).includes("err.ravenloftOnly"), true, "species");
+  eq(errKeys(run(make({ background: "investigator" }))).includes("err.ravenloftOnly"), true, "background");
+  eq(errKeys(run(make({ classId: "cleric", subclass: "grave", level: 3 }))).includes("err.ravenloftOnly"), true, "subclass");
+  eq(errKeys(run(make({ background: "wayfarer", featPicks: { bg: "living-shadow" } }))).includes("err.featCategory"), true, "Dark Gift outside Ravenloft");
+  eq(errKeys(run(rv({ speciesId: "lupin", background: "investigator" }))).includes("err.ravenloftOnly"), false);
+});
+test("Ravenloft backgrounds: Dark Gift or the listed Origin feat", () => {
+  const mw = run(rv({ background: "mist-wanderer" }));
+  eq(keys(mw.review.todo).includes("todo.feat"), true, "Mist Wanderer must pick a Dark Gift");
+  eq(errKeys(run(rv({ background: "mist-wanderer", featPicks: { bg: "alert" } }))).includes("err.featCategory"), true, "not an Origin feat");
+  eq(run(rv({ background: "haunted-one", featPicks: { bg: "survivor" } })).bgFeatId, "survivor");
+  eq(run(rv({ background: "haunted-one", featPicks: { bg: "watchers" } })).bgFeatId, "watchers");
+  eq(run(rv({ background: "wayfarer" })).bgFeatId, "lucky", "a PHB background keeps its feat by default");
+  const swap = run(rv({ background: "wayfarer", featPicks: { bg: "mist-walker" } }));
+  eq([swap.bgFeatId, keys(swap.review.notices).includes("note.darkGift")], ["mist-walker", true], "swapped for a Dark Gift, DM reminder");
+  eq(run(rv({ speciesId: "human", background: "wayfarer", featPicks: { versatile: "touch-of-death" } })).featIds.includes("touch-of-death"), true, "Human Versatile can be a Dark Gift");
+});
+test("Dark Gifts change the sheet", () => {
+  const aa = run(rv({ background: "wayfarer", featPicks: { bg: "aberrant-anatomy" } }));
+  const perc = aa.skills.find((s) => s.id === "perception");
+  eq([perc.prof, perc.expert, aa.blindsight], [true, true, 15]);
+  eq(aa.flaws[0].text.en.includes("DC 15"), true, "DC 13 + PB");
+  const es = run(rv({ speciesId: "dwarf", background: "wayfarer", featPicks: { bg: "echoing-soul" }, skills: ["acrobatics", "athletics", "history", "arcana"], languages: ["elvish", "dwarvish", "abyssal"],
+    featChoices: { "echoing-soul": { expertise: "history" } } }));
+  eq([es.skillFit.ok, es.languages.fit.ok, es.skills.find((s) => s.id === "history").expert], [true, true, true]);
+  eq(keys(es.review.todo).filter((k) => k === "todo.skills" || k === "todo.languages"), []);
+  const ls = run(rv({ background: "wayfarer", featPicks: { bg: "living-shadow" }, featChoices: { "living-shadow": { ability: "wis" } } }));
+  eq([ls.featMagic[0].spells.map((s) => s.id), ls.featMagic[0].dc, ls.resources.find((r) => r.id === "lengthened-strike").max], [["mage-hand"], 8 + 2 + 2, 2]);
+  const ss = run(rv({ background: "wayfarer", featPicks: { bg: "second-skin" }, featChoices: { "second-skin": { ability: "cha" } } }));
+  eq(keys(ss.review.todo).includes("todo.catalyst"), true);
+});
+test("Ravenloft species", () => {
+  const d = run(rv({ speciesId: "dhampir" }));
+  eq([d.speciesSpeed, d.climb, d.resistances, d.resources.find((r) => r.id === "bite").max], [35, true, ["necrotic"], 2]);
+  const hx = run(rv({ speciesId: "hexblood", speciesChoice: { ability: "cha" } }));
+  eq([hx.creatureType, hx.speciesMagic.spells.map((s) => s.id), hx.speciesMagic.dc], ["fey", ["disguise-self", "hex"], 8 - 1 + 2]);
+  const lu = run(rv({ speciesId: "lupin", skills: ["acrobatics", "athletics", "survival"] }));
+  eq([lu.skillFit.ok, lu.summary[0].note.en.startsWith("Slashing"), lu.resources.find((r) => r.id === "howl").max], [true, true, 2]);
+  eq(run(rv({ speciesId: "lupin", skills: ["acrobatics", "athletics", "arcana"] })).skillFit.ok, false, "Werewolf Instincts: Perception, Stealth or Survival");
+  const rb = run(rv({ speciesId: "reborn", speciesChoice: { endurance: "poison" } }));
+  eq([rb.resistances, rb.deathSaves, rb.darkvision], [["poison"], "adv", 0]);
+  eq(run(rv({ speciesId: "reborn", speciesChoice: { endurance: "poison" }, background: "wayfarer", featPicks: { bg: "touch-of-death" } })).deathSaves, "", "Advantage and Disadvantage cancel");
+});
+test("Grave Domain and Phantom", () => {
+  const g = run(rv({ classId: "cleric", subclass: "grave", level: 5 }));
+  eq(g.spells.always, ["Detect Evil and Good", "False Life", "Gentle Repose", "Ray of Enfeeblement", "Spare the Dying", "Revivify", "Vampiric Touch"]);
+  const p = run(rv({ classId: "rogue", subclass: "phantom", level: 5 }));
+  eq(p.resources.find((r) => r.id === "wails").max, Math.max(1, p.mods.dex));
+  eq(p.subclassFeatures[0].text.en.includes("2d6"), true, "half of 3d6 rounded up");
+});
+test("Torrik (Lupin Monk, Mist Wanderer, Living Shadow) is complete", () => {
+  const c = run(rv({ name: "Torrik", speciesId: "lupin", background: "mist-wanderer", bgIncrease: { mode: "21", plus2: "dex", plus1: "wis" },
+    featPicks: { bg: "living-shadow" }, featChoices: { "living-shadow": { ability: "wis" } }, skills: ["acrobatics", "athletics", "perception"],
+    languages: ["elvish", "dwarvish"], alignment: "N", toolPicks: { class: ["flute"], bg: ["smith"] } }));
+  eq([c.review.todo.length, c.review.errors.length], [0, 0]);
+  eq(c.featIds, ["living-shadow"]);
 });
 
 let failed = 0;

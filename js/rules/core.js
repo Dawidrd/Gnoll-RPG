@@ -115,7 +115,8 @@ export const FEATS = {
 };
 
 import { GENERAL_FEATS, FIGHTING_STYLE_FEATS } from "./feats-general.js";
-Object.assign(FEATS, GENERAL_FEATS, FIGHTING_STYLE_FEATS);
+import { RAVENLOFT_ORIGIN_FEATS, DARK_GIFTS } from "./feats-ravenloft.js";
+Object.assign(FEATS, GENERAL_FEATS, FIGHTING_STYLE_FEATS, RAVENLOFT_ORIGIN_FEATS, DARK_GIFTS);
 
 /** Fair dice. */
 export function rollDie(sides) {
