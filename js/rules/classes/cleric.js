@@ -12,6 +12,8 @@ export const cleric = {
   source: "srd52",
   name: { pl: "Kleryk (Cleric)", en: "Cleric" },
   maxLevel: 5,
+  // Levels with "Ability Score Improvement" (a feat of your choice; ASI is one option).
+  asiLevels: [4, 8, 12, 16],
   hitDie: 8,
   standardArray: { str: 14, dex: 8, con: 13, int: 10, wis: 15, cha: 12 },
   saves: ["wis", "cha"],

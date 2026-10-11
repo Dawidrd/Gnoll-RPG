@@ -16,11 +16,9 @@ import { randomName } from "../rules/names.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 
-/** Translate a checks item, turning {pl, en} variables into the current language. */
-export function msg(item) {
-  const vars = item.vars ? Object.fromEntries(Object.entries(item.vars).map(([k, v]) => [k, typeof v === "object" ? tr(v) : v])) : undefined;
-  return t(item.key, vars);
-}
+export { msg } from "./msg.js";
+import { msg } from "./msg.js";
+import { levelChoiceUI } from "./levelchoice.js";
 
 export function renderForm(root, go, id) {
   const stored = id ? getById(id) : null;
@@ -121,7 +119,7 @@ export function renderForm(root, go, id) {
     const settingSel = h("select", { id: "f-setting", onchange: (e) => { ch.setting = e.target.value; draw(); } },
       Object.entries(SETTINGS).map(([k, n]) => h("option", { value: k, text: tr(n), selected: k === (ch.setting || "standard") })));
     const clsSel = h("select", { id: "f-class", onchange: (e) => {
-      ch.classId = e.target.value; ch.subclass = ""; ch.classChoices = {}; ch.expertise = [];
+      ch.classId = e.target.value; ch.subclass = ""; ch.classChoices = {}; ch.expertise = []; ch.levelChoices = {};
       ch.level = Math.min(ch.level, cls().maxLevel);
       if (ch.abilityMethod === "array") ch.abilityBase = { ...cls().standardArray };
       if (ch.abilityMethod === "roll" && ch.rolled) assignByClass(ch.rolled.map((r) => r.total));
@@ -133,6 +131,7 @@ export function renderForm(root, go, id) {
     const levelSel = h("select", { id: "f-level", onchange: (e) => {
       ch.level = +e.target.value;
       for (const l of Object.keys(ch.hpRolls)) if (+l > ch.level) delete ch.hpRolls[l];
+      for (const l of Object.keys(ch.levelChoices || {})) if (+l > ch.level) delete ch.levelChoices[l];
       draw();
     } }, Array.from({ length: cls().maxLevel }, (_, i) => h("option", { value: i + 1, text: i + 1, selected: i + 1 === ch.level })));
     const subSel = h("select", { id: "f-subclass", onchange: (e) => { ch.subclass = e.target.value; draw(); } }, [
@@ -341,7 +340,9 @@ export function renderForm(root, go, id) {
   // --- Step 5: details --------------------------------------------------------
   function stepDetails(c) {
     const bg = BACKGROUNDS[ch.background];
-    const out = [skillsUI(c, bg), featsUI(c, bg), ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), armorUI(c), spellsUI(c), hpUI(c)];
+    const out = [skillsUI(c, bg), featsUI(c, bg), ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), armorUI(c), spellsUI(c), hpUI(c),
+      ...c.asiLevels.map((L) => card(t("lvl.asiTitle", { n: L }), [levelChoiceUI({ draft: ch, L, profSkills: c.skills.filter((s) => s.prof && !s.fromFeat).map((s) => s.id),
+        onChange: (lc) => { ch.levelChoices = { ...ch.levelChoices, [L]: lc }; draw(); } })]))];
     const legacy = legacyUI(c);
     if (legacy) out.push(legacy);
     return out.filter(Boolean);

@@ -9,6 +9,8 @@ export const monk = {
   source: "srd52",
   name: { pl: "Mnich (Monk)", en: "Monk" },
   maxLevel: 5,
+  // Levels with "Ability Score Improvement" (a feat of your choice; ASI is one option).
+  asiLevels: [4, 8, 12, 16],
   hitDie: 8,
   // Recommended standard array from the 2024 rules.
   standardArray: { str: 12, dex: 15, con: 13, int: 10, wis: 14, cha: 8 },

@@ -10,6 +10,8 @@ export const rogue = {
   source: "srd52",
   name: { pl: "Łotr (Rogue)", en: "Rogue" },
   maxLevel: 5,
+  // Levels with "Ability Score Improvement" (a feat of your choice; ASI is one option).
+  asiLevels: [4, 8, 10, 12, 16],
   hitDie: 8,
   standardArray: { str: 12, dex: 15, con: 13, int: 14, wis: 10, cha: 8 },
   saves: ["dex", "int"],

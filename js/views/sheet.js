@@ -3,17 +3,19 @@ import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert, exportFile } from "../store.js";
 import { compute, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS } from "../rules/index.js";
-import { msg } from "./form.js";
+import { msg } from "./msg.js";
+import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
+import { trimSkills } from "../rules/skills.js";
 import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 
 const TABS = ["start", "character", "levelup", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
-let pendingRoll = null; // hit die rolled on the Level up tab, waiting for confirmation
+let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
 
 export function renderSheet(root, go, id, tab) {
-  if (id !== lastId) { lastHp = null; pendingRoll = null; lastId = id; }
+  if (id !== lastId) { lastHp = null; pending = null; lastId = id; }
   const ch = getById(id);
   if (!ch) return go("#/");
   if (!TABS.includes(tab)) tab = "start";
@@ -124,7 +126,7 @@ export function renderSheet(root, go, id, tab) {
         h("span", { cls: "absave", text: `${t("char.save")} ${signed(c.saves[a].value)}` }),
       ])));
       const skills = h("div", { cls: "skills" }, c.skills.map((s) => h("div", { cls: "skill" + (s.prof ? " prof" : "") }, [
-        h("span", {}, [s[lang()], s.expert ? h("small", { cls: "lvtag", text: t("char.expertTag") }) : null, s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null, s.fromSub ? h("small", { cls: "lvtag", text: t("form.fromSub") }) : null]), h("b", { text: signed(s.value) }),
+        h("span", {}, [s[lang()], s.expert ? h("small", { cls: "lvtag", text: t("char.expertTag") }) : null, s.fromBg ? h("small", { cls: "lvtag", text: t("form.fromBg") }) : null, s.fromSub ? h("small", { cls: "lvtag", text: t("form.fromSub") }) : null, s.fromFeat ? h("small", { cls: "lvtag", text: t("form.fromFeat") }) : null]), h("b", { text: signed(s.value) }),
       ])));
       const featList = (list) => h("dl", { cls: "qa gl" }, list.flatMap((f) => [
         h("dt", {}, [tr(f.name), " ", h("small", { cls: "lvtag", text: `${f.lv}` })]), h("dd", {}, [h("p", { text: tr(f.text) })]),
@@ -141,7 +143,9 @@ export function renderSheet(root, go, id, tab) {
       ])]);
       if (c.feats.length || ch.featsOther) {
         extra.push(h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.feats") }), h("dl", { cls: "qa gl" }, [
-          ...c.feats.flatMap((f) => [h("dt", {}, [tr(f.name), f.fromBackground ? [" ", h("small", { cls: "lvtag", text: t("form.fromBg") })] : null].flat()), h("dd", {}, [
+          ...c.feats.flatMap((f) => [h("dt", {}, [tr(f.name), f.fromBackground ? [" ", h("small", { cls: "lvtag", text: t("form.fromBg") })] : null,
+            f.atLevel ? [" ", h("small", { cls: "lvtag", text: t("lvl.tag", { n: f.atLevel }) })] : null].flat()), h("dd", {}, [
+            f.inc && Object.keys(f.inc).length ? h("p", { cls: "hint", text: Object.entries(f.inc).map(([a, n]) => `${ABILITY_NAMES[a][lang()]} +${n}`).join(", ") }) : null,
             h("p", { text: tr(f.desc) }),
             f.spellAbility && (f.choice.ability || f.choice.spells) ? h("p", { cls: "hint", text: [f.choice.ability ? t("form.spellAbility") + ": " + ABILITY_NAMES[f.choice.ability][lang()] : "", f.choice.spells || ""].filter(Boolean).join(" · ") }) : null,
           ])]),
@@ -174,39 +178,93 @@ export function renderSheet(root, go, id, tab) {
 
     function tabLevel() {
       const out = [];
-      const setLevel = (n, roll) => {
-        const before = c.hpMax;
-        ch.hpRolls = { ...(ch.hpRolls || {}) };
-        if (n > ch.level) { if (roll == null) delete ch.hpRolls[n]; else ch.hpRolls[n] = roll; }
-        else for (const l of Object.keys(ch.hpRolls)) if (+l > n) delete ch.hpRolls[l];
-        ch.level = n;
-        const after = compute(ch).hpMax;
-        ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
-        pendingRoll = null; save();
-      };
-      if (c.next) {
-        const nx = c.next;
+      const nx = c.next;
+      if (nx) {
+        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skill: "", lc: null };
+        const N = nx.level;
+        const draft = structuredClone(ch);
+        draft.level = N;
+        draft.hpRolls = { ...(draft.hpRolls || {}) };
+        if (typeof pending.hp === "number") draft.hpRolls[N] = pending.hp; else delete draft.hpRolls[N];
+        if (pending.subclass) draft.subclass = pending.subclass;
+        if (pending.skill) draft.skills = [...(draft.skills || []), pending.skill];
+        draft.levelChoices = { ...(draft.levelChoices || {}) };
+        if (pending.lc) draft.levelChoices[N] = pending.lc; else delete draft.levelChoices[N];
+        const cn = compute(structuredClone(draft));
         const gainOf = (die) => Math.max(1, die + nx.conMod) + nx.extra;
-        const choice = h("div", { cls: "stack" });
-        if (pendingRoll == null) {
-          choice.append(
-            h("p", { cls: "hint", text: t("lvl.hpChoose", { d: nx.hitDie, n: nx.fixed, con: signed(nx.conMod) }) }),
+        const steps = [];
+        const ok = [];
+
+        // 1. Hit points
+        const hpBox = h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepHp") })]);
+        if (pending.hp == null) {
+          hpBox.append(h("p", { cls: "hint", text: t("lvl.hpChoose", { d: nx.hitDie, n: nx.fixed, con: signed(nx.conMod) }) }),
             h("div", { cls: "row" }, [
-              h("button", { type: "button", cls: "btn gold", id: "lvl-roll", text: t("lvl.roll", { d: nx.hitDie }), onclick: () => { pendingRoll = rollDie(nx.hitDie); draw(); } }),
-              h("button", { type: "button", cls: "btn", id: "lvl-fixed", text: t("lvl.fixed", { n: nx.fixed, hp: gainOf(nx.fixed) }), onclick: () => setLevel(nx.level, null) }),
+              h("button", { type: "button", cls: "btn gold", id: "lvl-roll", text: t("lvl.roll", { d: nx.hitDie }), onclick: () => { pending.hp = rollDie(nx.hitDie); draw(); } }),
+              h("button", { type: "button", cls: "btn", id: "lvl-fixed", text: t("lvl.fixedPick", { n: nx.fixed, hp: gainOf(nx.fixed) }), onclick: () => { pending.hp = "fixed"; draw(); } }),
             ]));
         } else {
-          choice.append(
-            h("p", { cls: "rollres" }, [t("lvl.rolled", { d: nx.hitDie }) + " ", h("b", { text: pendingRoll }), " → " + t("lvl.gain", { hp: gainOf(pendingRoll) })]),
-            h("div", { cls: "row" }, [
-              h("button", { type: "button", cls: "btn gold", id: "lvl-confirm", text: t("lvl.up", { n: nx.level }), onclick: () => setLevel(nx.level, pendingRoll) }),
-              h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => { pendingRoll = null; draw(); } }),
-            ]));
+          const die = pending.hp === "fixed" ? nx.fixed : pending.hp;
+          hpBox.append(h("p", { cls: "rollres" }, [pending.hp === "fixed" ? t("lvl.fixedChosen", { n: nx.fixed }) + " " : t("lvl.rolled", { d: nx.hitDie }) + " ",
+            h("b", { text: die }), " → " + t("lvl.gain", { hp: gainOf(die) })]));
         }
+        steps.push(hpBox); ok.push(pending.hp != null);
+
+        // 2. Subclass
+        if (N >= (c.cls.subclassLevel || 99) && !c.cls.subclasses?.[ch.subclass]) {
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSubclass") }),
+            h("label", { cls: "wide" }, [t("form.subclass", { n: c.cls.subclassLevel }), h("select", { id: "lvl-subclass", onchange: (e) => { pending.subclass = e.target.value; draw(); } }, [
+              h("option", { value: "", text: t("form.subclassNone") }),
+              ...Object.entries(c.cls.subclasses).filter(([, sc]) => (sc.source !== "ravenloft") || c.setting === "ravenloft").map(([k, sc]) => h("option", { value: k, text: tr(sc.name), selected: k === pending.subclass })),
+            ])])]));
+          ok.push(!!pending.subclass);
+        }
+
+        // 3. New skill slots (e.g. Barbarian Primal Knowledge)
+        const newSlots = (c.cls.extraSkills ? c.cls.extraSkills(N) : []).filter((sl) => !(c.cls.extraSkills(N - 1) || []).some((x) => x.id === sl.id));
+        for (const sl of newSlots) {
+          const have = c.skills.filter((x) => x.prof).map((x) => x.id);
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: tr(sl.label) }),
+            h("label", { cls: "wide" }, [t("lvl.newSkill"), h("select", { id: "lvl-skill", onchange: (e) => { pending.skill = e.target.value; draw(); } }, [
+              h("option", { value: "", text: "—" }),
+              ...sl.from.filter((x) => !have.includes(x)).map((x) => h("option", { value: x, text: c.skills.find((k) => k.id === x)[lang()], selected: x === pending.skill })),
+            ])])]));
+          ok.push(!!pending.skill);
+        }
+
+        // 4. Ability Score Improvement or feat
+        if ((c.cls.asiLevels || []).includes(N)) {
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("lvl.asiTitle", { n: N }) }),
+            levelChoiceUI({ draft, L: N, profSkills: c.skills.filter((x) => x.prof).map((x) => x.id), onChange: (lc) => { pending.lc = lc; draw(); } })]));
+          ok.push(levelChoiceDone(draft, N));
+        }
+
+        // 5. Spells: new counts (picking from a list arrives with the spells update)
+        if (cn.spells && c.spells && (cn.spells.cantrips !== c.spells.cantrips || cn.spells.prepared !== c.spells.prepared || cn.spells.slots.length !== c.spells.slots.length)) {
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSpells") }),
+            h("p", { text: t("lvl.spellCounts", { c1: c.spells.cantrips, c2: cn.spells.cantrips, p1: c.spells.prepared, p2: cn.spells.prepared }) }),
+            h("p", { cls: "hint", text: t("lvl.spellsHint") })]));
+        } else if (cn.spells && !c.spells) {
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSpells") }), h("p", { cls: "hint", text: t("lvl.spellsNew", { c2: cn.spells.cantrips, p2: cn.spells.prepared }) })]));
+        }
+
+        const ready = ok.every(Boolean);
         out.push(h("section", { cls: "card key gl" }, [
-          h("h3", { text: t("lvl.next", { n: nx.level }) }),
+          h("h3", { text: t("lvl.next", { n: N }) }),
           h("ul", {}, tr(nx.items).map((x) => h("li", { text: x }))),
-          choice,
+          ...steps,
+          h("p", { cls: "picked" + (ready ? " done" : ""), text: ready ? t("lvl.ready") : t("lvl.notReady", { n: ok.filter((x) => !x).length }) }),
+          h("div", { cls: "row" }, [
+            h("button", { type: "button", cls: "btn gold", id: "lvl-confirm", disabled: !ready, text: t("lvl.up", { n: N }), onclick: () => {
+              const before = c.hpMax;
+              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, levelChoices: draft.levelChoices });
+              const after = compute(ch).hpMax;
+              ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
+              pending = null; save(); toast(t("lvl.done", { n: N }));
+            } }),
+            pending.hp != null || pending.lc || pending.subclass || pending.skill
+              ? h("button", { type: "button", cls: "btn ghost", text: t("lvl.reset"), onclick: () => { pending = null; draw(); } }) : null,
+          ]),
         ]));
       } else {
         out.push(h("p", { cls: "lead", text: t("lvl.max", { n: c.cls.maxLevel }) }));
@@ -222,12 +280,27 @@ export function renderSheet(root, go, id, tab) {
         const box = h("div", { cls: "confirm" });
         out.push(h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn ghost", text: t("lvl.down"), onclick: () => {
           box.replaceChildren(h("span", { cls: "small", text: t("sheet.levelDownAsk", { n: c.level - 1 }) }),
-            h("button", { type: "button", cls: "btn gold", text: t("sheet.yes"), onclick: () => setLevel(c.level - 1) }),
+            h("button", { type: "button", cls: "btn gold", text: t("sheet.yes"), onclick: () => levelDown(c.level - 1) }),
             h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") }));
           box.classList.add("open");
         } })]), box);
       }
       return out;
+    }
+
+    /** Going back a level removes what that level gave (HP roll, ASI/feat, extra skill picks). */
+    function levelDown(n) {
+      const before = c.hpMax;
+      for (const l of Object.keys(ch.hpRolls || {})) if (+l > n) delete ch.hpRolls[l];
+      for (const l of Object.keys(ch.levelChoices || {})) if (+l > n) delete ch.levelChoices[l];
+      ch.level = n;
+      const cd = compute(structuredClone(ch));
+      const chosen = (ch.skills || []).filter((x) => !cd.granted.includes(x));
+      const kept = trimSkills(chosen, cd.slots);
+      ch.skills = [...(ch.skills || []).filter((x) => cd.granted.includes(x)), ...kept];
+      const after = compute(ch).hpMax;
+      ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
+      pending = null; save();
     }
 
     function tabNotes() {

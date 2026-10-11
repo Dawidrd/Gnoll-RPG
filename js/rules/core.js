@@ -114,6 +114,9 @@ export const FEATS = {
   },
 };
 
+import { GENERAL_FEATS, FIGHTING_STYLE_FEATS } from "./feats-general.js";
+Object.assign(FEATS, GENERAL_FEATS, FIGHTING_STYLE_FEATS);
+
 /** Fair dice. */
 export function rollDie(sides) {
   const a = new Uint32Array(1); crypto.getRandomValues(a);

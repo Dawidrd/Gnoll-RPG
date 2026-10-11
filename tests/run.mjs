@@ -102,6 +102,61 @@ test("a human's free feat migrates into the Versatile slot", () => {
   eq(n.featPicks, { versatile: "tough" }); eq(n.legacyFeats, ["alert"]);
 });
 
+// --- Advancement (PHB ch. 2 "Level Advancement", ch. 5 feats) ---
+const monk4 = (over = {}) => make({ classId: "monk", speciesId: "dwarf", background: "criminal", bgIncrease: { mode: "21", plus2: "dex", plus1: "con" }, level: 4, ...over });
+test("level 4 needs an Ability Score Improvement or a feat", () => {
+  eq(keys(run(monk4()).review.todo).includes("todo.asiChoice"), true);
+  eq(keys(run(monk4({ level: 3 })).review.todo).includes("todo.asiChoice"), false);
+});
+test("ASI: +2 or +1/+1, never above 20", () => {
+  eq(run(monk4({ levelChoices: { 4: { kind: "asi", mode: "11", a: "dex", b: "wis" } } })).abilities.dex, 18);
+  const c = run(monk4({ levelChoices: { 4: { kind: "asi", mode: "2", a: "dex" } } }));
+  eq(c.abilities.dex, 19); eq(c.ac.value, 10 + 4 + 2, "AC");
+  const capped = run(monk4({ abilityMethod: "pointbuy", abilityBase: { str: 8, dex: 15, con: 15, int: 8, wis: 15, cha: 8 }, bgIncrease: { mode: "21", plus2: "dex", plus1: "con" },
+    levelChoices: { 4: { kind: "asi", mode: "2", a: "dex" } } }));
+  eq(capped.abilities.dex, 19, "17 + 2");
+  const over = run(monk4({ abilityMethod: "roll", rolled: [18, 15, 14, 12, 10, 8].map((total) => ({ total })), abilityBase: { str: 8, dex: 18, con: 15, int: 14, wis: 12, cha: 10 },
+    levelChoices: { 4: { kind: "asi", mode: "2", a: "dex" } } }));
+  eq(keys(over.review.errors).includes("err.asiOver20"), true);
+});
+test("feat prerequisites block the pick", () => {
+  eq(keys(run(monk4({ levelChoices: { 4: { kind: "feat", feat: "great-weapon-master", inc: "str" } } })).review.errors).includes("err.featPrereq"), true, "STR 13 needed");
+  eq(keys(run(monk4({ levelChoices: { 4: { kind: "feat", feat: "heavily-armored", inc: "str" } } })).review.errors).includes("err.featPrereq"), true, "medium armor needed");
+  eq(keys(run(monk4({ levelChoices: { 4: { kind: "feat", feat: "war-caster", inc: "wis" } } })).review.errors).includes("err.featPrereq"), true, "spellcasting needed");
+  eq(run(make({ classId: "cleric", level: 4, levelChoices: { 4: { kind: "feat", feat: "war-caster", inc: "wis" } } })).review.errors.length, 0, "Cleric casts");
+});
+test("feats change the sheet: Speedy, Resilient, Observant, Lightly Armored", () => {
+  eq(run(monk4({ levelChoices: { 4: { kind: "feat", feat: "speedy", inc: "dex" } } })).speed, 30 + 10 + 10);
+  const res = run(monk4({ levelChoices: { 4: { kind: "feat", feat: "resilient", inc: "wis" } } }));
+  eq(res.saves.wis.prof, true); eq(res.abilities.wis, 15, "array WIS 14 + 1");
+  const obs = run(monk4({ skills: ["acrobatics", "insight"], levelChoices: { 4: { kind: "feat", feat: "observant", inc: "wis", lore: "perception" } } }));
+  eq(obs.skills.find((s) => s.id === "perception").prof, true);
+  const obs2 = run(monk4({ skills: ["acrobatics", "insight"], levelChoices: { 4: { kind: "feat", feat: "observant", inc: "wis", lore: "insight" } } }));
+  eq(obs2.skills.find((s) => s.id === "insight").expert, true, "already proficient → Expertise");
+  eq(run(monk4({ levelChoices: { 4: { kind: "feat", feat: "lightly-armored", inc: "dex" } } })).training.includes("light"), true);
+});
+test("Tarhun leveled 1 → 5 matches the numbers worked out by hand", () => {
+  // Monk, Dragonborn (gold), Wayfarer; rolled 11 14 12 6 13 9; background +2 DEX +1 WIS.
+  const ch = make({ name: "Tarhun", classId: "monk", speciesId: "dragonborn", speciesChoice: { ancestry: "gold" }, background: "wayfarer",
+    abilityMethod: "roll", rolled: [11, 14, 12, 6, 13, 9].map((total) => ({ total })), abilityBase: { str: 11, dex: 14, con: 12, int: 6, wis: 13, cha: 9 },
+    bgIncrease: { mode: "21", plus2: "dex", plus1: "wis" }, skills: ["acrobatics", "athletics"], alignment: "ng", languages: ["draconic", "elvish"], toolPicks: { class: ["flute"] } });
+  const at = (patch) => { Object.assign(ch, patch); const c = run(ch); eq(c.review.todo.length + c.review.errors.length, 0, `level ${ch.level} complete`); return c; };
+  let c = at({});
+  eq([c.hpMax, c.ac.value, c.speed, c.initiative], [8 + 1, 10 + 3 + 2, 30, 3], "L1");
+  c = at({ level: 2, hpRolls: { 2: 5 } });                  // rolled 5: +6
+  eq([c.hpMax, c.speed], [15, 40], "L2 (Unarmored Movement)");
+  c = at({ level: 3, subclass: "open-hand" });              // fixed 5: +6
+  eq(c.hpMax, 21, "L3");
+  c = at({ level: 4, hpRolls: { 2: 5, 4: 8 }, levelChoices: { 4: { kind: "asi", mode: "2", a: "dex" } } });  // rolled 8: +9
+  eq([c.hpMax, c.abilities.dex, c.ac.value, c.initiative], [30, 18, 10 + 4 + 2, 4], "L4");
+  c = at({ level: 5, hpRolls: { 2: 5, 4: 8, 5: 2 } });      // rolled 2: +3
+  eq([c.hpMax, c.pb, c.ac.value, c.speed], [33, 3, 16, 40], "L5");
+  eq([c.saves.str.value, c.saves.dex.value, c.saves.wis.value], [3, 7, 2], "saves");
+  eq(["acrobatics", "athletics", "insight", "stealth"].map((id) => c.skills.find((s) => s.id === id).value), [7, 3, 5, 7], "skills");
+  eq(c.resources.find((r) => r.id === "focus").max, 5, "Focus Points");
+  eq(c.classFeatures.some((f) => f.id === "extra-attack"), true);
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

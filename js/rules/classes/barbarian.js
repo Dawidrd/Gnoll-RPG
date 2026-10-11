@@ -10,6 +10,8 @@ export const barbarian = {
   source: "srd52",
   name: { pl: "Barbarzyńca (Barbarian)", en: "Barbarian" },
   maxLevel: 5,
+  // Levels with "Ability Score Improvement" (a feat of your choice; ASI is one option).
+  asiLevels: [4, 8, 12, 16],
   hitDie: 12,
   standardArray: { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 },
   saves: ["str", "con"],

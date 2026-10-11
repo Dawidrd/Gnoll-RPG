@@ -76,7 +76,11 @@ export function review(ch, c) {
   if (ch.featsOther?.trim()) T(5, "todo.legacyText", { what: "featsOther" });
   if (ch.tools?.trim()) T(5, "todo.legacyText", { what: "tools" });
 
-  if (c.level >= 4) notices.push({ step: 5, key: "notice.asi" });
+  for (const L of c.asiLevels) {
+    const pr = c.levelProblems[L];
+    pr.todo.forEach((x) => T(5, x.key, x.vars));
+    pr.errors.forEach((x) => E(5, x.key, x.vars));
+  }
 
   return { todo, errors, notices };
 }

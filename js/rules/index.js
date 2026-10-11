@@ -34,11 +34,110 @@ export const SETTINGS = {
 /** Fixed hit points per level after the first (the 2024 "fixed value"). */
 export const fixedHp = (hitDie) => hitDie / 2 + 1;
 
-/** Final ability scores: base + background increases, capped at 20 (manual scores are taken as they are). */
-export function finalAbilities(ch) {
+/** Increases from one level choice: ASI (+2, or +1/+1) or a feat's +1. */
+export function choiceIncreases(lc) {
+  const out = {};
+  if (!lc) return out;
+  if (lc.kind === "asi") {
+    if (lc.mode === "11") { if (lc.a) out[lc.a] = 1; if (lc.b && lc.b !== lc.a) out[lc.b] = 1; }
+    else if (lc.a) out[lc.a] = 2;
+  } else if (lc.kind === "feat" && lc.inc) out[lc.inc] = 1;
+  return out;
+}
+
+/**
+ * Final ability scores: base + background increases (max 20), then level choices up to `untilLevel` (max 20).
+ * Scores typed by hand in old versions are kept as they are.
+ */
+export function finalAbilities(ch, untilLevel = ch.level || 1) {
   const base = ch.abilityBase || ch.abilities;
   const bonus = ch.abilityMethod === "manual" && !ch.background ? {} : backgroundBonus(ch);
-  return Object.fromEntries(ABILITIES.map((a) => [a, Math.min(base[a] + (bonus[a] || 0), Math.max(20, base[a]))]));
+  const out = Object.fromEntries(ABILITIES.map((a) => [a, Math.min(base[a] + (bonus[a] || 0), Math.max(20, base[a]))]));
+  for (const L of CLASSES[ch.classId]?.asiLevels || []) {
+    if (L > untilLevel) continue;
+    const inc = choiceIncreases(ch.levelChoices?.[L]);
+    for (const a in inc) out[a] = Math.max(out[a], Math.min(20, out[a] + inc[a]));
+  }
+  return out;
+}
+
+/** Readable prerequisite of a feat, for lists. */
+export function prereqText(feat) {
+  const p = feat.prereq || {};
+  const short = { str: { pl: "SIŁ", en: "STR" }, dex: { pl: "ZRĘ", en: "DEX" }, con: { pl: "KON", en: "CON" }, int: { pl: "INT", en: "INT" }, wis: { pl: "MĄD", en: "WIS" }, cha: { pl: "CHA", en: "CHA" } };
+  if (p.ability) return { pl: p.ability.map((a) => short[a].pl).join(" lub ") + " 13+", en: p.ability.map((a) => short[a].en).join(" or ") + " 13+" };
+  if (p.training === "shield") return { pl: "biegłość w tarczach", en: "shield training" };
+  if (p.training) return { pl: `biegłość w zbrojach (${{ light: "lekkich", medium: "średnich", heavy: "ciężkich" }[p.training]})`, en: `${p.training} armor training` };
+  if (p.spellcasting) return { pl: "rzucanie czarów", en: "Spellcasting or Pact Magic" };
+  if (p.fightingStyle) return { pl: "zdolność Fighting Style", en: "Fighting Style feature" };
+  return null;
+}
+
+/** State of the character just before reaching level L: scores, armor training, spellcasting. */
+function stateBefore(ch, L) {
+  const cls = CLASSES[ch.classId];
+  const abilities = finalAbilities(ch, L - 1);
+  const classChoices = Object.fromEntries(Object.entries(cls.choices || {}).map(([k, d]) => [k, (ch.classChoices || {})[k] || d.default]));
+  const ctx = { level: L, pb: profBonus(L), mods: Object.fromEntries(ABILITIES.map((a) => [a, mod(abilities[a])])), abilities, classChoices, choice: ch.speciesChoice || {} };
+  const training = new Set([...(cls.armorTraining || []), ...(cls.extraArmorTraining ? cls.extraArmorTraining(ctx) : [])]);
+  for (const k of cls.asiLevels || []) {
+    if (k >= L) continue;
+    const f = FEATS[ch.levelChoices?.[k]?.kind === "feat" ? ch.levelChoices[k].feat : ""];
+    (f?.training || []).forEach((x) => training.add(x));
+  }
+  const subclass = L >= (cls.subclassLevel || 99) ? cls.subclasses?.[ch.subclass] : null;
+  const casts = !!(cls.spellcasting || subclass?.spellcasting?.(L, ctx));
+  return { abilities, training, casts, fightingStyle: !!cls.fightingStyle, saves: cls.saves };
+}
+
+/** Can the character take this feat at level L? Returns the unmet prerequisite or null. */
+export function featBlocked(ch, L, featId) {
+  const f = FEATS[featId];
+  if (!f || f.category !== "general") return { pl: "to nie jest feat ogólny", en: "not a general feat" };
+  const st = stateBefore(ch, L);
+  const p = f.prereq || {};
+  if (p.ability && !p.ability.some((a) => st.abilities[a] >= 13)) return prereqText(f);
+  if (p.training && !st.training.has(p.training)) return prereqText(f);
+  if (p.spellcasting && !st.casts) return prereqText(f);
+  if (p.fightingStyle && !st.fightingStyle) return prereqText(f);
+  return null;
+}
+
+/** Abilities a feat may raise at level L (respecting the cap of 20 and Resilient's rule). */
+export function featIncreaseOptions(ch, L, featId) {
+  const f = FEATS[featId];
+  const st = stateBefore(ch, L);
+  let list = f.increase === "any" ? ABILITIES : f.increase === "nonSave" ? ABILITIES.filter((a) => !st.saves.includes(a)) : f.increase || [];
+  return list.filter((a) => st.abilities[a] < 20);
+}
+
+/** What's missing or wrong in the choice made at level L. Used by checks and by the level-up screen. */
+export function levelChoiceProblems(ch, L) {
+  const todo = [], errors = [];
+  const lc = ch.levelChoices?.[L];
+  if (!lc) { todo.push({ key: "todo.asiChoice", vars: { n: L } }); return { todo, errors }; }
+  const st = stateBefore(ch, L);
+  if (lc.kind === "asi") {
+    if (!lc.a || (lc.mode === "11" && !lc.b)) todo.push({ key: "todo.asiPick", vars: { n: L } });
+    const inc = choiceIncreases(lc);
+    if (Object.keys(inc).some((a) => st.abilities[a] + inc[a] > 20)) errors.push({ key: "err.asiOver20", vars: { n: L } });
+    return { todo, errors };
+  }
+  const f = FEATS[lc.feat];
+  if (!lc.feat) { todo.push({ key: "todo.asiFeat", vars: { n: L } }); return { todo, errors }; }
+  const blocked = featBlocked(ch, L, lc.feat);
+  if (blocked) errors.push({ key: "err.featPrereq", vars: { n: L, name: f?.name || lc.feat, req: blocked } });
+  if (!f) return { todo, errors };
+  const taken = [];
+  for (const k of CLASSES[ch.classId].asiLevels || []) if (k < L && ch.levelChoices?.[k]?.kind === "feat") taken.push(ch.levelChoices[k].feat);
+  if (!f.repeatable && taken.includes(lc.feat)) errors.push({ key: "err.featTwice", vars: { name: f.name } });
+  if (f.increase && !lc.inc) todo.push({ key: "todo.featInc", vars: { n: L, name: f.name } });
+  if (lc.inc && !featIncreaseOptions(ch, L, lc.feat).includes(lc.inc)) errors.push({ key: "err.featInc", vars: { n: L, name: f.name } });
+  if (f.lore && !lc.lore) todo.push({ key: "todo.featSkill", vars: { n: L, name: f.name } });
+  if (f.skillPick && !lc.skill) todo.push({ key: "todo.featSkill", vars: { n: L, name: f.name } });
+  if (f.expertisePick && !lc.expertise) todo.push({ key: "todo.featExpertise", vars: { n: L, name: f.name } });
+  if (f.damageType && !lc.damage) todo.push({ key: "todo.featDamage", vars: { n: L, name: f.name } });
+  return { todo, errors };
 }
 
 /**
@@ -58,6 +157,7 @@ export function normalize(ch) {
   if (!ch.classChoices) ch.classChoices = {};
   if (!ch.spells) ch.spells = { cantrips: "", prepared: "" };
   if (!ch.expertise) ch.expertise = [];
+  if (!ch.levelChoices) ch.levelChoices = {};
   if ((ch.schema || 1) < 3) {
     ch.setting = ch.setting || "standard";
     ch.languages = ch.languages || [];
@@ -90,6 +190,12 @@ export function compute(raw) {
   const classChoices = Object.fromEntries(Object.entries(cls.choices || {}).map(([k, d]) => [k, ch.classChoices[k] || d.default]));
   const ctx = { level, pb, mods, abilities, choice: ch.speciesChoice || {}, classChoices };
   const training = [...(cls.armorTraining || []), ...(cls.extraArmorTraining ? cls.extraArmorTraining(ctx) : [])];
+  // Choices at Ability Score Improvement levels (4 within levels 1–5): ASI or a general feat.
+  const asiLevels = (cls.asiLevels || []).filter((L) => L <= level);
+  const levelFeats = asiLevels.filter((L) => ch.levelChoices?.[L]?.kind === "feat" && FEATS[ch.levelChoices[L].feat])
+    .map((L) => ({ L, id: ch.levelChoices[L].feat, pick: ch.levelChoices[L] }));
+  levelFeats.forEach((lf) => (FEATS[lf.id].training || []).forEach((x) => training.includes(x) || training.push(x)));
+
   const worn = armorClass({ armorId: ch.armor, shield: !!ch.shield, mods, unarmored: cls.unarmored ? cls.unarmored(ctx) : null, training, strScore: abilities.str });
   ctx.armor = { wearing: worn.wearing, heavy: worn.heavy, shield: !!ch.shield };
 
@@ -101,7 +207,14 @@ export function compute(raw) {
     ...(ch.legacyFeats || []).filter((id) => id !== bg?.feat && !Object.values(ch.featPicks || {}).includes(id)).map((id) => ({ id, source: "legacy" })),
   ].filter((f) => FEATS[f.id]);
   const featIds = [...new Set(featInstances.map((f) => f.id))];
-  const feats = featIds.map((id) => ({ id, ...FEATS[id], fromBackground: bg?.feat === id, choice: (ch.featChoices || {})[id] || {} }));
+  const feats = [
+    ...featIds.map((id) => ({ id, ...FEATS[id], fromBackground: bg?.feat === id, choice: (ch.featChoices || {})[id] || {} })),
+    ...asiLevels.filter((L) => ch.levelChoices?.[L]).map((L) => {
+      const lc = ch.levelChoices[L];
+      const id = lc.kind === "asi" ? "asi" : lc.feat;
+      return FEATS[id] ? { id, ...FEATS[id], atLevel: L, pick: lc, inc: choiceIncreases(lc) } : null;
+    }).filter(Boolean),
+  ];
   const skilledCount = featInstances.filter((f) => f.id === "skilled").length * 3;
 
   // Hit points: full die at level 1, then a roll (or the fixed value) + CON per level, at least 1 each.
@@ -120,11 +233,22 @@ export function compute(raw) {
   const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : sp.speed;
   const armorDef = ARMOR[ch.armor];
   const slowArmor = armorDef?.str && abilities.str < armorDef.str ? 10 : 0;
-  const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor;
+  const featSpeed = levelFeats.reduce((n, lf) => n + (FEATS[lf.id].speed || 0), 0);
+  const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor + featSpeed;
   const darkvision = sp.custom ? ch.customSpecies?.darkvision || 0 : sp.darkvision;
 
   const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
-  const granted = grantedSkills({ cls, bg, subclass });
+  // Skills from feats: Skill Expert gives a proficiency; Keen Mind and Observant give proficiency or, if you have it, Expertise.
+  const featSkillGrants = levelFeats.filter((lf) => FEATS[lf.id].skillPick && lf.pick.skill).map((lf) => lf.pick.skill);
+  const baseGranted = [...new Set([...grantedSkills({ cls, bg, subclass }), ...featSkillGrants])];
+  const featExpertise = levelFeats.filter((lf) => FEATS[lf.id].expertisePick && lf.pick.expertise).map((lf) => lf.pick.expertise);
+  const loreGrants = [];
+  for (const lf of levelFeats.filter((x) => FEATS[x.id].lore && x.pick.lore)) {
+    if (baseGranted.includes(lf.pick.lore) || (ch.skills || []).includes(lf.pick.lore)) featExpertise.push(lf.pick.lore);
+    else loreGrants.push(lf.pick.lore);
+  }
+  const granted = [...new Set([...baseGranted, ...loreGrants])];
+  const featGranted = [...featSkillGrants, ...loreGrants];
   // Tools: fixed ones, plus "choose one kind" slots from background, class and feats.
   const toolPicks = ch.toolPicks || {};
   const toolSlots = [];
@@ -134,7 +258,7 @@ export function compute(raw) {
   const skilledTools = (toolPicks.skilled || []).slice(0, skilledCount);
   if (skilledCount) toolSlots.push({ id: "skilled", step: 5, label: FEATS.skilled.name, count: skilledCount, from: ALL_TOOLS, required: false });
   for (const sl of toolSlots) sl.picked = (toolPicks[sl.id] || []).filter((x) => sl.from.includes(x));
-  const fixedTools = [...(cls.toolsFixed || []), ...(bg?.tool && TOOLS[bg.tool] ? [bg.tool] : [])];
+  const fixedTools = [...(cls.toolsFixed || []), ...(bg?.tool && TOOLS[bg.tool] ? [bg.tool] : []), ...levelFeats.flatMap((lf) => FEATS[lf.id].tools || [])];
   const toolIds = [...new Set([...fixedTools, ...toolSlots.flatMap((sl) => sl.picked)])];
 
   // Languages: Common, plus two standard ones, plus whatever the class adds.
@@ -147,15 +271,17 @@ export function compute(raw) {
 
   const slots = skillSlots({ cls, sp, bg, skilledCount: Math.max(0, skilledCount - skilledTools.length), level });
   const skillFit = fitSkills((ch.skills || []).filter((x) => !granted.includes(x)), slots);
-  const saves = Object.fromEntries(ABILITIES.map((a) => [a, { prof: cls.saves.includes(a), value: mods[a] + (cls.saves.includes(a) ? pb : 0) }]));
+  const saveProfs = [...cls.saves, ...levelFeats.filter((lf) => FEATS[lf.id].saveFromIncrease && lf.pick.inc).map((lf) => lf.pick.inc)];
+  const saves = Object.fromEntries(ABILITIES.map((a) => [a, { prof: saveProfs.includes(a), value: mods[a] + (saveProfs.includes(a) ? pb : 0) }]));
   const skills = SKILLS.map((s) => {
     const isGranted = granted.includes(s.id);
     const fromBg = (bg?.skills || []).includes(s.id);
-    const fromSub = isGranted && !fromBg;
+    const fromFeat = featGranted.includes(s.id) && !fromBg;
+    const fromSub = isGranted && !fromBg && !fromFeat;
     const prof = isGranted || (ch.skills || []).includes(s.id);
-    const expert = prof && (ch.expertise || []).includes(s.id);
+    const expert = prof && ((ch.expertise || []).includes(s.id) || featExpertise.includes(s.id));
     const extra = cls.skillBonus ? cls.skillBonus(ctx, s.id) : 0;
-    return { ...s, prof, fromBg, fromSub, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
+    return { ...s, prof, fromBg, fromSub, fromFeat, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
   });
   const perception = skills.find((s) => s.id === "perception").value;
 
@@ -182,6 +308,7 @@ export function compute(raw) {
   const tools = toolIds.map((id) => TOOLS[id]);
 
   const result = {
+    asiLevels, levelProblems: Object.fromEntries(asiLevels.map((L) => [L, levelChoiceProblems(ch, L)])),
     setting: ch.setting || "standard", size, alignment: ch.alignment || "", languages, toolSlots, toolIds, fixedTools,
     featSlots, featInstances,
     granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0,
@@ -212,7 +339,7 @@ export function blankCharacter() {
     background: "", bgIncrease: { mode: "21", plus2: "", plus1: "" },
     level: 1, abilityMethod: "array", abilityBase: { ...cls.standardArray }, rolled: null,
     abilities: { ...cls.standardArray },
-    languages: [], alignment: "", toolPicks: {}, featPicks: {}, featChoices: {}, legacyFeats: [],
+    languages: [], alignment: "", toolPicks: {}, featPicks: {}, featChoices: {}, legacyFeats: [], levelChoices: {},
     skills: [], expertise: [], feats: [],
     armor: "none", shield: false, classChoices: {}, spells: { cantrips: "", prepared: "" },
     hpRolls: {}, hp: { cur: null, temp: 0, maxOverride: null }, death: { ok: 0, fail: 0 }, used: {},
