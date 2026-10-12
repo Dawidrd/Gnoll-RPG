@@ -73,6 +73,20 @@ export function review(ch, c) {
     if (f.catalyst && !f.choice.catalyst) T(5, "todo.catalyst", { name: f.name });
   }
   for (const x of c.ravenloftOnly || []) E(x.step, "err.ravenloftOnly", { name: x.name });
+
+  // Spells picked from lists: class cantrips and prepared spells, Magic Initiate. (Level feat picks are checked with their level.)
+  for (const src of c.spellSources || []) {
+    for (const p of src.picks) {
+      if (p.store === "level") continue;
+      const what = { pl: `${src.label.pl.split(" (")[0]}: ${p.label.pl.toLowerCase()}`, en: `${src.label.en}: ${p.label.en.toLowerCase()}` };
+      if (p.invalid.length) E(5, "err.spellInvalid", { what });
+      else if (p.chosen.length > p.count) E(5, "err.spellTooMany", { what, n: p.count });
+      else if (p.chosen.length < p.count) T(5, "todo.spellPick", { what, n: p.count - p.chosen.length });
+    }
+  }
+  const oldText = [ch.spells?.cantrips, ch.spells?.prepared, ...Object.values(ch.featChoices || {}).map((x) => x?.spells),
+    ...Object.values(ch.levelChoices || {}).map((x) => (typeof x?.spells === "string" ? x.spells : ""))];
+  if (oldText.some((x) => typeof x === "string" && x.trim())) T(5, "todo.legacySpells");
   for (const f of c.featInstances.filter((x) => x.source === "legacy")) E(5, "err.legacyFeat", { name: FEATS[f.id]?.name || f.id });
   for (const f of c.featInstances) {
     if (FEATS[f.id]?.spellAbility && !(ch.featChoices?.[f.id]?.ability)) T(5, "todo.featAbility", { name: FEATS[f.id].name });

@@ -11,6 +11,7 @@ import { BACKGROUNDS, backgroundBonus } from "./backgrounds.js";
 import { TOOLS, TOOL_GROUPS, toolOptions, ALL_TOOLS } from "./tools.js";
 import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./identity.js";
 import { review } from "./checks.js";
+import { spellSources, spellResources, pickOptions } from "./magic.js";
 
 export const CLASSES = { barbarian, cleric, monk, rogue };
 
@@ -138,6 +139,14 @@ export function levelChoiceProblems(ch, L) {
   if (f.skillPick && !lc.skill) todo.push({ key: "todo.featSkill", vars: { n: L, name: f.name } });
   if (f.expertisePick && !lc.expertise) todo.push({ key: "todo.featExpertise", vars: { n: L, name: f.name } });
   if (f.damageType && !lc.damage) todo.push({ key: "todo.featDamage", vars: { n: L, name: f.name } });
+  // Fey-Touched, Shadow-Touched, Ritual Caster: spells picked from a filtered list.
+  for (const p of f.spellPicks || []) {
+    const count = p.count === "pb" ? profBonus(L) : p.count;
+    const opts = pickOptions(p);
+    const chosen = Array.isArray(lc.spells) ? lc.spells : [];
+    if (chosen.some((id) => !opts.includes(id)) || chosen.length > count) errors.push({ key: "err.featSpells", vars: { n: L, name: f.name, count } });
+    else if (chosen.length < count) todo.push({ key: "todo.featSpells", vars: { n: L, name: f.name, count: count - chosen.length } });
+  }
   return { todo, errors };
 }
 
@@ -327,6 +336,7 @@ export function compute(raw) {
     dc: 8 + mods[spellcasting.ability] + pb, attack: mods[spellcasting.ability] + pb,
     always: subclass?.domainSpells ? subclass.domainSpells(level) : [],
   } : null;
+  const spellSrc = spellSources({ ch, ctx, cls, subclass, casting: spellcasting, sp, spt, originFeats, levelFeats });
   const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: "long", slot: i + 1,
     name: { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
 
@@ -336,15 +346,13 @@ export function compute(raw) {
     const list = f.innate.map((x) => ({ ...x, at: 1, ...SPECIES_SPELLS[x.id], text: SPECIES_SPELLS[x.id].desc(ctx) }));
     return { id: f.id, label: f.name, needsAbility: !!f.spellAbility, ability, dc: ability ? 8 + mods[ability] + pb : null, attack: ability ? mods[ability] + pb : null, spells: list };
   });
-  const featSpellRes = featMagic.flatMap((g) => g.spells.filter((x) => x.uses !== "atwill").map((x) => ({ id: `ft-${g.id}-${x.id}`, max: x.uses === "pb" ? pb : 1, recharge: "long", name: x.name, spell: true })));
 
   const resources = [
     ...(cls.resources ? cls.resources(ctx) : []),
     ...(subclass?.resources ? subclass.resources(ctx) : []),
     ...slotRes,
     ...(sp.resources ? sp.resources(ctx) : []),
-    ...spt.spellResources,
-    ...featSpellRes,
+    ...spellResources(spellSrc, pb),
     ...feats.filter((f) => f.resource).map((f) => f.resource(ctx)),
   ].filter((r) => r.max > 0).map((r) => ({ ...r, used: clamp((ch.used || {})[r.id] || 0, 0, r.max) }));
 
@@ -373,7 +381,7 @@ export function compute(raw) {
     granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0,
     cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
-    featMagic, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
+    featMagic, spellSources: spellSrc, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
     speciesSpeed: spt.speed, creatureType: sp.type || "humanoid", resistances: spt.resist, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],

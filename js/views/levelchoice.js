@@ -2,10 +2,13 @@
 // Used by the creator (levels already reached) and by the Level up tab (the next level).
 import { h } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
-import { ABILITIES, ABILITY_NAMES, FEATS, SKILLS } from "../rules/core.js";
+import { ABILITIES, ABILITY_NAMES, FEATS, SKILLS, profBonus } from "../rules/core.js";
 import { finalAbilities, featBlocked, featIncreaseOptions, levelChoiceProblems } from "../rules/index.js";
 import { DAMAGE_TYPES } from "../rules/feats-general.js";
 import { msg } from "./msg.js";
+import { spellPickUI } from "./spellpicker.js";
+import { pickOptions } from "../rules/magic.js";
+import { SPELLS } from "../rules/spells.js";
 
 /**
  * draft: a character object whose levelChoices[L] is being edited (its level may already be L).
@@ -62,9 +65,12 @@ export function levelChoiceUI({ draft, L, onChange, profSkills = [] }) {
         parts.push(sel(`f-lvexp-${L}`, t("lvl.featExpertise"), SKILLS.filter((s) => pool.includes(s.id)).map((s) => [s.id, s[lang()]]), lc.expertise, (v) => set({ expertise: v })));
       }
       if (f.damageType) parts.push(sel(`f-lvdmg-${L}`, t("lvl.featDamage"), Object.entries(DAMAGE_TYPES).map(([k, d]) => [k, tr(d)]), lc.damage, (v) => set({ damage: v })));
-      if (f.spellNote) parts.push(h("label", { cls: "wide" }, [t("lvl.featSpells"),
-        h("textarea", { rows: 2, id: `f-lvspells-${L}`, oninput: (e) => { lc.spells = e.target.value; } }, lc.spells || "")]),
-        h("p", { cls: "hint", text: t("form.featSpellsHint") }));
+      // Fey-Touched / Shadow-Touched / Ritual Caster: pick from the filtered list; their ability is the one this feat raises.
+      for (const p of f.spellPicks || []) {
+        const pick = { ...p, id: `lvl-${L}:${p.key}`, count: p.count === "pb" ? profBonus(L) : p.count, options: pickOptions(p), chosen: Array.isArray(lc.spells) ? lc.spells : [] };
+        parts.push(spellPickUI({ pick, c: { level: L }, title: t("lvl.featSpells"), onChange: (ids) => set({ spells: ids }) }));
+      }
+      if ((f.innate || []).length) parts.push(h("p", { cls: "hint", text: t("lvl.featFixedSpells", { list: f.innate.map((x) => tr(SPELLS[x.id].name).split(" (")[0]).join(", ") }) }));
     }
   }
 

@@ -187,7 +187,7 @@ td b { color: #f1e6d1; }
 .qa { display: grid; gap: 14px; margin: 0; }
 .qa dt { font-family: var(--f-head); font-size: 1.15rem; color: var(--gold); }
 .qa dd { margin: 0; }
-.lvtag { font-family: var(--f-ui); font-size: .72rem; color: var(--ash); border: 1px solid var(--seam); border-radius: 99px; padding: 0 6px; vertical-align: middle; }
+.lvtag { white-space: nowrap; font-family: var(--f-ui); font-size: .72rem; color: var(--ash); border: 1px solid var(--seam); border-radius: 99px; padding: 0 6px; vertical-align: middle; }
 
 /* Footer */
 .foot { border-top: 1px solid var(--seam); padding: 18px 16px 28px; display: grid; gap: 8px; justify-items: center; text-align: center; font-family: var(--f-ui); font-size: .85rem; color: var(--bone-dim); }
@@ -300,3 +300,25 @@ details summary { cursor: pointer; }
 .abrow:has(.pb) { grid-template-columns: minmax(0, 1fr) auto 36px minmax(58px, auto); }
 @media (min-width: 520px) { .pb small { display: inline; } }
 .btn:disabled, .seg button:disabled { opacity: .38; cursor: not-allowed; }
+
+/* Spells: picker, Spells tab, concentration */
+.pickbox { border: 1px solid var(--seam); border-radius: var(--r); padding: 10px; background: var(--crypt); }
+.pickhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pickbox input[type="search"] { flex: 1 1 160px; min-width: 0; }
+.seg.small { flex-wrap: wrap; }
+.seg.small button { padding: 5px 9px; min-height: 32px; font-size: .76rem; }
+.spellpick { display: grid; gap: 2px; max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+.spellrow { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 6px 4px; border-bottom: 1px solid var(--seam); }
+.spellrow.sheet { grid-template-columns: 1fr; }
+.spellrow.on .sname { color: var(--gold); }
+.spellrow input[type="checkbox"] { margin-top: 4px; width: 20px; height: 20px; accent-color: var(--gold); }
+.spellrow details summary { cursor: pointer; list-style: none; }
+.spellrow details summary::-webkit-details-marker { display: none; }
+.spellrow details summary::before { content: "▸ "; color: var(--ash); }
+.spellrow details[open] summary::before { content: "▾ "; }
+.spellrow details > p { margin: 6px 0 0 14px; }
+.spellfacts { color: var(--bone-dim); }
+.spellrow .acts { gap: 6px; flex-wrap: wrap; }
+.btn.small { padding: 4px 10px; min-height: 32px; font-size: .78rem; }
+.card.conc { border-color: var(--gold-dim); }
+.card.conc .row { justify-content: space-between; align-items: center; }

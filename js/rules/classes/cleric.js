@@ -38,7 +38,7 @@ export const cleric = {
   skillBonus: (c, skill) => (c.classChoices.order === "thaumaturge" && (skill === "arcana" || skill === "religion") ? atLeast1(c.mods.wis) : 0),
 
   spellcasting: (L, c) => ({
-    ability: "wis", list: { pl: "kleryka", en: "Cleric" },
+    ability: "wis", list: { pl: "kleryka", en: "Cleric" }, listId: "cleric",
     cantrips: (L < 4 ? 3 : 4) + (c.classChoices.order === "thaumaturge" ? 1 : 0),
     prepared: PREPARED[L], slots: SLOTS[L],
   }),

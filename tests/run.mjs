@@ -3,6 +3,7 @@
 import { compute, blankCharacter, normalize } from "../js/rules/index.js";
 import { fitSkills, trimSkills } from "../js/rules/skills.js";
 import { pointsSpent } from "../js/rules/identity.js";
+import { SPELLS, spellsOf } from "../js/rules/spells.js";
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -270,6 +271,44 @@ test("Torrik (Lupin Monk, Mist Wanderer, Living Shadow) is complete", () => {
     languages: ["elvish", "dwarvish"], alignment: "N", toolPicks: { class: ["flute"], bg: ["smith"] } }));
   eq([c.review.todo.length, c.review.errors.length], [0, 0]);
   eq(c.featIds, ["living-shadow"]);
+});
+
+// --- Spells (PHB ch. 7; class lists from ch. 3) ---
+const src = (c, id) => c.spellSources.find((s) => s.id === id);
+test("spell database: cantrips to level 3, class lists as in the handbook", () => {
+  eq(Object.keys(SPELLS).length, 213);
+  eq(spellsOf("cleric", [0]).map((s) => s.id), ["guidance", "light", "mending", "resistance", "sacred-flame", "spare-the-dying", "thaumaturgy", "toll-the-dead", "word-of-radiance"]);
+  eq(SPELLS["detect-magic"].classes.includes("warlock"), true, "2024 Warlock list has Detect Magic");
+  eq([SPELLS["shatter"].classes.includes("warlock"), SPELLS["enthrall"].conc, SPELLS["blinding-smite"].conc], [false, true, false]);
+});
+test("Cleric: cantrip and prepared limits, domain spells outside the limit", () => {
+  const ok = run(make({ classId: "cleric", level: 3, subclass: "life", spellPicks: { cantrips: ["guidance", "sacred-flame", "toll-the-dead"], prepared: ["command", "guiding-bolt", "healing-word", "shield-of-faith", "spiritual-weapon", "hold-person"] } }));
+  eq([keys(ok.review.todo).includes("todo.spellPick"), ok.review.errors.length], [false, 0]);
+  const s = src(ok, "class");
+  eq(s.fixed.filter((x) => x.kind === "always").map((x) => x.id), ["aid", "bless", "cure-wounds", "lesser-restoration"]);
+  eq(s.picks[1].options.includes("bless"), false, "a domain spell can't take a prepared slot");
+  eq(s.picks[1].options.some((id) => SPELLS[id].circle === 3), false, "no level 3 spells without level 3 slots");
+  eq(errKeys(run(make({ classId: "cleric", spellPicks: { cantrips: ["fire-bolt"] } }))).includes("err.spellInvalid"), true, "not a Cleric spell");
+  eq(errKeys(run(make({ classId: "cleric", spellPicks: { prepared: ["bless", "command", "bane", "sanctuary", "guiding-bolt"] } }))).includes("err.spellTooMany"), true, "4 prepared at level 1");
+  eq(src(run(make({ classId: "cleric", classChoices: { order: "thaumaturge" } })), "class").picks[0].count, 4, "Thaumaturge: +1 cantrip");
+});
+test("Arcane Trickster: Mage Hand known, Wizard list, level 1 spells", () => {
+  const s = src(run(make({ classId: "rogue", level: 3, subclass: "arcane-trickster" })), "class");
+  eq([s.fixed[0].id, s.picks[0].count, s.picks[1].count, s.list], ["mage-hand", 2, 3, "wizard"]);
+  eq(s.picks[1].options.every((id) => SPELLS[id].circle === 1 && SPELLS[id].classes.includes("wizard")), true);
+});
+test("Magic Initiate and Fey-Touched pick from their lists", () => {
+  const mi = run(make({ background: "acolyte", featChoices: { "magic-initiate-cleric": { ability: "wis", picks: { cantrips: ["guidance", "light"], spell: ["bless"] } } } }));
+  eq([mi.review.errors.length, keys(mi.review.todo).includes("todo.spellPick")], [0, false]);
+  eq(mi.resources.some((r) => r.id === "ft-magic-initiate-cleric-bless"), true, "free cast once per long rest");
+  eq(errKeys(run(make({ background: "acolyte", featChoices: { "magic-initiate-cleric": { ability: "wis", picks: { spell: ["magic-missile"] } } } }))).includes("err.spellInvalid"), true);
+  const fey = (spell) => run(make({ classId: "monk", level: 4, levelChoices: { 4: { kind: "feat", feat: "fey-touched", inc: "wis", spells: [spell] } } }));
+  eq(fey("command").levelProblems[4], { todo: [], errors: [] }, "Enchantment is fine");
+  eq(fey("magic-missile").levelProblems[4].errors.length, 1, "Evocation is not");
+  eq(src(fey("command"), "lvl-4").fixed[0].id, "misty-step");
+});
+test("spells typed as text in older versions stay until removed", () => {
+  eq(keys(run(make({ classId: "cleric", spells: { cantrips: "Guidance", prepared: "" } })).review.todo).includes("todo.legacySpells"), true);
 });
 
 let failed = 0;

@@ -14,6 +14,9 @@ import { backgroundBonus } from "../rules/backgrounds.js";
 import { fitSkills, trimSkills } from "../rules/skills.js";
 import { randomName } from "../rules/names.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
+import { SPELLS } from "../rules/spells.js";
+import { writePick, readPick } from "../rules/magic.js";
+import { spellPickUI } from "./spellpicker.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 
@@ -43,7 +46,8 @@ export function renderForm(root, go, id) {
   function tidy() {
     const c = compute(structuredClone(ch));
     const sig = JSON.stringify([c.slots.map((x) => [x.id, x.count, x.from]), c.granted, c.expertiseMax, c.languages.slots.map((x) => [x.id, x.count]),
-      c.toolSlots.map((x) => [x.id, x.count, x.from.length]), c.featSlots.map((x) => x.id), ch.background, ch.speciesId]);
+      c.toolSlots.map((x) => [x.id, x.count, x.from.length]), c.featSlots.map((x) => x.id), ch.background, ch.speciesId,
+      c.spellSources.flatMap((s) => s.picks.map((p) => [p.id, p.count, p.options.length]))]);
     const changed = lastSig !== null && sig !== lastSig;
     lastSig = sig;
     if (!changed) return;
@@ -67,6 +71,17 @@ export function renderForm(root, go, id) {
     for (const k of Object.keys(ch.featPicks)) if (!featSlotIds.has(k)) { dropped.push(tr(FEATS[ch.featPicks[k]]?.name)); delete ch.featPicks[k]; }
     ch.legacyFeats = (ch.legacyFeats || []).filter((x) => x !== c.bgFeatId && !Object.values(ch.featPicks).includes(x));
     if (!SPECIES[ch.speciesId].sizes.includes(ch.size)) ch.size = "";
+    // Spells that no longer fit (other class, fewer prepared spells after lowering the level) are dropped.
+    for (const src of c.spellSources) for (const p of src.picks) {
+      if (p.store === "level") continue;
+      const keep = readPick(ch, p).filter((id) => p.options.includes(id)).slice(0, p.count);
+      readPick(ch, p).filter((id) => !keep.includes(id)).forEach((id) => dropped.push(tr(SPELLS[id]?.name || { pl: id, en: id }).split(" (")[0]));
+      writePick(ch, p, keep);
+    }
+    if (!c.spells && ch.spellPicks && Object.values(ch.spellPicks).some((x) => x.length)) {
+      Object.values(ch.spellPicks).flat().forEach((id) => dropped.push(tr(SPELLS[id]?.name || { pl: id, en: id }).split(" (")[0]));
+      ch.spellPicks = {};
+    }
     if (dropped.length) toast(t("form.dropped", { list: dropped.join(", ") }));
   }
 
@@ -436,18 +451,15 @@ export function renderForm(root, go, id) {
     for (const f of c.feats) {
       const choice = ch.featChoices[f.id] || {};
       const box = [h("b", { text: tr(f.name) }), h("p", { cls: "small", text: tr(f.desc) })];
-      if (f.spellAbility && f.innate) {
+      if (f.spellAbility) {
         box.push(h("div", { cls: "row" }, [field(t("form.spellAbility"), h("select", { id: "f-fa-" + f.id, onchange: (e) => { ch.featChoices[f.id] = { ...choice, ability: e.target.value }; draw(); } }, [
           h("option", { value: "", text: "—" }), ...["int", "wis", "cha"].map((a) => h("option", { value: a, text: ABILITY_NAMES[a][lang()], selected: choice.ability === a })),
         ]))]));
-      } else if (f.spellAbility) {
-        box.push(h("div", { cls: "row" }, [
-          field(t("form.spellAbility"), h("select", { id: "f-fa-" + f.id, onchange: (e) => { ch.featChoices[f.id] = { ...choice, ability: e.target.value }; draw(); } }, [
-            h("option", { value: "", text: "—" }), ...["int", "wis", "cha"].map((a) => h("option", { value: a, text: ABILITY_NAMES[a][lang()], selected: choice.ability === a })),
-          ])),
-        ]), field(t("form.featSpells"), h("textarea", { rows: 2, id: "f-fs-" + f.id, oninput: (e) => (ch.featChoices[f.id] = { ...(ch.featChoices[f.id] || {}), spells: e.target.value }) }, choice.spells || ""), "wide"),
-        h("p", { cls: "hint", text: t("form.featSpellsHint") }));
       }
+      // Magic Initiate: cantrips and a level 1 spell picked from its list
+      const src = !f.atLevel && c.spellSources.find((x) => x.id === "feat-" + f.id);
+      for (const p of src ? src.picks : []) box.push(spellPickUI({ pick: p, c, onChange: (ids) => { writePick(ch, p, ids); draw(); } }));
+      if (typeof choice.spells === "string" && choice.spells.trim()) box.push(legacySpellText(choice.spells, () => { delete ch.featChoices[f.id].spells; draw(); }));
       if (f.skillsOrTools) box.push(h("p", { cls: "hint", text: t("form.skilledHint") }));
       if (f.skillSlot) box.push(h("p", { cls: "hint", text: t("form.featSkillsHint", { n: f.skillSlot.count }) }));
       if (f.language) box.push(h("p", { cls: "hint", text: t("form.featLanguageHint", { n: f.language }) }));
@@ -465,7 +477,7 @@ export function renderForm(root, go, id) {
       }
       const flaw = c.flaws.find((x) => x.id === f.id);
       if (flaw) box.push(h("p", { cls: "warn small" }, [h("b", { text: t("form.flaw") + ": " }), tr(flaw.text)]));
-      if (f.spellAbility || f.skillsOrTools || f.darkGift || f.skillSlot || f.expertisePick) parts.push(h("div", { cls: "featbox" }, box));
+      if (!f.atLevel && (f.spellAbility || f.skillsOrTools || f.darkGift || f.skillSlot || f.expertisePick || f.spellPicks)) parts.push(h("div", { cls: "featbox" }, box));
     }
     for (const f of c.featInstances.filter((x) => x.source === "legacy")) {
       parts.push(h("p", { cls: "warn" }, [t("form.legacyFeat", { name: tr(FEATS[f.id].name) }), " ",
@@ -513,15 +525,27 @@ export function renderForm(root, go, id) {
     ]);
   }
 
+  /** Class spells: cantrips and prepared spells from the class list; domain spells are always prepared on top. */
   function spellsUI(c) {
+    const src = c.spellSources.find((x) => x.id === "class");
+    if (!src) return null;
     const sc = c.spells;
-    if (!sc) return null;
-    return card(t("form.spellsTitle"), [
-      h("p", { cls: "hint", text: t("form.spellsHint", { list: tr(sc.list), cantrips: sc.cantrips, prepared: sc.prepared }) }),
-      sc.always.length ? h("p", { cls: "hint" }, [h("b", { text: t("form.alwaysPrepared") + ": " }), sc.always.join(", ")]) : null,
-      field(t("form.cantrips", { n: sc.cantrips }), h("textarea", { rows: 2, id: "f-cantrips", oninput: (e) => (ch.spells = { ...ch.spells, cantrips: e.target.value }) }, ch.spells?.cantrips || ""), "wide"),
-      field(t("form.prepared", { n: sc.prepared }), h("textarea", { rows: 3, id: "f-prepared", oninput: (e) => (ch.spells = { ...ch.spells, prepared: e.target.value }) }, ch.spells?.prepared || ""), "wide"),
-    ]);
+    const always = src.fixed.filter((x) => x.kind === "always");
+    const parts = [
+      h("p", { cls: "hint", text: t("form.spellsHint2", { list: tr(sc.list), dc: src.dc, attack: (src.attack >= 0 ? "+" : "") + src.attack, slots: sc.slots.map((n, i) => `${n}× ${i + 1}`).join(", ") }) }),
+      always.length ? h("p", { cls: "hint" }, [h("b", { text: t("form.alwaysPrepared") + ": " }), always.map((x) => tr(SPELLS[x.id].name).split(" (")[0]).join(", ")]) : null,
+      ...src.fixed.filter((x) => x.fixedBy).map((x) => h("p", { cls: "hint" }, [h("b", { text: t("form.knownCantrip") + ": " }), tr(SPELLS[x.id].name)])),
+      ...src.picks.map((p) => spellPickUI({ pick: p, c, onChange: (ids) => { writePick(ch, p, ids); draw(); } })),
+    ];
+    if ((ch.spells?.cantrips || "").trim() || (ch.spells?.prepared || "").trim())
+      parts.push(legacySpellText([ch.spells.cantrips, ch.spells.prepared].filter(Boolean).join("\n"), () => { ch.spells = { cantrips: "", prepared: "" }; draw(); }));
+    return card(t("form.spellsTitle"), parts, { id: "f-spells" });
+  }
+
+  /** Spells typed as text before 0.8: shown until the player clears them. */
+  function legacySpellText(text, onClear) {
+    return h("div", { cls: "warn" }, [h("p", { cls: "small", text: t("form.legacySpells") }), h("p", { cls: "pre", text }),
+      h("button", { type: "button", cls: "btn ghost", text: t("form.legacySpellsClear"), onclick: onClear })]);
   }
 
   function hpUI(c) {

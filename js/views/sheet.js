@@ -9,8 +9,11 @@ import { trimSkills } from "../rules/skills.js";
 import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
+import { SPELLS } from "../rules/spells.js";
+import { writePick } from "../rules/magic.js";
+import { spellPickUI, spellTags, spellBody } from "./spellpicker.js";
 
-const TABS = ["start", "character", "levelup", "notes"];
+const TABS = ["start", "character", "spells", "levelup", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
@@ -19,11 +22,13 @@ export function renderSheet(root, go, id, tab) {
   if (id !== lastId) { lastHp = null; pending = null; lastId = id; }
   const ch = getById(id);
   if (!ch) return go("#/");
-  if (!TABS.includes(tab)) tab = "start";
   let c = compute(ch);
+  const tabsFor = (cc) => TABS.filter((k) => k !== "spells" || cc.spellSources.length);
+  if (!tabsFor(c).includes(tab)) tab = "start";
   if (ch.hp.cur == null) { ch.hp.cur = c.hpMax; upsert(ch); }
 
   const save = () => { if (!upsert(ch)) toast(t("app.saveError")); draw(); };
+  let editing = null; // which spell pick is open for changes on the Spells tab
 
   function draw() {
     c = compute(ch);
@@ -60,10 +65,11 @@ export function renderSheet(root, go, id, tab) {
       ]),
     ]);
 
-    const nav = h("nav", { cls: "tabs", "aria-label": "Sections" }, TABS.map((k) =>
+    const nav = h("nav", { cls: "tabs", "aria-label": "Sections" }, tabsFor(c).map((k) =>
       h("a", { href: `#/c/${ch.id}/${k}`, "aria-current": k === tab ? "page" : false, text: t("tab." + k) })));
 
-    const body = { start: tabStart, character: tabCharacter, levelup: tabLevel, notes: tabNotes }[tab]();
+    if (!tabsFor(c).includes(tab)) tab = "start";
+    const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
 
@@ -124,7 +130,7 @@ export function renderSheet(root, go, id, tab) {
       // The price of Dark Gifts: what happens on a natural 1 (or other trigger), with the DC worked out.
       const flawBlk = c.flaws.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.flaws") }), h("dl", { cls: "qa gl" },
         c.flaws.flatMap((f) => [h("dt", { text: tr(f.name) }), h("dd", {}, [h("p", { text: tr(f.text) })])]))]) : null;
-      return [banner, h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), flawBlk];
+      return [banner, concBanner(), h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), flawBlk];
     }
 
     function tabCharacter() {
@@ -178,40 +184,80 @@ export function renderSheet(root, go, id, tab) {
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.classFeatures") }), featList(c.classFeatures)]),
         c.subclassFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: tr(c.subclass.name) }), featList(c.subclassFeatures)]) : null,
         c.customSubclass ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: c.customSubclass }), h("p", { cls: "hint", text: t("char.customSubclassHint") })]) : null,
-        c.spells ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.spells") }), h("dl", { cls: "qa" }, [
-          h("dt", { text: t("char.spellDc") + " " + c.spells.dc + " · " + t("char.spellAttack") + " " + signed(c.spells.attack) }),
-          h("dd", {}, [h("p", { cls: "hint", text: t("char.spellsRule", { list: tr(c.spells.list), slots: c.spells.slots.map((n, i) => `${n}× ${i + 1}`).join(", ") }) })]),
-          h("dt", { text: t("char.cantrips", { n: c.spells.cantrips }) }), h("dd", {}, [h("p", { cls: "pre", text: ch.spells?.cantrips || "—" })]),
-          h("dt", { text: t("char.prepared", { n: c.spells.prepared }) }), h("dd", {}, [h("p", { cls: "pre", text: ch.spells?.prepared || "—" })]),
-          c.spells.always.length ? h("dt", { text: t("form.alwaysPrepared") }) : null,
-          c.spells.always.length ? h("dd", {}, [h("p", { text: c.spells.always.join(", ") })]) : null,
-        ])]) : null,
         c.speciesFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesFeatures") }), featList(c.speciesFeatures)]) : null,
-        c.speciesMagic ? magicBlock(c.speciesMagic, t("char.speciesSpells"), true) : null,
-        ...c.featMagic.map((m) => magicBlock(m, `${t("char.featSpells")}: ${tr(m.label).split(" (")[0]}`, m.needsAbility)),
+        c.spellSources.length ? h("p", { cls: "hint" }, [h("a", { href: `#/c/${ch.id}/spells`, text: t("char.seeSpells") })]) : null,
         ...extra,
       ];
     }
 
-    /** Spells from species traits: always prepared, cantrips at will, the rest free once per Long Rest (or PB times). */
-    function magicBlock(m, title, needsAbility) {
-      const uses = (x) => x.uses === "atwill" ? t("spell.atWill") : x.uses === "pb" ? t("spell.pbPerLong", { n: c.pb }) : t("spell.oncePerLong");
-      return h("section", { cls: "blk" }, [h("div", { cls: "orn", text: title }), h("dl", { cls: "qa gl" }, [
-        !needsAbility ? null : h("dt", { text: m.ability ? `${t("form.spellAbility")}: ${ABILITY_NAMES[m.ability][lang()]} · DC ${m.dc} · ${t("char.spellAttack")} ${signed(m.attack)}` : t("char.speciesSpellsNoAbility") }),
-        h("dd", {}, [h("p", { cls: "hint", text: t("char.speciesSpellsRule") })]),
-        ...m.spells.flatMap((x) => [
-          h("dt", {}, [tr(x.name), " ", h("small", { cls: "lvtag", text: x.circle ? t("spell.circle", { n: x.circle }) : t("spell.cantrip") }),
-            x.conc ? [" ", h("small", { cls: "lvtag", text: t("spell.conc") })] : null, x.ritual ? [" ", h("small", { cls: "lvtag", text: t("spell.ritual") })] : null].flat()),
-          h("dd", {}, [h("p", { text: tr(x.text) }), h("p", { cls: "hint", text: uses(x) })]),
-        ]),
-      ])]);
+    /** The spell you're concentrating on, with a reminder of the rule and a button to end it. */
+    function concBanner() {
+      const k = ch.concentration;
+      if (!k || !SPELLS[k]) return null;
+      return h("section", { cls: "card conc", id: "conc-banner" }, [
+        h("div", { cls: "row" }, [h("span", {}, [t("conc.on") + ": ", h("b", { text: tr(SPELLS[k].name) })]),
+          h("button", { type: "button", cls: "btn ghost", id: "conc-end", text: t("conc.end"), onclick: () => { ch.concentration = null; save(); } })]),
+        h("p", { cls: "hint gl", text: t("conc.rule") }),
+      ]);
+    }
+
+    function tabSpells() {
+      const out = [concBanner()];
+      const slotRes = c.resources.filter((r) => r.slot);
+      const resOf = (id) => c.resources.find((r) => r.id === id);
+      const cast = (spell, how) => {
+        // how: { slot: n } spends a spell slot; { res: id } spends a free use
+        const id = how.slot ? "slot" + how.slot : how.res;
+        const r = resOf(id);
+        if (!r || r.used >= r.max) return;
+        ch.used = { ...ch.used, [id]: (ch.used?.[id] || 0) + 1 };
+        let note = "";
+        if (SPELLS[spell].conc) {
+          if (ch.concentration && ch.concentration !== spell) note = " " + t("conc.replaced", { name: tr(SPELLS[ch.concentration].name).split(" (")[0] });
+          ch.concentration = spell;
+        }
+        save(); toast(t(how.slot ? "spell.castSlot" : "spell.castFree", { name: tr(SPELLS[spell].name).split(" (")[0], n: how.slot || "" }) + note);
+      };
+      for (const src of c.spellSources) {
+        const head = [h("div", { cls: "orn", text: src.id === "class" ? t("char.spells") + " · " + tr(src.label).split(" (")[0] : tr(src.label).split(" (")[0] })];
+        if (src.id === "class" || src.needsAbility) head.push(h("p", { cls: "small" }, src.ability
+          ? [t("form.spellAbility") + ": ", h("b", { text: ABILITY_NAMES[src.ability][lang()] }), ` · DC ${src.dc} · ${t("char.spellAttack")} ${signed(src.attack)}`]
+          : [t("char.speciesSpellsNoAbility")]));
+        if (src.id === "class" && slotRes.length) head.push(h("div", { cls: "res" }, slotRes.map(resRow)));
+        const rows = [];
+        const byCircle = [...src.spells].sort((a, b) => SPELLS[a.id].circle - SPELLS[b.id].circle || tr(SPELLS[a.id].name).localeCompare(tr(SPELLS[b.id].name)));
+        for (const x of byCircle) {
+          const s = SPELLS[x.id];
+          const acts = [];
+          const free = src.resPrefix ? resOf(src.resPrefix + x.id) : null;
+          if (free) acts.push(h("button", { type: "button", cls: "btn small", disabled: free.used >= free.max, text: t("spell.free", { n: free.max - free.used, max: free.max }), onclick: () => cast(x.id, { res: free.id }) }));
+          if (s.circle > 0 && x.uses !== "ritual") for (const r of slotRes.filter((r) => r.slot >= s.circle)) {
+            acts.push(h("button", { type: "button", cls: "btn small ghost", disabled: r.used >= r.max, text: t("spell.slotBtn", { n: r.slot }), title: t("spell.castSlotHint", { n: r.slot }), onclick: () => cast(x.id, { slot: r.slot }) }));
+          }
+          if (s.circle === 0 && s.conc) acts.push(h("button", { type: "button", cls: "btn small ghost", text: t("conc.start"), onclick: () => { ch.concentration = x.id; save(); } }));
+          const why = x.kind === "always" ? t("spell.always") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "atwill" ? t("spell.atWill") : "";
+          rows.push(h("div", { cls: "spellrow sheet" + (ch.concentration === x.id ? " on" : "") }, [
+            h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null]), ...spellBody(s, c), why ? h("p", { cls: "hint", text: why }) : null]),
+            acts.length ? h("div", { cls: "row acts" }, acts) : null,
+          ]));
+        }
+        if (!rows.length) rows.push(h("p", { cls: "hint", text: t("spell.noneYet") }));
+        // Changing picks: the Cleric prepares a new list after each long rest; others pick once.
+        const picks = src.picks.filter((p) => p.store !== "level");
+        const edit = picks.length ? h("div", { cls: "row" }, picks.map((p) => h("button", { type: "button", cls: "btn ghost", id: "edit-" + p.id.replace(/[^\w-]/g, "_"),
+          text: `${t("spell.change")}: ${tr(p.label).toLowerCase()} (${p.chosen.length}/${p.count})`, onclick: () => { editing = editing === p.id ? null : p.id; draw(); } }))) : null;
+        const open = picks.find((p) => p.id === editing);
+        out.push(h("section", { cls: "blk gl" }, [...head, ...rows, edit,
+          open ? spellPickUI({ pick: open, c, onChange: (ids) => { writePick(ch, open, ids); save(); } }) : null]));
+      }
+      return out;
     }
 
     function tabLevel() {
       const out = [];
       const nx = c.next;
       if (nx) {
-        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skill: "", lc: null };
+        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skill: "", lc: null, spellPicks: null };
         const N = nx.level;
         const draft = structuredClone(ch);
         draft.level = N;
@@ -221,6 +267,7 @@ export function renderSheet(root, go, id, tab) {
         if (pending.skill) draft.skills = [...(draft.skills || []), pending.skill];
         draft.levelChoices = { ...(draft.levelChoices || {}) };
         if (pending.lc) draft.levelChoices[N] = pending.lc; else delete draft.levelChoices[N];
+        draft.spellPicks = structuredClone(pending.spellPicks || ch.spellPicks || {});
         const cn = compute(structuredClone(draft));
         const gainOf = (die) => Math.max(1, die + nx.conMod) + nx.extra;
         const steps = [];
@@ -270,13 +317,20 @@ export function renderSheet(root, go, id, tab) {
           ok.push(levelChoiceDone(draft, N));
         }
 
-        // 5. Spells: new counts (picking from a list arrives with the spells update)
-        if (cn.spells && c.spells && (cn.spells.cantrips !== c.spells.cantrips || cn.spells.prepared !== c.spells.prepared || cn.spells.slots.length !== c.spells.slots.length)) {
-          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSpells") }),
-            h("p", { text: t("lvl.spellCounts", { c1: c.spells.cantrips, c2: cn.spells.cantrips, p1: c.spells.prepared, p2: cn.spells.prepared }) }),
-            h("p", { cls: "hint", text: t("lvl.spellsHint") })]));
-        } else if (cn.spells && !c.spells) {
-          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSpells") }), h("p", { cls: "hint", text: t("lvl.spellsNew", { c2: cn.spells.cantrips, p2: cn.spells.prepared }) })]));
+        // 5. Spells: new cantrips and prepared spells from the class list, picked now
+        const srcN = cn.spellSources.find((x) => x.id === "class");
+        if (srcN) {
+          const srcB = c.spellSources.find((x) => x.id === "class");
+          const box = h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSpells") }),
+            h("p", { text: srcB ? t("lvl.spellCounts", { c1: c.spells.cantrips, c2: cn.spells.cantrips, p1: c.spells.prepared, p2: cn.spells.prepared })
+              : t("lvl.spellsNew", { c2: cn.spells.cantrips, p2: cn.spells.prepared }) }),
+            cn.spells.slots.length > (c.spells?.slots.length || 0) ? h("p", { cls: "hint", text: t("lvl.newCircle", { n: cn.spells.slots.length }) }) : null]);
+          for (const p of srcN.picks) {
+            const before = srcB?.picks.find((x) => x.id === p.id);
+            if (before && before.count === p.count && p.chosen.length === p.count && p.options.length === before.options.length) continue;
+            box.append(spellPickUI({ pick: p, c: cn, onChange: (ids) => { const d = { spellPicks: structuredClone(draft.spellPicks) }; writePick(d, p, ids); pending.spellPicks = d.spellPicks; draw(); } }));
+          }
+          if (box.children.length > 2 || !srcB || srcN.picks.some((p) => p.chosen.length !== p.count)) { steps.push(box); ok.push(srcN.picks.every((p) => p.chosen.length === p.count && !p.invalid.length)); }
         }
 
         const ready = ok.every(Boolean);
@@ -293,12 +347,12 @@ export function renderSheet(root, go, id, tab) {
           h("div", { cls: "row" }, [
             h("button", { type: "button", cls: "btn gold", id: "lvl-confirm", disabled: !ready, text: t("lvl.up", { n: N }), onclick: () => {
               const before = c.hpMax;
-              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, levelChoices: draft.levelChoices });
+              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, levelChoices: draft.levelChoices, spellPicks: draft.spellPicks });
               const after = compute(ch).hpMax;
               ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
               pending = null; save(); toast(t("lvl.done", { n: N }));
             } }),
-            pending.hp != null || pending.lc || pending.subclass || pending.skill
+            pending.hp != null || pending.lc || pending.subclass || pending.skill || pending.spellPicks
               ? h("button", { type: "button", cls: "btn ghost", text: t("lvl.reset"), onclick: () => { pending = null; draw(); } }) : null,
           ]),
         ]));
@@ -334,6 +388,9 @@ export function renderSheet(root, go, id, tab) {
       const chosen = (ch.skills || []).filter((x) => !cd.granted.includes(x));
       const kept = trimSkills(chosen, cd.slots);
       ch.skills = [...(ch.skills || []).filter((x) => cd.granted.includes(x)), ...kept];
+      // Fewer cantrips or prepared spells at the lower level: keep the first ones picked.
+      for (const src of cd.spellSources) for (const p of src.picks) if (p.store === "class") writePick(ch, p, p.chosen.slice(0, p.count));
+      if (!cd.spellSources.some((x) => x.id === "class")) ch.spellPicks = {};
       const after = compute(ch).hpMax;
       ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
       pending = null; save();
@@ -417,6 +474,10 @@ export function renderSheet(root, go, id, tab) {
       hp.cur = Math.min(max, hp.cur + delta);
     }
     if (massive) { ch.death = { ok: 0, fail: 3, massive: true }; toast(t("death.massive")); }
+    else if (delta < 0 && ch.concentration && SPELLS[ch.concentration]) {
+      if (hp.cur === 0) { toast(t("conc.lostZero", { name: tr(SPELLS[ch.concentration].name).split(" (")[0] })); ch.concentration = null; }
+      else toast(t("conc.check", { dc: Math.min(30, Math.max(10, Math.floor(-delta / 2))) }));
+    }
     save();
   }
 
@@ -428,7 +489,7 @@ export function renderSheet(root, go, id, tab) {
       else if (r.shortRegain) used[r.id] = Math.max(0, (used[r.id] || 0) - r.shortRegain);
     }
     ch.used = used;
-    if (kind === "long") { ch.hp.cur = compute(ch).hpMax; ch.hp.temp = 0; ch.death = { ok: 0, fail: 0 }; }
+    if (kind === "long") { ch.hp.cur = compute(ch).hpMax; ch.hp.temp = 0; ch.death = { ok: 0, fail: 0 }; ch.concentration = null; }
     save(); toast(t(kind === "long" ? "res.longDone" : "res.shortDone"));
   }
 

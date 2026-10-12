@@ -1,11 +1,10 @@
 // The ten species of the 2024 Player's Handbook (chapter 4), with lineages, legacies and species spells.
 // Descriptions are written in our own words. `other` only keeps pre-0.4 custom species loadable.
 import { ABILITY_NAMES } from "./core.js";
+import { SPELLS } from "./spells.js";
 
 const L = (pl, en) => ({ pl, en });
 const breathDice = (lv) => (lv < 5 ? 1 : lv < 11 ? 2 : lv < 17 ? 3 : 4) + "d10";
-/** Cantrip damage dice grow at character level 5 (and 11, 17 beyond this app's range). */
-const cantripDice = (lv, die) => `${lv < 5 ? 1 : lv < 11 ? 2 : lv < 17 ? 3 : 4}${die}`;
 
 export const DAMAGE_NAMES = {
   acid: L("kwas", "acid"), cold: L("zimno", "cold"), fire: L("ogień", "fire"), lightning: L("błyskawice", "lightning"),
@@ -30,71 +29,8 @@ export const ANCESTRIES = {
 export const SPELL_ABILITIES = { int: ABILITY_NAMES.int, wis: ABILITY_NAMES.wis, cha: ABILITY_NAMES.cha };
 const abilityChoice = { key: "ability", label: L("Cecha czarowania (czary z gatunku)", "Spellcasting ability (species spells)"), options: SPELL_ABILITIES };
 
-/**
- * Spells that species grant. Partia 5 brings the full spell list; these keep a short description of their own.
- * circle 0 = cantrip. conc = needs Concentration.
- */
-export const SPECIES_SPELLS = {
-  light: { circle: 0, name: L("Light (Światło)", "Light"),
-    desc: () => L("Dotknięty przedmiot świeci przez godzinę: jasne światło 20 ft i przyćmione kolejne 20 ft.", "A touched object sheds bright light in a 20-ft radius and dim light 20 ft beyond, for 1 hour.") },
-  "dancing-lights": { circle: 0, conc: true, name: L("Dancing Lights (Tańczące światła)", "Dancing Lights"),
-    desc: () => L("Do czterech unoszących się świateł w zasięgu 120 ft; przesuwasz je akcją bonusową. Do 1 minuty.", "Up to four floating lights within 120 ft; move them as a Bonus Action. Up to 1 minute.") },
-  prestidigitation: { circle: 0, name: L("Prestidigitation (Prestidigitatorstwo)", "Prestidigitation"),
-    desc: () => L("Drobne magiczne sztuczki: iskry, zapach, czyszczenie, podgrzanie, mały znak lub drobiazg z iluzji.", "Small magic tricks: sparks, a smell, cleaning, warming, a small mark or a trinket-sized illusion.") },
-  druidcraft: { circle: 0, name: L("Druidcraft (Druidzka sztuczka)", "Druidcraft"),
-    desc: () => L("Drobne efekty natury: przepowiadasz pogodę, rozwijasz kwiat, wywołujesz zapach liści lub iskrę.", "Small nature effects: predict the weather, make a flower bloom, a puff of scent or a tiny spark.") },
-  "minor-illusion": { circle: 0, name: L("Minor Illusion (Pomniejsza iluzja)", "Minor Illusion"),
-    desc: () => L("Dźwięk albo nieruchomy obraz (do 5 ft) na minutę. Badanie akcją Study (INT/Investigation) ujawnia iluzję.", "A sound or a still image (up to 5 ft) for 1 minute. Studying it (INT/Investigation) reveals the illusion.") },
-  mending: { circle: 0, name: L("Mending (Naprawa)", "Mending"),
-    desc: () => L("Naprawiasz jedno pęknięcie lub rozdarcie w przedmiocie (do 1 ft). Rzucanie trwa minutę.", "Repair a single break or tear in an object (up to 1 ft). Takes 1 minute to cast.") },
-  thaumaturgy: { circle: 0, name: L("Thaumaturgy (Taumaturgia)", "Thaumaturgy"),
-    desc: () => L("Pomniejszy cud na minutę: donośny głos, migające płomienie, drżenie ziemi, otwarte drzwi, zmienione oczy.", "A minor wonder for 1 minute: a booming voice, flickering flames, tremors, a door flung open, changed eyes.") },
-  "poison-spray": { circle: 0, name: L("Poison Spray (Trujący opar)", "Poison Spray"),
-    desc: (c) => L(`Atak czarem na dystans (30 ft): ${cantripDice(c.level, "d12")} obrażeń od trucizny.`, `Ranged spell attack (30 ft): ${cantripDice(c.level, "d12")} poison damage.`) },
-  "chill-touch": { circle: 0, name: L("Chill Touch (Dotyk chłodu)", "Chill Touch"),
-    desc: (c) => L(`Atak czarem wręcz: ${cantripDice(c.level, "d10")} nekrotycznych; cel nie odzyskuje HP do końca Twojej następnej tury.`, `Melee spell attack: ${cantripDice(c.level, "d10")} necrotic; the target can't regain HP until the end of your next turn.`) },
-  "fire-bolt": { circle: 0, name: L("Fire Bolt (Ognisty pocisk)", "Fire Bolt"),
-    desc: (c) => L(`Atak czarem na dystans (120 ft): ${cantripDice(c.level, "d10")} obrażeń od ognia.`, `Ranged spell attack (120 ft): ${cantripDice(c.level, "d10")} fire damage.`) },
-  "faerie-fire": { circle: 1, conc: true, name: L("Faerie Fire (Ogień faerie)", "Faerie Fire"),
-    desc: () => L("Sześcian 20 ft: kto obleje rzut ZRĘ, świeci; ataki na niego mają Przewagę i nie może być niewidzialny. Do 1 minuty.", "20-ft cube: anything that fails a DEX save glows; attacks against it have Advantage and it can't be invisible. Up to 1 minute.") },
-  darkness: { circle: 2, conc: true, name: L("Darkness (Ciemność)", "Darkness"),
-    desc: () => L("Magiczna ciemność w kuli o promieniu 15 ft; zwykły Darkvision jej nie przenika. Do 10 minut.", "Magical darkness in a 15-ft-radius sphere; normal Darkvision can't see through it. Up to 10 minutes.") },
-  "detect-magic": { circle: 1, conc: true, ritual: true, name: L("Detect Magic (Wykrycie magii)", "Detect Magic"),
-    desc: () => L("Wyczuwasz magię w promieniu 30 ft i widzisz aurę wokół magicznych rzeczy. Do 10 minut. Rytuał.", "Sense magic within 30 ft and see auras around magical things. Up to 10 minutes. Ritual.") },
-  "misty-step": { circle: 2, name: L("Misty Step (Mglisty krok)", "Misty Step"),
-    desc: () => L("Akcja bonusowa: teleportujesz się do 30 ft w widoczne wolne miejsce.", "Bonus Action: teleport up to 30 ft to an unoccupied space you can see.") },
-  longstrider: { circle: 1, name: L("Longstrider (Długi krok)", "Longstrider"),
-    desc: () => L("Dotknięta istota ma +10 ft szybkości przez godzinę.", "A touched creature's Speed increases by 10 ft for 1 hour.") },
-  "pass-without-trace": { circle: 2, conc: true, name: L("Pass without Trace (Bez śladu)", "Pass without Trace"),
-    desc: () => L("Ty i sojusznicy w promieniu 30 ft macie +10 do Stealth i nie zostawiacie śladów. Do godziny.", "You and allies within 30 ft gain +10 to Stealth and leave no tracks. Up to 1 hour.") },
-  "speak-with-animals": { circle: 1, ritual: true, name: L("Speak with Animals (Rozmowa ze zwierzętami)", "Speak with Animals"),
-    desc: () => L("Przez 10 minut rozumiesz zwierzęta (Beasts) i możesz z nimi rozmawiać. Rytuał.", "For 10 minutes you can understand and talk with Beasts. Ritual.") },
-  "ray-of-sickness": { circle: 1, name: L("Ray of Sickness (Promień choroby)", "Ray of Sickness"),
-    desc: () => L("Atak czarem na dystans (60 ft): 2d8 obrażeń od trucizny i cel jest Poisoned do końca Twojej następnej tury.", "Ranged spell attack (60 ft): 2d8 poison damage and the target is Poisoned until the end of your next turn.") },
-  "hold-person": { circle: 2, conc: true, name: L("Hold Person (Unieruchomienie osoby)", "Hold Person"),
-    desc: () => L("Humanoid w zasięgu 60 ft rzuca MĄD; porażka = Paralyzed, ponawia rzut na końcu każdej swojej tury. Do 1 minuty.", "A Humanoid within 60 ft makes a WIS save or is Paralyzed; it repeats the save at the end of each of its turns. Up to 1 minute.") },
-  "false-life": { circle: 1, name: L("False Life (Fałszywe życie)", "False Life"),
-    desc: () => L("Dostajesz 2d4 + 4 tymczasowych HP.", "You gain 2d4 + 4 Temporary Hit Points.") },
-  "ray-of-enfeeblement": { circle: 2, conc: true, name: L("Ray of Enfeeblement (Promień osłabienia)", "Ray of Enfeeblement"),
-    desc: () => L("Cel w zasięgu 60 ft rzuca KON; porażka = Utrudnienie na testy SIŁ i słabsze obrażenia, ponawia rzut co turę. Do 1 minuty.", "A target within 60 ft makes a CON save; on a fail it has Disadvantage on STR tests and deals less damage, repeating the save each turn. Up to 1 minute.") },
-  // Ravenloft species and Dark Gifts
-  "disguise-self": { circle: 1, name: L("Disguise Self (Przebranie)", "Disguise Self"),
-    desc: (c) => L("Iluzja zmienia Twój wygląd (ubiór, twarz, wzrost o ±1 ft) na godzinę. Kto bada Cię akcją Study, rzuca INT (Investigation) przeciw DC Twoich czarów.", "An illusion changes your look (clothes, face, height by ±1 ft) for 1 hour. A creature that uses the Study action makes an INT (Investigation) check against your spell DC.") },
-  hex: { circle: 1, conc: true, name: L("Hex (Klątwa)", "Hex"),
-    desc: () => L("Akcja bonusowa, cel w 90 ft: gdy trafisz go atakiem, +1k6 obrażeń nekrotycznych; ma Utrudnienie na testy wybranej cechy. Gdy cel spadnie do 0 HP, przenosisz klątwę akcją bonusową. Do godziny.", "Bonus Action, a target within 90 ft: when you hit it with an attack, +1d6 Necrotic damage; it has Disadvantage on checks with one ability you choose. If it drops to 0 HP, move the curse as a Bonus Action. Up to 1 hour.") },
-  message: { circle: 0, name: L("Message (Wiadomość)", "Message"),
-    desc: () => L("Szepczesz wiadomość do istoty w zasięgu 120 ft; tylko ona ją słyszy i może odszepnąć.", "Whisper a message to a creature within 120 ft; only it hears, and it can whisper back.") },
-  augury: { circle: 2, ritual: true, name: L("Augury (Wróżba)", "Augury"),
-    desc: () => L("Pytasz o plan na najbliższe 30 minut i dostajesz omen: pomyślność, nieszczęście, jedno i drugie albo nic. Rytuał.", "Ask about a course of action in the next 30 minutes and get an omen: weal, woe, both or indifference. Ritual.") },
-  "mage-hand": { circle: 0, name: L("Mage Hand (Magiczna dłoń)", "Mage Hand"),
-    desc: () => L("Widmowa dłoń w zasięgu 30 ft na minutę: przenosi do 10 funtów, otwiera drzwi i pojemniki. Nie atakuje.", "A spectral hand within 30 ft for 1 minute: carries up to 10 lb, opens doors and containers. It can't attack.") },
-  "alter-self": { circle: 2, conc: true, name: L("Alter Self (Zmiana siebie)", "Alter Self"),
-    desc: (c) => L("Na godzinę jedna z przemian: życie pod wodą (oddychanie i pływanie), zmieniony wygląd albo naturalna broń (1k6 + cecha czarowania). Z Second Skin bez Koncentracji.", "For 1 hour, one change: aquatic adaptation (breathe and swim), a changed appearance, or natural weapons (1d6 + spellcasting modifier). Through Second Skin it needs no Concentration.") },
-  "beast-sense": { circle: 2, conc: true, ritual: true, name: L("Beast Sense (Zmysły zwierzęcia)", "Beast Sense"),
-    desc: () => L("Dotykasz chętnego zwierzęcia (Beast) i przez godzinę widzisz i słyszysz jego zmysłami. Rytuał.", "Touch a willing Beast and for 1 hour perceive through its senses. Ritual.") },
-  "hellish-rebuke": { circle: 1, name: L("Hellish Rebuke (Piekielna odpłata)", "Hellish Rebuke"),
-    desc: () => L("Reakcja, gdy istota w zasięgu 60 ft zada Ci obrażenia: rzuca ZRĘ, 2d10 od ognia (sukces = połowa).", "Reaction when a creature within 60 ft damages you: it makes a DEX save, 2d10 fire damage (half on a success).") },
-};
+// Spells that species and feats grant come from the shared spell database (js/rules/spells.js).
+export const SPECIES_SPELLS = SPELLS;
 
 // uses: "atwill" (cantrip), "long" (once free per Long Rest, also with your slots), "pb" (Proficiency Bonus times per Long Rest)
 const spell = (id, at = 1, uses = at === 1 && SPECIES_SPELLS[id].circle === 0 ? "atwill" : "long") => ({ id, at, uses });

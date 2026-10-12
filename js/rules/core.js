@@ -51,10 +51,11 @@ const mi = (list, pl, en) => ({
   source: "phb2024", category: "origin", spellAbility: true,
   name: { pl: `Magic Initiate (${pl})`, en: `Magic Initiate (${en})` },
   desc: {
-    pl: `Znasz 2 sztuczki i 1 czar 1. poziomu z listy: ${pl}. Czar rzucasz raz na długi odpoczynek bez slotu albo ze slotów, jeśli je masz. Czary wybierasz przy featcie.`,
-    en: `You know 2 cantrips and one 1st-level spell from the ${en} list. Cast that spell once per long rest without a slot, or with slots if you have them. You pick the spells with the feat.`,
+    pl: `Znasz 2 sztuczki i 1 czar 1. poziomu z listy: ${pl}. Czar rzucasz raz na długi odpoczynek bez slotu albo ze slotów, jeśli je masz. Czary wybierasz z listy przy featcie.`,
+    en: `You know 2 cantrips and one 1st-level spell from the ${en} list. Cast that spell once per long rest without a slot, or with slots if you have them. You pick the spells from the list with the feat.`,
   },
   list,
+  spellPicks: [{ key: "cantrips", count: 2, circles: [0], lists: [list] }, { key: "spell", count: 1, circles: [1], lists: [list], uses: "long" }],
 });
 
 export const FEATS = {

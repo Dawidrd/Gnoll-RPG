@@ -1,12 +1,12 @@
 // Offline support: keep the app shell and fonts cached. Bump VERSION when files change.
-const VERSION = "gnoll-0.7.0";
+const VERSION = "gnoll-0.8.0";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png",
   "./js/main.js", "./js/config.js", "./js/dom.js", "./js/i18n.js", "./js/store.js", "./js/glossary.js",
   "./js/lang/pl.js", "./js/lang/en.js",
-  "./js/rules/core.js", "./js/rules/index.js", "./js/rules/species.js", "./js/rules/backgrounds.js", "./js/rules/classes/monk.js", "./js/rules/classes/barbarian.js", "./js/rules/classes/rogue.js", "./js/rules/classes/cleric.js", "./js/rules/armor.js", "./js/rules/skills.js", "./js/rules/names.js", "./js/rules/tools.js", "./js/rules/identity.js", "./js/rules/checks.js", "./js/rules/feats-general.js", "./js/rules/feats-ravenloft.js",
-  "./js/views/home.js", "./js/views/form.js", "./js/views/sheet.js", "./js/views/levelchoice.js", "./js/views/msg.js",
+  "./js/rules/core.js", "./js/rules/index.js", "./js/rules/species.js", "./js/rules/backgrounds.js", "./js/rules/classes/monk.js", "./js/rules/classes/barbarian.js", "./js/rules/classes/rogue.js", "./js/rules/classes/cleric.js", "./js/rules/armor.js", "./js/rules/skills.js", "./js/rules/names.js", "./js/rules/tools.js", "./js/rules/identity.js", "./js/rules/checks.js", "./js/rules/feats-general.js", "./js/rules/feats-ravenloft.js", "./js/rules/spells.js", "./js/rules/spells/cantrips.js", "./js/rules/spells/level1.js", "./js/rules/spells/level2.js", "./js/rules/spells/level3.js", "./js/rules/magic.js",
+  "./js/views/home.js", "./js/views/form.js", "./js/views/sheet.js", "./js/views/levelchoice.js", "./js/views/msg.js", "./js/views/spellpicker.js",
 ];
 
 self.addEventListener("install", (e) => {

@@ -69,7 +69,7 @@ export const rogue = {
   subclasses: {
     "arcane-trickster": {
       source: "phb2024", name: { pl: "Arcane Trickster (Magiczny Oszust)", en: "Arcane Trickster" },
-      spellcasting: (L) => (L < 3 ? null : { ability: "int", list: { pl: "czarodzieja", en: "Wizard" }, cantrips: L < 10 ? 3 : 4, prepared: L < 4 ? 3 : L < 7 ? 4 : 5, slots: L < 4 ? [2] : L < 7 ? [3] : [4, 2] }),
+      spellcasting: (L) => (L < 3 ? null : { ability: "int", list: { pl: "czarodzieja", en: "Wizard" }, listId: "wizard", fixedCantrips: ["mage-hand"], cantrips: L < 10 ? 3 : 4, prepared: L < 4 ? 3 : L < 7 ? 4 : 5, slots: L < 4 ? [2] : L < 7 ? [3] : [4, 2] }),
       features: [
         { lv: 3, id: "at-spellcasting", name: { pl: "Spellcasting (Czary)", en: "Spellcasting" },
           desc: (c) => ({ pl: `Czary z listy czarodzieja na INT: 3 sztuczki (w tym Mage Hand) i ${c.level < 4 ? 3 : 4} przygotowane czary 1. kręgu. Sloty wracają po długim odpoczynku.`,
