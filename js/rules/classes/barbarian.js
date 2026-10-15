@@ -1,5 +1,6 @@
 // Barbarian, levels 1–5, 2024 rules. Descriptions are our own paraphrase.
 import { signed } from "../core.js";
+import { masteryGroup } from "../weapons.js";
 
 const rages = (L) => (L < 3 ? 2 : L < 6 ? 3 : L < 12 ? 4 : L < 17 ? 5 : 6);
 const rageDmg = (L) => (L < 9 ? 2 : L < 16 ? 3 : 4);
@@ -17,6 +18,9 @@ export const barbarian = {
   saves: ["str", "con"],
   skillChoices: { count: 2, from: ["animal", "athletics", "intimidation", "nature", "perception", "survival"] },
   armorTraining: ["light", "medium", "shield"],
+  weaponProf: () => true,
+  // Weapon Mastery: kinds of Simple or Martial melee weapons.
+  optionPicks: (c) => [masteryGroup(mastery(c.level), (w) => !w.ranged)],
   // Primal Knowledge (level 3): one more skill from the class list.
   extraSkills: (L) => (L >= 3 ? [{ id: "primal", label: { pl: "Primal Knowledge", en: "Primal Knowledge" }, count: 1,
     from: ["animal", "athletics", "intimidation", "nature", "perception", "survival"] }] : []),
@@ -53,7 +57,7 @@ export const barbarian = {
     { lv: 1, id: "unarmored-defense", name: { pl: "Unarmored Defense (Obrona bez zbroi)", en: "Unarmored Defense" },
       desc: () => ({ pl: "Bez zbroi AC = 10 + ZRĘ + KON. Tarcza nie przeszkadza.", en: "Without armor your AC is 10 + DEX + CON. A shield is fine." }) },
     { lv: 1, id: "mastery", name: { pl: "Weapon Mastery (Mistrzostwo broni)", en: "Weapon Mastery" },
-      desc: (c) => ({ pl: `Używasz właściwości mistrzowskich ${mastery(c.level)} rodzajów broni do walki wręcz. Po długim odpoczynku możesz zmienić jeden wybór.`,
+      desc: (c) => ({ pl: `Używasz właściwości mistrzowskich ${mastery(c.level)} rodzajów broni do walki wręcz (wybór w kroku 5). Po długim odpoczynku możesz zmienić jeden wybór.`,
         en: `You use the mastery properties of ${mastery(c.level)} kinds of melee weapons. After a long rest you can swap one choice.` }) },
     { lv: 2, id: "danger-sense", name: { pl: "Danger Sense (Wyczucie zagrożenia)", en: "Danger Sense" },
       desc: () => ({ pl: "Przewaga na rzuty obronne ZRĘ, chyba że jesteś Incapacitated.", en: "Advantage on DEX saving throws unless you're Incapacitated." }) },

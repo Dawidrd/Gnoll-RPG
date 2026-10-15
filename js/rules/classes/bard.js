@@ -115,6 +115,7 @@ export const bard = {
     valor: {
       source: "phb2024", name: L("College of Valor (Kolegium Męstwa)", "College of Valor"),
       armorTraining: ["medium", "shield"],
+      martialWeapons: true,
       features: [
         { lv: 3, id: "combat-inspiration", name: L("Combat Inspiration (Bojowa inspiracja)", "Combat Inspiration"),
           desc: () => L("Kto ma Twoją kość inspiracji, może jej też użyć: w obronie — reakcją po trafieniu dodaje wynik do KP przeciw temu atakowi; w ataku — zaraz po trafieniu dodaje wynik do obrażeń.",

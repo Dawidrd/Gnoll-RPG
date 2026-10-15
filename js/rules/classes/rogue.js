@@ -1,5 +1,6 @@
 // Rogue, levels 1–5, 2024 rules. Descriptions are our own paraphrase.
 import { signed } from "../core.js";
+import { masteryGroup } from "../weapons.js";
 
 const sneak = (L) => Math.ceil(L / 2) + "d6";
 const psiDice = (L) => (L < 5 ? 4 : L < 9 ? 6 : L < 13 ? 8 : L < 17 ? 10 : 12);
@@ -21,6 +22,9 @@ export const rogue = {
   // Thieves' Cant plus one more language from the language tables.
   languages: { auto: ["thieves-cant"], pick: { id: "rogue", count: 1, from: "any", label: { pl: "Łotr: Thieves' Cant", en: "Rogue: Thieves' Cant" } } },
   armorTraining: ["light"],
+  // Simple weapons and Martial weapons with Finesse or Light.
+  weaponProf: (w) => w.cat === "simple" || !!w.props.finesse || !!w.props.light,
+  optionPicks: () => [masteryGroup(2, (w) => w.cat === "simple" || !!w.props.finesse || !!w.props.light)],
   role: {
     pl: "Precyzyjny zabójca i specjalista od zamków, pułapek i rozmów. Raz na turę dokłada Sneak Attack, gdy ma Przewagę albo sojusznika obok celu.",
     en: "A precise striker and the expert at locks, traps and talk. Once per turn they add Sneak Attack when they have Advantage or an ally next to the target.",
@@ -48,7 +52,7 @@ export const rogue = {
     { lv: 1, id: "cant", name: { pl: "Thieves' Cant (Złodziejska gwara)", en: "Thieves' Cant" },
       desc: () => ({ pl: "Znasz złodziejską gwarę i jeden dodatkowy język (wpisz go w „Inne narzędzia i języki”).", en: "You know Thieves' Cant and one extra language (note it under “Other tools and languages”)." }) },
     { lv: 1, id: "mastery", name: { pl: "Weapon Mastery (Mistrzostwo broni)", en: "Weapon Mastery" },
-      desc: () => ({ pl: "Używasz właściwości mistrzowskich 2 rodzajów broni, np. sztyletu i krótkiego łuku.", en: "You use the mastery properties of 2 kinds of weapons, such as dagger and shortbow." }) },
+      desc: () => ({ pl: "Używasz właściwości mistrzowskich 2 rodzajów broni, np. sztyletu i krótkiego łuku (wybór w kroku 5). Po długim odpoczynku możesz je zmienić.", en: "You use the mastery properties of 2 kinds of weapons, such as dagger and shortbow (pick them in step 5). After a long rest you can change them." }) },
     { lv: 2, id: "cunning-action", name: { pl: "Cunning Action (Przebiegła akcja)", en: "Cunning Action" },
       desc: () => ({ pl: "Dash, Disengage albo Hide jako akcja bonusowa.", en: "Dash, Disengage or Hide as a bonus action." }) },
     { lv: 3, id: "subclass", name: { pl: "Podklasa łotra", en: "Rogue Subclass" },

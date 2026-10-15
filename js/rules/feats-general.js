@@ -118,6 +118,16 @@ export const FIGHTING_STYLE_FEATS = {
   "unarmed-fighting": fs("Walka bez broni", "Unarmed Fighting", { desc: D("Cios bez broni 1k6 + SIŁ (1k8 z wolnymi rękami); 1k4 co turę dla pochwyconego.", "Unarmed strikes deal 1d6 + STR (1d8 with free hands); 1d4 each turn to a creature you grapple.") }),
 };
 
+/** Class alternatives to a Fighting Style feat: Blessed Warrior (Paladin) and Druidic Warrior (Ranger). */
+export const STYLE_ALTS = {
+  "blessed-warrior": { source: "phb2024", category: "style-alt", fixedAbility: "cha", name: D("Blessed Warrior (Błogosławiony wojownik)", "Blessed Warrior"),
+    desc: D("Zamiast featu stylu walki: dwie sztuczki kleryka na CHA (polecane Guidance i Sacred Flame). Przy awansie możesz wymienić jedną.", "Instead of a Fighting Style feat: two Cleric cantrips using CHA (Guidance and Sacred Flame are recommended). When you gain a level you can swap one."),
+    spellPicks: [{ key: "cantrips", count: 2, circles: [0], lists: ["cleric"] }] },
+  "druidic-warrior": { source: "phb2024", category: "style-alt", fixedAbility: "wis", name: D("Druidic Warrior (Druidzki wojownik)", "Druidic Warrior"),
+    desc: D("Zamiast featu stylu walki: dwie sztuczki druida na MĄD (polecane Guidance i Starry Wisp). Przy awansie możesz wymienić jedną.", "Instead of a Fighting Style feat: two Druid cantrips using WIS (Guidance and Starry Wisp are recommended). When you gain a level you can swap one."),
+    spellPicks: [{ key: "cantrips", count: 2, circles: [0], lists: ["druid"] }] },
+};
+
 export const DAMAGE_TYPES = {
   acid: D("kwas", "acid"), cold: D("zimno", "cold"), fire: D("ogień", "fire"), lightning: D("błyskawice", "lightning"), thunder: D("grzmot", "thunder"),
 };

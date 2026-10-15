@@ -6,6 +6,7 @@ import { pointsSpent } from "../js/rules/identity.js";
 import { SPELLS, spellsOf } from "../js/rules/spells.js";
 import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
+import { WEAPONS } from "../js/rules/weapons.js";
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -560,6 +561,120 @@ test("Bard, Druid and Wizard characters can be completed", () => {
       savant: ["burning-hands", "shatter"], prepared: ["magic-missile", "shield", "mage-armor", "sleep", "misty-step", "shatter"] } }));
   eq([todoKeys(wiz), wiz.review.errors.map((x) => x.key)], [[], []], "Wizard 3");
   eq([wiz.spells.dc, wiz.hpMax], [8 + 1 + 2, 6 + 2 + 2 * (4 + 2) + 3], "INT 12; CON 14, two fixed 4s, Dwarven Toughness +1 per level");
+});
+
+const featBlockedKeys = (ch) => errKeys(run(ch)).filter((k) => k === "err.featPrereq");
+// --- Weapons and Weapon Mastery (PHB ch. 6); Fighter, Paladin, Ranger (ch. 3); Hollow Warden (The Horrors Within) ---
+test("weapon table: 38 weapons with damage, properties, mastery and cost from chapter 6", () => {
+  eq(Object.keys(WEAPONS).length, 38);
+  const w = (id) => WEAPONS[id];
+  eq([w("longsword").dice, w("longsword").props.versatile, w("longsword").mastery, w("longsword").cost], ["1d8", "1d10", "sap", 15]);
+  eq([w("dagger").props.finesse, w("dagger").props.light, w("dagger").props.thrown, w("dagger").mastery], [true, true, "20/60", "nick"]);
+  eq([w("longbow").ranged, w("longbow").props.heavy, w("longbow").props.ammo, w("longbow").mastery], [true, true, "150/600", "slow"]);
+  eq([w("greatsword").dice, w("greataxe").mastery, w("whip").props.reach, w("pistol").cost], ["2d6", "cleave", true, 250]);
+});
+test("weapon attacks: ability, proficiency, Fighting Styles, Monk weapons, Rage", () => {
+  const base = { classId: "fighter", abilityBase: { str: 15, dex: 14, con: 13, int: 8, wis: 12, cha: 10 } };
+  const atk = (over, id) => run(make({ ...base, ...over, weapons: [{ uid: "x", id }] })).attacks[0];
+  eq([atk({}, "longsword").hit, atk({}, "longsword").damage.en, atk({}, "longsword").versatile.en], [2 + 2, "1d8+2", "1d10+2"]);
+  eq([atk({}, "rapier").ab, atk({}, "shortbow").ab], ["str", "dex"], "finesse picks the better of STR and DEX");
+  eq(atk({ featPicks: { style: "archery" } }, "longbow").hit, 2 + 2 + 2, "Archery +2");
+  const duel = atk({ featPicks: { style: "dueling" } }, "longsword");
+  eq([duel.damage.en, duel.versatile.en], ["1d8+4", "1d10+2"], "Dueling only one-handed");
+  eq(atk({ classId: "wizard" }, "longsword").hit, 2, "no proficiency bonus without training");
+  eq(atk({ classId: "rogue" }, "rapier").prof, true, "Rogue: Martial Finesse weapons");
+  const monk = run(make({ classId: "monk", level: 5, weapons: [{ uid: "q", id: "quarterstaff" }, { uid: "s", id: "shortsword" }] })).attacks;
+  eq(monk.map((a) => [a.ab, a.dice]), [["dex", "1d8"], ["dex", "1d8"]], "Martial Arts die and DEX on Monk weapons");
+  const barb = run(make({ classId: "barbarian", abilityBase: { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 }, weapons: [{ uid: "g", id: "greataxe" }], active: { rage: true } })).attacks[0];
+  eq(barb.damage.en, "1d12+4", "STR +2 and Rage +2");
+  eq(atk({ abilityBase: { str: 8, dex: 15, con: 14, int: 13, wis: 12, cha: 10 } }, "greatsword").notes.some((n) => n.en.startsWith("Heavy")), true, "Heavy with STR below 13");
+});
+test("Weapon Mastery: kinds by class, filters, Weapon Master feat", () => {
+  const g = (over) => run(make(over)).classOptions.find((x) => x.key === "mastery");
+  eq([g({ classId: "fighter" }).count, g({ classId: "fighter", level: 4 }).count, g({ classId: "barbarian" }).count, g({ classId: "paladin" }).count, g({ classId: "ranger" }).count, g({ classId: "rogue" }).count], [3, 4, 2, 2, 2, 2]);
+  eq(g({ classId: "monk" }), undefined, "Monks have no Weapon Mastery");
+  eq(optErr(run(make({ classId: "barbarian", classOptions: { mastery: ["longbow"] } }))), 1, "Barbarian: melee weapons only");
+  eq(optErr(run(make({ classId: "rogue", classOptions: { mastery: ["longsword"] } }))), 1, "Rogue: no Longsword");
+  eq(optErr(run(make({ classId: "rogue", classOptions: { mastery: ["rapier", "shortbow"] } }))), 0);
+  const c = run(make({ classId: "fighter", classOptions: { mastery: ["longsword"] }, weapons: [{ uid: "a", id: "longsword" }, { uid: "b", id: "dagger" }] }));
+  eq(c.attacks.map((a) => a.mastery?.id || null), ["sap", null]);
+  const wm = run(make({ classId: "wizard", level: 4, levelChoices: { 4: { kind: "feat", feat: "weapon-master", inc: "dex" } } }));
+  eq(wm.classOptions.find((x) => x.key === "mastery").count, 1, "Weapon Master gives a Wizard one kind");
+});
+test("Fighter: Fighting Style, Second Wind, Action Surge, Defense", () => {
+  const f = (over = {}) => run(make({ classId: "fighter", ...over }));
+  const f1 = f();
+  eq([f1.featSlots.find((s) => s.id === "style").step, f1.resources.find((r) => r.id === "second-wind").max, f1.resources.some((r) => r.id === "action-surge")], [5, 2, false]);
+  eq(keys(f1.review.todo).includes("todo.feat"), true, "pick a Fighting Style");
+  eq(errKeys(f({ featPicks: { style: "alert" } })).includes("err.featCategory"), true, "an Origin feat isn't a style");
+  eq(errKeys(f({ featPicks: { style: "blessed-warrior" } })).includes("err.featCategory"), true, "Blessed Warrior is for Paladins");
+  eq([f({ armor: "chain-mail" }).ac.value, f({ armor: "chain-mail", featPicks: { style: "defense" } }).ac.value, f({ featPicks: { style: "defense" } }).ac.value], [16, 17, 10 + 2], "Defense only in armor");
+  const f4 = f({ level: 4 });
+  eq([f4.resources.find((r) => r.id === "second-wind").max, f4.resources.find((r) => r.id === "action-surge").recharge], [3, "short"]);
+  eq(f({ level: 5 }).classFeatures.some((x) => x.id === "extra-attack"), true);
+  eq(turnOptions(f({ level: 5 }), make({ classId: "fighter", level: 5 })).attacks, 2);
+  eq(featBlockedKeys(make({ classId: "fighter", level: 4, levelChoices: { 4: { kind: "feat", feat: "archery" } } })), [], "Fighting Style feats at level 4");
+  eq(featBlockedKeys(make({ classId: "wizard", level: 4, levelChoices: { 4: { kind: "feat", feat: "archery" } } })), ["err.featPrereq"]);
+});
+test("Fighter subclasses: Battle Master, Eldritch Knight, Psi Warrior, Champion", () => {
+  const f = (subclass, over = {}) => run(make({ classId: "fighter", level: 3, subclass, ...over }));
+  const bm = f("battle-master");
+  eq([bm.classOptions.find((g) => g.key === "maneuvers").count, bm.resources.find((r) => r.id === "superiority").max, bm.toolSlots.some((s) => s.id === "subclass"), bm.slots.some((s) => s.id === "student-of-war")], [3, 4, true, true]);
+  const ek = src(f("eldritch-knight"), "class");
+  eq([ek.list, ek.picks.map((p) => p.count)], ["wizard", [2, 3]]);
+  eq(f("psi-warrior").resources.find((r) => r.id === "psi").max, 4);
+  eq(f("psi-warrior", { level: 5 }).resources.find((r) => r.id === "psi").name.en, "Psionic Energy Dice (d8)");
+  eq(f("champion").initiativeAdv, true);
+});
+test("Paladin: Lay on Hands, no cantrips, Divine Smite free once, Blessed Warrior, Channel Divinity", () => {
+  const p = (over = {}) => run(make({ classId: "paladin", ...over }));
+  const p1 = p();
+  eq([p1.resources.find((r) => r.id === "lay-on-hands").max, src(p1, "class").picks.map((x) => x.key), p1.featSlots.some((s) => s.id === "style")], [5, ["prepared"], false]);
+  const p2 = p({ level: 2 });
+  eq(src(p2, "class").fixed.map((x) => [x.id, x.free]), [["divine-smite", "smite-free"]]);
+  eq(p2.resources.find((r) => r.id === "smite-free").max, 1);
+  const bw = p({ level: 2, featPicks: { style: "blessed-warrior" }, featChoices: { "blessed-warrior": { picks: { cantrips: ["guidance", "sacred-flame"] } } } });
+  const bs = src(bw, "feat-blessed-warrior");
+  eq([bs.ability, bs.spells.map((x) => x.id), bw.review.errors.length], ["cha", ["guidance", "sacred-flame"], 0]);
+  eq(p({ level: 3 }).resources.find((r) => r.id === "channel").max, 2);
+  const p5 = p({ level: 5, subclass: "devotion" });
+  eq([src(p5, "class").fixed.map((x) => x.id), p5.resources.filter((r) => r.slot).map((r) => r.max)], [["divine-smite", "find-steed", "protection-from-evil-and-good", "shield-of-faith", "aid", "zone-of-truth"], [4, 2]]);
+  const sm = turnOptions(p2, make({ classId: "paladin", level: 2 })).bonus.find((o) => o.id === "spell:divine-smite");
+  eq(sm.cost, { spell: { circle: 1, free: "smite-free" } }, "the free Divine Smite comes first");
+});
+test("Ranger: Favored Enemy, Deft Explorer, Druidic Warrior, subclasses", () => {
+  const r = (over = {}) => run(make({ classId: "ranger", ...over }));
+  const r1 = r();
+  eq([src(r1, "class").fixed.map((x) => [x.id, x.free]), r1.resources.find((x) => x.id === "favored-enemy").max, r1.expertiseMax, r1.languages.total], [[["hunters-mark", "favored-enemy"]], 2, 0, 2]);
+  const r2 = r({ level: 2 });
+  eq([r2.expertiseMax, r2.languages.total, r2.featSlots.find((s) => s.id === "style").options.includes("druidic-warrior")], [1, 4, true], "Expertise and 2 languages");
+  eq(r({ level: 5 }).resources.find((x) => x.id === "favored-enemy").max, 3);
+  const gs = r({ level: 3, subclass: "gloom-stalker", speciesId: "dwarf" });
+  eq([gs.darkvision, gs.initiative], [120 + 60, 2 + 2], "Dwarf 120 + 60; DEX + WIS");
+  eq(r({ level: 3, subclass: "gloom-stalker" }).darkvision, 60, "Human: 60");
+  const fw = r({ level: 3, subclass: "fey-wanderer" });
+  eq([fw.skills.find((s) => s.id === "persuasion").value, fw.slots.some((s) => s.id === "otherworldly-glamour")], [-1 + 2, true], "CHA −1 + WIS +2");
+  eq(errKeys(r({ level: 3, subclass: "hollow-warden" })).includes("err.ravenloftOnly"), true);
+  eq(src(r({ setting: "ravenloft", level: 5, subclass: "hollow-warden" }), "class").fixed.map((x) => x.id), ["hunters-mark", "wrathful-smite", "alter-self"]);
+  eq(r({ level: 3, subclass: "beast-master", classChoices: { companion: "sky" } }).subclassFeatures[0].text.en.includes("Fly 60 ft"), true);
+});
+test("Fighter, Paladin and Ranger characters can be completed", () => {
+  const base = { speciesId: "dwarf", size: "medium", alignment: "LG", languages: ["elvish", "giant"], name: "Test", abilityBase: { str: 15, dex: 14, con: 13, int: 8, wis: 12, cha: 10 } };
+  const fighter = run(make({ ...base, classId: "fighter", background: "soldier", bgIncrease: { mode: "21", plus2: "str", plus1: "con" }, toolPicks: { bg: ["dice"] },
+    skills: ["perception", "survival"], featPicks: { style: "defense" }, classOptions: { mastery: ["longsword", "longbow", "greatsword"] },
+    armor: "chain-mail", weapons: [{ uid: "1", id: "longsword" }, { uid: "2", id: "longbow" }] }));
+  eq([todoKeys(fighter), fighter.review.errors.map((x) => x.key)], [[], []], "Fighter 1");
+  eq([fighter.ac.value, fighter.attacks.map((a) => a.hit)], [17, [3 + 2, 2 + 2]]);
+  const paladin = run(make({ ...base, classId: "paladin", level: 2, background: "acolyte", bgIncrease: { mode: "21", plus2: "cha", plus1: "wis" },
+    featChoices: { "magic-initiate-cleric": { ability: "wis", picks: { cantrips: ["guidance", "light"], spell: ["bless"] } } },
+    skills: ["athletics", "persuasion"], featPicks: { style: "great-weapon-fighting" }, classOptions: { mastery: ["greatsword", "javelin"] },
+    spellPicks: { prepared: ["heroism", "searing-smite", "cure-wounds"] } }));
+  eq([todoKeys(paladin), paladin.review.errors.map((x) => x.key)], [[], []], "Paladin 2");
+  const ranger = run(make({ ...base, classId: "ranger", level: 2, background: "wayfarer", bgIncrease: { mode: "21", plus2: "dex", plus1: "wis" },
+    languages: ["elvish", "giant", "orc", "sylvan"], skills: ["athletics", "nature", "survival"], expertise: ["survival"],
+    featPicks: { style: "druidic-warrior" }, featChoices: { "druidic-warrior": { picks: { cantrips: ["guidance", "starry-wisp"] } } }, classOptions: { mastery: ["longbow", "shortsword"] },
+    spellPicks: { prepared: ["ensnaring-strike", "cure-wounds", "goodberry"] } }));
+  eq([todoKeys(ranger), ranger.review.errors.map((x) => x.key)], [[], []], "Ranger 2");
 });
 
 let failed = 0;

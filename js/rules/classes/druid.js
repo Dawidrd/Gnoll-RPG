@@ -61,6 +61,7 @@ export const druid = {
     },
   },
   extraArmorTraining: (c) => (c.classChoices.order === "warden" ? ["medium"] : []),
+  weaponProf: (w, c) => c.classChoices.order === "warden", // Warden: Martial weapons
   skillBonus: (c, skill) => (c.classChoices.order === "magician" && (skill === "arcana" || skill === "nature") ? atLeast1(c.mods.wis) : 0),
 
   spellcasting: (lv, c) => ({ ability: "wis", list: L("druida", "Druid"), listId: "druid",

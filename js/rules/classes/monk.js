@@ -65,6 +65,8 @@ export const monk = {
   },
 
   armorTraining: [],
+  // Simple weapons and Martial weapons with Light (Monk weapons use DEX and the Martial Arts die).
+  weaponProf: (w) => w.cat === "simple" || !!w.props.light,
   // Tool proficiency: one kind of Artisan's Tools or one Musical Instrument.
   toolChoice: { count: 1, from: ["artisan", "instrument"] },
   /** Unarmored Defense: 10 + DEX + WIS, only without armor and shield. */

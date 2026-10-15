@@ -14,6 +14,7 @@ import { writePick } from "../rules/magic.js";
 import { spellPickUI, spellTags, spellBody } from "./spellpicker.js";
 import { classOptionUI, classOptionList } from "./classoptions.js";
 import { combatTab, activeCard } from "./combat.js";
+import { attacksBlock } from "./weapons.js";
 import { inventoryTab, journalTab } from "./gear.js";
 
 const TABS = ["start", "combat", "character", "spells", "inventory", "levelup", "journal", "notes"];
@@ -143,7 +144,7 @@ export function renderSheet(root, go, id, tab) {
         im.notes?.some((n) => n.key !== "imp.levelChanged") ? h("p", { cls: "hint", text: t("imp.diffHint") }) : null,
         h("button", { type: "button", cls: "btn", id: "import-ok", text: t("imp.ok"), onclick: () => { ch.imported = { ...ch.imported, dismissed: true }; save(); } }),
       ]) : null;
-      return [impCard, banner, concBanner(), h("div", { cls: "cols" }, [hpCard, resCard]), activeCard({ ch, c, save }), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), flawBlk];
+      return [impCard, banner, concBanner(), h("div", { cls: "cols" }, [hpCard, resCard]), activeCard({ ch, c, save }), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), attacksBlock(c, ch), flawBlk];
     }
 
     function tabCharacter() {
@@ -269,7 +270,8 @@ export function renderSheet(root, go, id, tab) {
         const edit = picks.length ? h("div", { cls: "row" }, picks.map((p) => h("button", { type: "button", cls: "btn ghost", id: "edit-" + p.id.replace(/[^\w-]/g, "_"),
           text: `${t("spell.change")}: ${tr(p.label).toLowerCase()} (${p.chosen.length}/${p.count})`, onclick: () => { editing = editing === p.id ? null : p.id; draw(); } }))) : null;
         const open = picks.find((p) => p.id === editing);
-        const rule = src.id === "class" && c.spells?.changeRule === "level" ? h("p", { cls: "hint", text: t("spell.changeLevel") }) : null;
+        const rule = src.id === "class" && c.spells?.changeRule === "level" ? h("p", { cls: "hint", text: t("spell.changeLevel") })
+          : src.id === "class" && c.spells?.changeRule === "oneLongRest" ? h("p", { cls: "hint", text: t("spell.changeOneLongRest") }) : null;
         out.push(h("section", { cls: "blk gl" }, [...head, ...rows, edit, rule,
           open ? spellPickUI({ pick: open, c, onChange: (ids) => { writePick(ch, open, ids); save(); } }) : null]));
       }

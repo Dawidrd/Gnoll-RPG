@@ -9,6 +9,10 @@ import { sorcerer } from "./classes/sorcerer.js";
 import { bard } from "./classes/bard.js";
 import { druid } from "./classes/druid.js";
 import { wizard } from "./classes/wizard.js";
+import { fighter } from "./classes/fighter.js";
+import { paladin } from "./classes/paladin.js";
+import { ranger } from "./classes/ranger.js";
+import { weaponAttacks, masteryGroup } from "./weapons.js";
 import { BEASTS } from "./beasts.js";
 import { classOptions, optionInnate } from "./options.js";
 import { ARMOR, armorClass } from "./armor.js";
@@ -20,13 +24,10 @@ import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./ident
 import { review } from "./checks.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
 
-export const CLASSES = { barbarian, bard, cleric, druid, monk, rogue, sorcerer, warlock, wizard };
+export const CLASSES = { barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard };
 
 /** Classes listed in the creator but not built yet. */
-export const PLANNED_CLASSES = {
-  fighter: { pl: "Wojownik", en: "Fighter" }, paladin: { pl: "Paladyn", en: "Paladin" },
-  ranger: { pl: "Łowca", en: "Ranger" },
-};
+export const PLANNED_CLASSES = {};
 
 export { SPECIES, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES };
 export { CREATURE_TYPES, DAMAGE_NAMES, SPELL_ABILITIES, SPECIES_SPELLS } from "./species.js";
@@ -94,13 +95,14 @@ function stateBefore(ch, L) {
   const subclass = L >= (cls.subclassLevel || 99) ? cls.subclasses?.[ch.subclass] : null;
   (subclass?.armorTraining || []).forEach((x) => training.add(x));
   const casts = !!(cls.spellcasting || subclass?.spellcasting?.(L, ctx));
-  return { abilities, training, casts, fightingStyle: !!cls.fightingStyle, saves: cls.saves };
+  return { abilities, training, casts, fightingStyle: !!cls.fightingStyle && cls.fightingStyle < L, saves: cls.saves };
 }
 
 /** Can the character take this feat at level L? Returns the unmet prerequisite or null. */
 export function featBlocked(ch, L, featId) {
   const f = FEATS[featId];
-  if (!f || f.category !== "general") return { pl: "to nie jest feat ogólny", en: "not a general feat" };
+  // "Another feat of your choice for which you qualify": general feats, and Fighting Style feats with the Fighting Style feature.
+  if (!f || (f.category !== "general" && f.category !== "fighting-style")) return { pl: "to nie jest feat ogólny", en: "not a general feat" };
   const st = stateBefore(ch, L);
   const p = f.prereq || {};
   if (p.ability && !p.ability.some((a) => st.abilities[a] >= 13)) return prereqText(f);
@@ -137,6 +139,7 @@ export function levelChoiceProblems(ch, L) {
   if (!f) return { todo, errors };
   const taken = [];
   for (const k of CLASSES[ch.classId].asiLevels || []) if (k < L && ch.levelChoices?.[k]?.kind === "feat") taken.push(ch.levelChoices[k].feat);
+  if (f.category === "fighting-style" && ch.featPicks?.style === lc.feat) taken.push(lc.feat); // same as the class's Fighting Style
   if (!f.repeatable && taken.includes(lc.feat)) errors.push({ key: "err.featTwice", vars: { name: f.name } });
   if (f.increase && !lc.inc) todo.push({ key: "todo.featInc", vars: { n: L, name: f.name } });
   if (lc.inc && !featIncreaseOptions(ch, L, lc.feat).includes(lc.inc)) errors.push({ key: "err.featInc", vars: { n: L, name: f.name } });
@@ -179,6 +182,7 @@ export function normalize(ch) {
   if (!Array.isArray(ch.journal)) ch.journal = [];
   if (!ch.turn) ch.turn = newTurn();
   if (!ch.active) ch.active = {};
+  if (!Array.isArray(ch.weapons)) ch.weapons = []; // 0.12: weapons carried, for attack rolls
   if (!ch.familiar) ch.familiar = { name: "", kind: "", hp: { cur: null, max: null }, present: true };
   if ((ch.schema || 1) < 3) {
     ch.setting = ch.setting || "standard";
@@ -224,7 +228,7 @@ export function compute(raw) {
   const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   const ctx = { level, pb, mods, abilities, choice: ch.speciesChoice || {}, classChoices, subclassId: subclass ? ch.subclass : "" };
   const training = [...new Set([...(cls.armorTraining || []), ...(cls.extraArmorTraining ? cls.extraArmorTraining(ctx) : []), ...(subclass?.armorTraining || [])])];
-  // Choices at Ability Score Improvement levels (4 within levels 1–5): ASI or a general feat.
+  // Choices at Ability Score Improvement levels (4 within levels 1–5): ASI or a feat (general, or Fighting Style if you have the feature).
   const asiLevels = (cls.asiLevels || []).filter((L) => L <= level);
   const levelFeats = asiLevels.filter((L) => ch.levelChoices?.[L]?.kind === "feat" && FEATS[ch.levelChoices[L].feat])
     .map((L) => ({ L, id: ch.levelChoices[L].feat, pick: ch.levelChoices[L] }));
@@ -237,7 +241,16 @@ export function compute(raw) {
   // Class option lists (Eldritch Invocations, Metamagic). Cantrip prerequisites look at the cantrips picked for the class and the Book of Shadows.
   const tomeOn = (ch.classOptions?.invocations || []).includes("pact-of-the-tome");
   const knownClassCantrips = [...(ch.spellPicks?.cantrips || []), ...(tomeOn ? ch.spellPicks?.tomeCantrips || [] : [])];
-  const opts = classOptions(ch, cls, ctx, knownClassCantrips);
+  // Weapon training: Simple weapons for everyone, more from the class (Martial, or some Martial kinds) and the subclass.
+  const proficient = (w) => w.cat === "simple" || !!(cls.weaponProf && cls.weaponProf(w, ctx)) || !!subclass?.martialWeapons;
+  // Weapon Mastery: the class's kinds, plus one per Weapon Master feat (for any class, among weapons you're proficient with).
+  const extraMastery = levelFeats.filter((lf) => lf.id === "weapon-master").length;
+  const optCls = { ...cls, optionPicks: (c) => {
+    const groups = cls.optionPicks ? cls.optionPicks(c) : [];
+    if (!extraMastery) return groups;
+    return groups.some((g) => g.key === "mastery") ? groups.map((g) => (g.key === "mastery" ? { ...g, count: g.count + extraMastery } : g)) : [...groups, masteryGroup(extraMastery, proficient)];
+  } };
+  const opts = classOptions(ch, optCls, ctx, knownClassCantrips);
   ctx.classOptions = opts.valid;
   ctx.armor = { wearing: worn.wearing, heavy: worn.heavy, shield: !!ch.shield };
 
@@ -255,6 +268,9 @@ export function compute(raw) {
   // Lessons of the First Ones (Warlock invocation): one Origin feat each time.
   Object.values(opts.valid).flat().filter((x) => x.option?.originFeat).forEach((x, i) =>
     featSlots.push({ id: `lessons-${i}`, step: 5, category: "origin", label: x.option.name, options: null, darkGift: ravenloft, default: null }));
+  // Fighting Style (Fighter 1, Paladin and Ranger 2): a Fighting Style feat, or the class's alternative (Blessed or Druidic Warrior).
+  if (cls.fightingStyle && level >= cls.fightingStyle) featSlots.push({ id: "style", step: 5, category: "fighting-style", label: { pl: "Fighting Style (Styl walki)", en: "Fighting Style" },
+    options: [...Object.keys(FEATS).filter((k) => FEATS[k].category === "fighting-style"), ...(cls.styleAlt ? [cls.styleAlt] : [])], darkGift: false, default: null });
   for (const sl of featSlots) {
     const raw = (ch.featPicks || {})[sl.id];
     sl.pick = raw || sl.default || "";
@@ -292,13 +308,15 @@ export function compute(raw) {
   // Origin feats and Dark Gifts, with the player's sub-choices (spell ability, skills, Expertise, catalyst).
   const originFeats = featIds.map((id) => ({ id, ...FEATS[id], choice: (ch.featChoices || {})[id] || {} }));
 
-  const initiative = mods.dex + feats.reduce((s, f) => s + (f.initiativeBonus ? f.initiativeBonus(ctx) : 0), 0);
+  const initiative = mods.dex + feats.reduce((s, f) => s + (f.initiativeBonus ? f.initiativeBonus(ctx) : 0), 0) + (subclass?.initiativeBonus ? subclass.initiativeBonus(ctx) : 0);
   const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : spt.speed;
   const armorDef = ARMOR[armorId];
   const slowArmor = armorDef?.str && abilities.str < armorDef.str ? 10 : 0;
   const featSpeed = levelFeats.reduce((n, lf) => n + (FEATS[lf.id].speed || 0), 0);
   const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor + featSpeed;
-  const darkvision = Math.max(sp.custom ? ch.customSpecies?.darkvision || 0 : spt.darkvision, subclass?.darkvision || 0);
+  const baseDark = sp.custom ? ch.customSpecies?.darkvision || 0 : spt.darkvision;
+  // Gloom Stalker: Darkvision 60 ft, or 60 ft more if you already have it.
+  const darkvision = Math.max(subclass?.darkvisionPlus ? baseDark + subclass.darkvisionPlus : baseDark, subclass?.darkvision || 0);
 
   // Skills from feats: Skill Expert gives a proficiency; Keen Mind and Observant give proficiency or, if you have it, Expertise.
   const featSkillGrants = levelFeats.filter((lf) => FEATS[lf.id].skillPick && lf.pick.skill).map((lf) => lf.pick.skill);
@@ -322,6 +340,7 @@ export function compute(raw) {
   const toolSlots = [];
   if (bg?.tool && TOOL_GROUPS[bg.tool]) toolSlots.push({ id: "bg", step: 2, label: bg.name, count: 1, from: toolOptions([bg.tool]), required: true });
   if (cls.toolChoice) toolSlots.push({ id: "class", step: 1, label: cls.name, count: cls.toolChoice.count, from: toolOptions(cls.toolChoice.from), required: true });
+  if (subclass?.toolChoice) toolSlots.push({ id: "subclass", step: 5, label: subclass.name, count: subclass.toolChoice.count, from: toolOptions(subclass.toolChoice.from), required: true });
   for (const f of feats) if (f.toolPicks) toolSlots.push({ id: "feat-" + f.id, step: 5, label: f.name, count: f.toolPicks.count, from: toolOptions(f.toolPicks.from), required: true });
   const skilledTools = (toolPicks.skilled || []).slice(0, skilledCount);
   if (skilledCount) toolSlots.push({ id: "skilled", step: 5, label: FEATS.skilled.name, count: skilledCount, from: ALL_TOOLS, required: false });
@@ -330,9 +349,10 @@ export function compute(raw) {
   const toolIds = [...new Set([...fixedTools, ...toolSlots.flatMap((sl) => sl.picked)])];
 
   // Languages: Common, plus two standard ones, plus whatever the class adds.
-  const langAuto = ["common", ...(cls.languages?.auto || [])];
+  const clsLang = (typeof cls.languages === "function" ? cls.languages(level) : cls.languages) || {}; // Ranger: Deft Explorer at level 2
+  const langAuto = ["common", ...(clsLang.auto || [])];
   const langSlots = [{ id: "origin", label: { pl: "Pochodzenie: 2 języki standardowe", en: "Origin: 2 standard languages" }, count: 2, from: STANDARD_PICKS }];
-  if (cls.languages?.pick) langSlots.push({ ...cls.languages.pick, from: cls.languages.pick.from === "any" ? ANY_PICKS : cls.languages.pick.from });
+  if (clsLang.pick) langSlots.push({ ...clsLang.pick, from: clsLang.pick.from === "any" ? ANY_PICKS : clsLang.pick.from });
   for (const f of originFeats.filter((x) => x.language)) langSlots.push({ id: "feat-" + f.id, label: f.name, count: f.language, from: ANY_PICKS });
   const langChosen = (ch.languages || []).filter((x) => !langAuto.includes(x));
   const languages = { auto: langAuto, slots: langSlots, chosen: langChosen, total: langSlots.reduce((n, x) => n + x.count, 0),
@@ -350,7 +370,7 @@ export function compute(raw) {
     const fromSub = isGranted && !fromBg && !fromFeat;
     const prof = isGranted || (ch.skills || []).includes(s.id);
     const expert = prof && ((ch.expertise || []).includes(s.id) || featExpertise.includes(s.id));
-    const extra = cls.skillBonus ? cls.skillBonus(ctx, s.id, prof) : 0;
+    const extra = (cls.skillBonus ? cls.skillBonus(ctx, s.id, prof) : 0) + (subclass?.skillBonus ? subclass.skillBonus(ctx, s.id, prof) : 0);
     return { ...s, prof, fromBg, fromSub, fromFeat, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
   });
   const perception = skills.find((s) => s.id === "perception").value;
@@ -390,6 +410,11 @@ export function compute(raw) {
     if (ma > base) worn = { ...worn, value: ma + (ch.shield ? 2 : 0),
       note: { pl: "Mage Armor 13 + ZRĘ" + (ch.shield ? " + tarcza 2" : ""), en: "Mage Armor 13 + DEX" + (ch.shield ? " + shield 2" : "") } };
   }
+  // Fighting Style feats (class slot or taken at a level): Defense gives +1 AC in armor; the others shape weapon attacks.
+  const styleIds = [...new Set([...featIds, ...levelFeats.map((lf) => lf.id)])].filter((id) => FEATS[id]?.category === "fighting-style");
+  if (styleIds.includes("defense") && worn.wearing) worn = { ...worn, value: worn.value + 1, note: { pl: worn.note.pl + " + Obrona 1", en: worn.note.en + " + Defense 1" } };
+  const attacks = weaponAttacks({ list: ch.weapons || [], mods, abilities, pb, proficient, styles: styleIds, mastered: (opts.valid.mastery || []).map((x) => x.base),
+    monkDie: cls.id === "monk" ? (level < 5 ? "d6" : level < 11 ? "d8" : level < 17 ? "d10" : "d12") : "", rage: active.rage ? (level < 9 ? 2 : level < 16 ? 3 : 4) : 0 });
   const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] }
     : wildShape ? { ...worn, value: wildShape.ac, note: { pl: `Wild Shape: ${wildShape.beast.name.pl.split(" (")[0]}`, en: `Wild Shape: ${wildShape.beast.name.en}` } } : worn;
   const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: spells.pact ? "short" : "long", slot: i + 1, pact: !!spells.pact,
@@ -441,7 +466,7 @@ export function compute(raw) {
     resistances: active.rage ? [...new Set([...spt.resist, "bludgeoning", "piercing", "slashing"])] : spt.resist, active, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(subclass?.summary ? subclass.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
-    classOptions: opts.groups, knownClassCantrips, wildShape, forms,
+    classOptions: opts.groups, knownClassCantrips, wildShape, forms, attacks, styleIds, initiativeAdv: !!subclass?.initiativeAdv,
     classFeatures: atLevel(cls.features),
     subclassFeatures: subclass ? atLevel(subclass.features) : [],
     speciesFeatures: atLevel(sp.features),

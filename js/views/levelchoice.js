@@ -44,7 +44,7 @@ export function levelChoiceUI({ draft, L, onChange, profSkills = [] }) {
   }
 
   if (lc?.kind === "feat") {
-    const general = Object.entries(FEATS).filter(([k, f]) => f.category === "general" && !f.asi)
+    const general = Object.entries(FEATS).filter(([k, f]) => (f.category === "general" && !f.asi) || (f.category === "fighting-style" && !featBlocked(draft, L, k)))
       .sort(([, a], [, b]) => tr(a.name).localeCompare(tr(b.name), lang()));
     const featOpts = general.map(([k, f]) => {
       const block = featBlocked(draft, L, k);

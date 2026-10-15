@@ -18,6 +18,7 @@ import { SPELLS } from "../rules/spells.js";
 import { writePick, readPick } from "../rules/magic.js";
 import { spellPickUI } from "./spellpicker.js";
 import { classOptionUI } from "./classoptions.js";
+import { weaponEditor } from "./weapons.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 
@@ -531,6 +532,8 @@ export function renderForm(root, go, id) {
       ]),
       h("p", { cls: "acline" }, ["AC: ", h("b", { text: c.ac.value }), " · " + tr(c.ac.note)]),
       ...(c.ac.warnings || []).map((w) => h("p", { cls: "warn", text: tr(w) })),
+      h("h4", { text: t("wpn.title") }),
+      weaponEditor({ ch, c, onChange: draw }),
     ]);
   }
 

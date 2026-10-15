@@ -30,7 +30,8 @@ function standardActions(c) {
   const dc = grappleDc(c);
   return [
     { id: "attack", group: "attack", label: L(n > 1 ? `Attack (${n} ataki)` : "Attack (atak)", n > 1 ? `Attack (${n} attacks)` : "Attack"),
-      desc: L("Atak bronią albo bez broni (Unarmed Strike). Szczegóły trafienia i obrażeń masz na Starcie.", "A weapon or Unarmed Strike attack. Hit and damage are on the Start tab."), attack: true },
+      desc: c.attacks?.length ? { pl: c.attacks.map((a) => `${a.name.pl.split(" (")[0]} ${signed(a.hit)}, ${a.damage.pl}`).join("; "), en: c.attacks.map((a) => `${a.name.en} ${signed(a.hit)}, ${a.damage.en}`).join("; ") }
+        : L("Atak bronią albo bez broni (Unarmed Strike). Broń dodasz w Ekwipunku.", "A weapon or Unarmed Strike attack. Add weapons under Equipment."), attack: true },
     { id: "grapple", group: "attack", label: L("Chwyt (Grapple)", "Grapple"), attack: true,
       desc: L(`Zamiast ataku: cel rzuca SIŁ albo ZRĘ przeciw DC ${dc}; porażka = Grappled.`, `Instead of an attack: the target makes a STR or DEX save against DC ${dc}; on a fail it's Grappled.`) },
     { id: "shove", group: "attack", label: L("Pchnięcie (Shove)", "Shove"), attack: true,
@@ -183,6 +184,50 @@ function featureOptions(c, ch) {
       if (sub === "evoker" && lv >= 3) add("free", { id: "potent-cantrip", label: L("Potent Cantrip", "Potent Cantrip"), desc: L("Chybiona sztuczka albo zdany rzut celu: i tak połowa obrażeń.", "A missed cantrip or a successful save: still half damage.") });
       if (sub === "illusionist" && lv >= 3) add("bonus", { id: "quick-illusion", label: L("Minor Illusion (akcja bonusowa)", "Minor Illusion (Bonus Action)"), desc: L("Dźwięk i obraz jednym rzuceniem.", "Sound and image with one casting.") });
       if (sub === "abjurer" && lv >= 3) add("bonus", { id: "ward-charge", label: L("Arcane Ward: slot → HP osłony", "Arcane Ward: slot → ward HP"), desc: L("Wydajesz slot; osłona odzyskuje 2 × jego krąg HP.", "Spend a slot; the ward regains 2 × its level HP.") });
+      break;
+    }
+    case "fighter": {
+      add("bonus", { id: "second-wind", label: L("Second Wind", "Second Wind"), cost: { res: "second-wind", n: 1 },
+        desc: L(`Leczysz 1k10 + ${lv}.${lv >= 5 ? " Do tego ruch o połowę prędkości bez ataków okazyjnych." : ""}`, `Heal 1d10 + ${lv}.${lv >= 5 ? " Plus a move of half your Speed without Opportunity Attacks." : ""}`) });
+      if (lv >= 2) add("free", { id: "action-surge", label: L("Action Surge", "Action Surge"), cost: { res: "action-surge", n: 1 },
+        desc: L("Jeszcze jedna akcja w tej turze (nie Magic). Zaznacz ją po wykonaniu pierwszej.", "One more action this turn (not Magic). Mark it after taking the first one.") });
+      if (sub === "battle-master" && lv >= 3) {
+        const known = (c.classOptions || []).find((g) => g.key === "maneuvers")?.chosen.filter((x) => !x.problem) || [];
+        const slotOf = { "evasive-footwork": "bonus", "feinting-attack": "bonus", "lunging-attack": "bonus", rally: "bonus", parry: "reaction", riposte: "reaction" };
+        for (const x of known) add(slotOf[x.base] || "free", { id: "man-" + x.base, label: x.option.name, cost: { res: "superiority", n: 1 }, desc: x.option.desc(c) });
+      }
+      if (sub === "psi-warrior" && lv >= 3) {
+        add("reaction", { id: "protective-field", label: L("Protective Field", "Protective Field"), cost: { res: "psi", n: 1 }, desc: L(`Obrażenia Twoje albo istoty w 30 ft −(kość + ${Math.max(1, c.mods.int)}).`, `Damage to you or a creature within 30 ft −(die + ${Math.max(1, c.mods.int)}).`) });
+        add("free", { id: "psionic-strike", label: L("Psionic Strike", "Psionic Strike"), cost: { res: "psi", n: 1 }, desc: L(`Raz na turę po trafieniu bronią: +kość + ${c.mods.int} obrażeń od mocy.`, `Once per turn after a weapon hit: +die + ${c.mods.int} Force damage.`) });
+        add("action", { id: "telekinetic-movement", label: L("Telekinetic Movement", "Telekinetic Movement"), cost: { res: "telekinetic-movement", n: 1 }, desc: L("Przenosisz przedmiot albo chętną istotę o 30 ft.", "Move an object or a willing creature 30 ft.") });
+      }
+      if (sub === "eldritch-knight" && lv >= 3) add("bonus", { id: "war-bond", label: L("War Bond: przywołanie broni", "War Bond: summon weapon"), desc: L("Związana broń teleportuje się do Twojej ręki.", "Your bonded weapon teleports to your hand.") });
+      break;
+    }
+    case "paladin": {
+      const cha = c.mods.cha, dc = 8 + cha + pb;
+      add("bonus", { id: "lay-on-hands", label: L("Lay on Hands", "Lay on Hands"), desc: L("Dotyk: leczysz z puli tyle HP, ile chcesz (odejmij je w Zasobach na Starcie).", "Touch: heal as many HP from the pool as you like (take them off under Resources on Start).") });
+      if (lv >= 3) add("bonus", { id: "divine-sense", label: L("Divine Sense", "Divine Sense"), cost: { res: "channel", n: 1 }, desc: L("10 minut: wiesz, gdzie w 60 ft są niebiańscy, biesy i nieumarli.", "10 minutes: you know where Celestials, Fiends and Undead are within 60 ft.") });
+      if (lv >= 3 && sub === "devotion") add("free", { id: "sacred-weapon", label: L("Sacred Weapon", "Sacred Weapon"), cost: { res: "channel", n: 1 }, desc: L(`Przy akcji Attack: broń wręcz +${Math.max(1, cha)} do trafienia na 10 minut, może zadawać promieniste.`, `With the Attack action: melee weapon +${Math.max(1, cha)} to hit for 10 minutes, can deal Radiant.`) });
+      if (lv >= 3 && sub === "vengeance") add("free", { id: "vow-of-enmity", label: L("Vow of Enmity", "Vow of Enmity"), cost: { res: "channel", n: 1 }, desc: L("Przy akcji Attack: Przewaga na ataki w istotę w 30 ft przez minutę.", "With the Attack action: Advantage on attacks against a creature within 30 ft for a minute.") });
+      if (lv >= 3 && sub === "ancients") add("action", { id: "natures-wrath", label: L("Nature's Wrath", "Nature's Wrath"), cost: { res: "channel", n: 1 }, desc: L(`Wybrane istoty w 15 ft: SIŁ (DC ${dc}) albo Restrained.`, `Chosen creatures within 15 ft: STR save (DC ${dc}) or Restrained.`) });
+      if (lv >= 3 && sub === "glory") {
+        add("bonus", { id: "peerless-athlete", label: L("Peerless Athlete", "Peerless Athlete"), cost: { res: "channel", n: 1 }, desc: L("Godzina: Przewaga na Atletykę i Akrobatykę, skoki +10 ft.", "One hour: Advantage on Athletics and Acrobatics, jumps +10 ft.") });
+        add("free", { id: "inspiring-smite", label: L("Inspiring Smite", "Inspiring Smite"), cost: { res: "channel", n: 1 }, desc: L(`Po Divine Smite: 2k8 + ${lv} tymczasowych HP do rozdzielenia w 30 ft.`, `After Divine Smite: 2d8 + ${lv} Temporary HP to share within 30 ft.`) });
+      }
+      break;
+    }
+    case "ranger": {
+      if (sub === "gloom-stalker" && lv >= 3) add("free", { id: "dreadful-strike", label: L("Dreadful Strike", "Dreadful Strike"), cost: { res: "dreadful-strike", n: 1 }, desc: L("Raz na turę po trafieniu bronią: +2k6 psychicznych.", "Once per turn after a weapon hit: +2d6 Psychic.") });
+      if (sub === "fey-wanderer" && lv >= 3) add("free", { id: "dreadful-strikes", label: L("Dreadful Strikes", "Dreadful Strikes"), desc: L("Po trafieniu bronią: +1k4 psychicznych (raz na turę na cel).", "After a weapon hit: +1d4 Psychic (once per turn per target).") });
+      if (sub === "hunter" && lv >= 3) add("free", (c.classChoices?.prey || "colossus") === "horde"
+        ? { id: "horde-breaker", label: L("Horde Breaker", "Horde Breaker"), desc: L("Raz w turze: dodatkowy atak tą bronią w inną istotę w 5 ft od celu.", "Once per turn: an extra attack with the weapon against another creature within 5 ft of the target.") }
+        : { id: "colossus-slayer", label: L("Colossus Slayer", "Colossus Slayer"), desc: L("Raz w turze: +1k8, gdy celowi brakuje choć 1 HP.", "Once per turn: +1d8 when the target is missing any HP.") });
+      if (sub === "beast-master" && lv >= 3) {
+        add("bonus", { id: "command-beast", label: L("Rozkaz dla bestii", "Command the beast"), desc: L("Bestia wykonuje akcję (np. Cios bestii). Bez rozkazu robi tylko Dodge.", "The beast takes an action (e.g. Beast's Strike). Without orders it only Dodges.") });
+        add("free", { id: "beast-strike", label: L("Bestia zamiast ataku", "Beast instead of an attack"), desc: L("Oddajesz jeden atak z akcji Attack, a bestia używa Ciosu bestii.", "Give up one Attack-action attack; the beast uses Beast's Strike.") });
+      }
+      if (sub === "hollow-warden" && lv >= 3) add("bonus", { id: "wrath-of-the-wild", label: L("Wrath of the Wild", "Wrath of the Wild"), cost: { res: "favored-enemy", n: 1 }, desc: L(`Minuta upiornej postaci: +1 KP, atak okazyjny po zranieniu sojusznika, strach w 10 ft (MĄD, DC ${8 + wis + pb}).`, `A minute in ghastly form: +1 AC, an Opportunity Attack when an ally is hurt, fear within 10 ft (WIS, DC ${8 + wis + pb}).`) });
       break;
     }
     case "sorcerer": {

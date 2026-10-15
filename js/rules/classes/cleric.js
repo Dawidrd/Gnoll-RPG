@@ -35,6 +35,7 @@ export const cleric = {
     },
   },
   extraArmorTraining: (c) => (c.classChoices.order === "protector" ? ["heavy"] : []),
+  weaponProf: (w, c) => c.classChoices.order === "protector", // Protector: Martial weapons
   skillBonus: (c, skill) => (c.classChoices.order === "thaumaturge" && (skill === "arcana" || skill === "religion") ? atLeast1(c.mods.wis) : 0),
 
   spellcasting: (L, c) => ({

@@ -80,7 +80,7 @@ export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originF
     const always = [...new Set([...(cls.alwaysSpells ? cls.alwaysSpells(level, ctx) : []), ...(subclass?.domainSpells ? subclass.domainSpells(level, ctx) : [])])].map(spellId).filter((id) => SPELLS[id]);
     const fixedC = casting.fixedCantrips || [];
     const bonusC = (subclass?.bonusCantrips ? subclass.bonusCantrips(level) : []).filter((id) => SPELLS[id] && !always.includes(id) && !fixedC.includes(id));
-    const freeCasts = subclass?.freeCasts || {};
+    const freeCasts = { ...(cls.freeCasts || {}), ...(subclass?.freeCasts || {}) }; // Divine Smite, Hunter's Mark, Star Map…
     const circles = casting.slots.map((_, i) => i + 1);
     // Wizard: the spellbook (+2 per level) and the subclass's free school spells; prepared spells are picked from them.
     const book = casting.spellbook ? [
@@ -93,7 +93,8 @@ export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originF
       fixed: [...[...fixedC, ...bonusC].map((id) => entry(id, "atwill", "cantrip", { fixedBy: "class" })),
         ...always.map((id) => entry(id, SPELLS[id].circle ? "slots" : "atwill", "always", freeCasts[id] ? { free: freeCasts[id] } : {}))],
       picks: [
-        { id: "class:cantrips", store: "class", key: "cantrips", count: Math.max(0, casting.cantrips - fixedC.length), circles: [0], lists: [casting.listId], exclude: [...fixedC, ...bonusC, ...always] },
+        // Paladins and Rangers have no cantrips: no cantrip pick at all.
+        ...(casting.cantrips > 0 ? [{ id: "class:cantrips", store: "class", key: "cantrips", count: Math.max(0, casting.cantrips - fixedC.length), circles: [0], lists: [casting.listId], exclude: [...fixedC, ...bonusC, ...always] }] : []),
         ...book,
         { id: "class:prepared", store: "class", key: "prepared", count: casting.prepared, circles, lists: [casting.listId], exclude: always, fromKeys: book.length ? book.map((p) => p.key) : null },
       ],
@@ -112,7 +113,7 @@ export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originF
   // Origin feats: Magic Initiate (picks) and Dark Gifts (fixed spells).
   for (const f of originFeats) {
     if (!f.innate && !f.spellPicks) continue;
-    const ability = f.spellAbility && MENTAL.includes(f.choice.ability) ? f.choice.ability : "";
+    const ability = f.fixedAbility || (f.spellAbility && MENTAL.includes(f.choice.ability) ? f.choice.ability : "");
     finish({ id: "feat-" + f.id, kind: "feat", label: f.name, featId: f.id, ability, needsAbility: !!f.spellAbility, ...magicNumbers(ability, mods, pb), resPrefix: `ft-${f.id}-`,
       fixed: (f.innate || []).map((x) => entry(x.id, x.uses, "innate")),
       picks: (f.spellPicks || []).map((p) => ({ ...p, id: `feat-${f.id}:${p.key}`, store: "feat", featId: f.id, count: p.count === "pb" ? pb : p.count })) });

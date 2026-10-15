@@ -1,6 +1,7 @@
 // Equipment (items with quantity and a note, plus coins) and the session journal.
 import { h, toast } from "../dom.js";
 import { t } from "../i18n.js";
+import { weaponEditor } from "./weapons.js";
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 const COINS = ["pp", "gp", "ep", "sp", "cp"];
@@ -57,6 +58,7 @@ export function inventoryTab({ ch, save, c }) {
 
     wrap.replaceChildren(
       h("header", { cls: "stack" }, [h("h2", { text: t("inv.title") }), h("p", { cls: "lead", text: t("inv.lead") })]),
+      h("section", { cls: "card", id: "weapons-card" }, [h("h4", { text: t("wpn.title") }), weaponEditor({ ch, c, onChange: () => save() })]),
       h("section", { cls: "card", id: "coins" }, [h("h4", { text: t("inv.coins") }), coins,
         h("p", { cls: "hint", text: t("inv.total", { gp: Number.isInteger(total) ? total : total.toFixed(2) }) })]),
       h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("inv.items") }),

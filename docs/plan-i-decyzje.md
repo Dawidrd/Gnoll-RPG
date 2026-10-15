@@ -27,11 +27,11 @@ Ten plik jest kopią ustaleń z projektu „DnD” w claude.ai, przygotowaną dl
 - `sw.js` — service worker (`VERSION`, `SHELL`).
 
 ## Zrobione (wersje)
-0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7).
+0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8).
 
 ## Następne kroki (kolejność)
 1. ~~Partia 7 (0.11): Bard, Druid, Wizard~~ — zrobione.
-2. **Partia 8: Fighter, Paladin, Ranger + broń.** Tabela broni z rozdz. 6 z Weapon Mastery (dla wszystkich klas walczących, także Barbarzyńcy i Łotra), ataki bronią na karcie. Fighter: Fighting Style, Second Wind, Action Surge, Tactical Mind, podklasy (Battle Master, Eldritch Knight…). Paladin: Lay on Hands, Divine Smite, przysięgi. Ranger: Favored Enemy, Deft Explorer, podklasy + Hollow Warden (Ravenloft).
+2. ~~Partia 8: Fighter, Paladin, Ranger + broń~~ — zrobione. Tabela broni z rozdz. 6 z Weapon Mastery (dla wszystkich klas walczących, także Barbarzyńcy i Łotra), ataki bronią na karcie. Fighter: Fighting Style, Second Wind, Action Surge, Tactical Mind, podklasy (Battle Master, Eldritch Knight…). Paladin: Lay on Hands, Divine Smite, przysięgi. Ranger: Favored Enemy, Deft Explorer, podklasy + Hollow Warden (Ravenloft).
 3. **Partie D1–D4: drużyna i synchronizacja (Firebase)** — zob. `docs/druzyna-synchronizacja.md`.
 4. **Partia 9: ekwipunek startowy** (opcje A/B klasy i tła, złoto, cennik rozdz. 6, błyskotka; noszona zbroja i broń zasilają AC i ataki).
 5. Test z drużyną (eksport ze starych stron → import w aplikacji).
