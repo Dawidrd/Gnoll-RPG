@@ -782,6 +782,50 @@ test("team: names are tidied and members listed admins first", () => {
   eq(TEAM.sortMembers([{ name: "Zoe", role: "player" }, { name: "Bob", role: "player" }, { name: "Ann", role: "admin" }]).map((m) => m.name), ["Ann", "Bob", "Zoe"]);
 });
 
+// --- Team shared data (D3) ---
+test("team: marching order keeps the admin's order, adds newcomers at the back, skips people without a character", () => {
+  const members = [{ uid: "a", charId: "1", at: 1 }, { uid: "b", charId: "2", at: 3 }, { uid: "c", charId: "3", at: 2 }, { uid: "gm", charId: "", at: 0 }];
+  eq(TEAM.marchOrder([], members), ["a", "c", "b"], "no order yet: order of joining");
+  eq(TEAM.marchOrder(["b", "x", "a", "b"], members), ["b", "a", "c"], "left (x) and duplicates dropped, new (c) at the back");
+  eq(TEAM.marchOrder(undefined, []), []);
+});
+test("team: 5 ft is single file, 10 ft two abreast with the odd one out alone at the back", () => {
+  eq(TEAM.marchRows(["a", "b", "c"], "5"), [["a"], ["b"], ["c"]]);
+  eq(TEAM.marchRows(["a", "b", "c", "d", "e"], "10"), [["a", "b"], ["c", "d"], ["e"]]);
+  eq(TEAM.marchRows([], "10"), []);
+});
+test("team: moving in the marching order stays in range", () => {
+  eq(TEAM.moveIn(["a", "b", "c"], 2, -1), ["a", "c", "b"]);
+  eq(TEAM.moveIn(["a", "b", "c"], 0, -1), ["a", "b", "c"], "front cannot move forward");
+  eq(TEAM.moveIn(["a", "b", "c"], 2, 1), ["a", "b", "c"], "back cannot move back");
+  eq([TEAM.validMarch({ mode: "10", order: ["a"] }), TEAM.validMarch({ mode: "15", order: [] }), TEAM.validMarch({ mode: "5" })], [true, false, false]);
+});
+test("team: next session date and notes are checked and tidied", () => {
+  eq([TEAM.validWhen(""), TEAM.validWhen("2026-10-23T19:00"), TEAM.validWhen("piątek"), TEAM.validWhen("2026-13-45T19:00")], [true, true, false, false]);
+  eq(TEAM.sessionWhen(""), null);
+  const now = new Date("2026-10-15T12:00").getTime();
+  eq([TEAM.sessionWhen("2026-10-23T19:00", now).past, TEAM.sessionWhen("2026-10-01T19:00", now).past], [false, true]);
+  eq(TEAM.cleanNote("  Smok   \r\n\n\n\n w jaskini  \n"), "Smok\n\n w jaskini");
+  eq(TEAM.cleanNote("x".repeat(5000)).length, TEAM.NOTE_MAX);
+  eq(TEAM.sortNotes([{ at: 1 }, { at: 3 }, { at: 2 }]).map((n) => n.at), [3, 2, 1]);
+});
+test("team: authors edit their notes, admins may also remove others'", () => {
+  const note = { author: "p" };
+  eq([TEAM.canEditNote(note, "p"), TEAM.canEditNote(note, "a")], [true, false]);
+  eq([TEAM.canDeleteNote(note, { uid: "p", role: "player" }), TEAM.canDeleteNote(note, { uid: "a", role: "admin" }), TEAM.canDeleteNote(note, { uid: "q", role: "player" })], [true, true, false]);
+});
+test("team: the team sees only species, class, level, HP and AC", () => {
+  const ch = make({ classId: "fighter", speciesId: "dwarf", level: 3, armor: "chain-mail", abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 13, cha: 10 } });
+  ch.hp = { cur: 7, temp: 4, maxOverride: null };
+  const c = run(ch);
+  const s = TEAM.sheetSummary(ch, c);
+  eq(Object.keys(s), ["species", "cls", "sub", "level", "hp", "hpMax", "temp", "ac"]);
+  eq([s.species, s.cls, s.level, s.hp, s.temp, s.ac, s.hpMax], ["dwarf", "fighter", 3, 7, 4, c.ac.value, c.hpMax]);
+  ch.hp.cur = null;
+  eq(TEAM.sheetSummary(ch, c).hp, c.hpMax, "not set yet = full");
+  eq([TEAM.sameSheet(s, { ...s }), TEAM.sameSheet(s, { ...s, hp: 1 }), TEAM.sameSheet(null, s)], [true, false, false]);
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

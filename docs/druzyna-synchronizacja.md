@@ -26,7 +26,7 @@ Tylko: **nazwa, gatunek, klasa, HP, AC, miejsce w szyku.** Reszta karty prywatna
 ## Szyk
 - **5 ft** — gęsiego (1-1-1-1…).
 - **10 ft** — po dwie osoby w rzędzie (2-2-2…); przy nieparzystej liczbie ostatni rząd ma jedną osobę.
-- Widzą wszyscy na żywo; ustawia admin (do potwierdzenia w D3).
+- Widzą wszyscy na żywo; ustawia admin (potwierdzone w D3).
 
 ## Notatki
 - **Publiczna** — czyta cała drużyna.

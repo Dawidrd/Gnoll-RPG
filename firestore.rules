@@ -2,6 +2,8 @@
 // Paste into: Firebase console -> Firestore Database -> Rules -> Publish.
 // D1: every user reads and writes only their own characters.
 // D2: teams. Only members read a team; only admins accept, reject and remove; nobody removes the founder.
+// D3: team info and marching order (admins), each member's character summary (only its owner writes it),
+//     team notes (members read; authors edit; admins may remove) and private notes (only their author, under users/).
 // Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
@@ -19,6 +21,18 @@ service cloud.firestore {
     function name(v, max) { return text(v, max) && v.size() > 0; }
     function code(v) { return v is string && v.matches('[A-Za-z0-9]{16,40}'); }
     function only(fields) { return request.resource.data.keys().hasOnly(fields) && request.resource.data.keys().hasAll(fields); }
+    function changes(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
+    function when(v) { return v is string && (v == '' || v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}')); }
+    function num(v) { return v is int && v >= 0 && v <= 10000; }
+    // What the team sees of a character (teamlogic.js sheetSummary).
+    function sheet(s) {
+      return s is map && s.keys().hasOnly(['species', 'cls', 'sub', 'level', 'hp', 'hpMax', 'temp', 'ac'])
+        && text(s.get('species', ''), 40) && text(s.get('cls', ''), 40) && text(s.get('sub', ''), 60)
+        && num(s.get('level', 0)) && num(s.get('hp', 0)) && num(s.get('hpMax', 0)) && num(s.get('temp', 0)) && num(s.get('ac', 0));
+    }
+    function march(m) {
+      return m is map && m.keys().hasOnly(['mode', 'order']) && m.mode in ['5', '10'] && m.order is list && m.order.size() <= 50;
+    }
 
     match /users/{uid}/characters/{charId} {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
@@ -36,6 +50,13 @@ service cloud.firestore {
       allow create, update: if signedIn() && me() == uid && only(['name', 'state', 'at'])
         && text(request.resource.data.name, 60) && request.resource.data.state in ['asked', 'in']
         && request.resource.data.at is int;
+
+      // My private notes for this team: nobody else reads them, admins included.
+      match /notes/{n} {
+        allow read, delete: if signedIn() && me() == uid;
+        allow create, update: if signedIn() && me() == uid && only(['text', 'at'])
+          && name(request.resource.data.text, 4000) && request.resource.data.at is int;
+      }
     }
 
     // An invite can be opened only by its exact code; nobody can list them.
@@ -45,6 +66,8 @@ service cloud.firestore {
         && request.resource.data.team is string && name(request.resource.data.name, 60)
         && adminAfter(request.resource.data.team);
       allow delete: if signedIn() && isAdmin(resource.data.team);
+      // renaming the team renames its invite
+      allow update: if signedIn() && isAdmin(resource.data.team) && changes(['name']) && name(request.resource.data.name, 60);
     }
 
     match /teams/{t} {
@@ -54,9 +77,10 @@ service cloud.firestore {
         && request.resource.data.owner == me() && name(request.resource.data.name, 60)
         && code(request.resource.data.invite) && request.resource.data.created is int
         && adminAfter(t);
-      allow update: if isAdmin(t)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'invite'])
-        && name(request.resource.data.name, 60) && code(request.resource.data.invite);
+      allow update: if isAdmin(t) && changes(['name', 'invite', 'campaign', 'next', 'march'])
+        && name(request.resource.data.name, 60) && code(request.resource.data.invite)
+        && text(request.resource.data.get('campaign', ''), 100) && when(request.resource.data.get('next', ''))
+        && (!('march' in request.resource.data) || march(request.resource.data.march));
       allow delete: if signedIn() && resource.data.owner == me();
 
       match /members/{u} {
@@ -73,9 +97,13 @@ service cloud.firestore {
             || (request.resource.data.role == 'player' && isAdmin(t)
               && exists(/databases/$(database)/documents/teams/$(t)/requests/$(u)))
           );
-        allow update: if isAdmin(t) && u != ownerOf(t)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
-          && request.resource.data.role in ['admin', 'player'];
+        allow update: if
+          // an admin changing someone's role (not the founder's)
+          (isAdmin(t) && u != ownerOf(t) && changes(['role']) && request.resource.data.role in ['admin', 'player'])
+          // a member changing their own character or its summary
+          || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet'])
+            && text(request.resource.data.charId, 128) && text(request.resource.data.charName, 100)
+            && (!('sheet' in request.resource.data) || sheet(request.resource.data.sheet)));
         allow delete: if signedIn() && (
           // leaving, or an admin removing someone; the founder stays
           (u != ownerOf(t) && (u == me() || isAdmin(t)))
@@ -94,6 +122,16 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.team == t
           && !exists(memberPath(t, u));
         allow delete: if signedIn() && (u == me() || isAdmin(t));
+      }
+
+      // Team notes: the whole team reads them; each is edited only by its author; admins may remove any.
+      match /notes/{n} {
+        allow read: if isMember(t);
+        allow create: if isMember(t) && only(['author', 'name', 'text', 'at']) && request.resource.data.author == me()
+          && text(request.resource.data.name, 100) && name(request.resource.data.text, 4000) && request.resource.data.at is int;
+        allow update: if isMember(t) && resource.data.author == me() && changes(['name', 'text', 'at'])
+          && text(request.resource.data.name, 100) && name(request.resource.data.text, 4000) && request.resource.data.at is int;
+        allow delete: if signedIn() && (resource.data.author == me() || isAdmin(t));
       }
     }
   }

@@ -7,7 +7,7 @@ import { renderForm } from "./views/form.js";
 import { renderSheet } from "./views/sheet.js";
 import { renderTeams, renderTeam, renderJoin } from "./views/team.js";
 import { startAccount, accountAvailable } from "./sync/cloud.js";
-import { stopWatching } from "./sync/team.js";
+import { stopWatching, startSharing } from "./sync/team.js";
 
 const view = h("div", { id: "view" });
 
@@ -58,6 +58,7 @@ addEventListener("gnoll:remote", () => {
 layout();
 route();
 startAccount();
+startSharing(); // characters played in a team send their HP/AC summary there
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));

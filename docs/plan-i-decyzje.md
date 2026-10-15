@@ -42,7 +42,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 1. ~~Konfiguracja `firebaseConfig` w `js/config.js` (bez `measurementId`).~~ Zrobione.
 2. ~~`firestore.rules` wklejone w Firestore Database → Rules.~~ Zrobione (odczyt bez logowania: `permission-denied`).
 3. ~~`localhost` w Authorized domains.~~ Zrobione.
-4. Test na localhost: zalogować się na komputerze i telefonie, zmienić HP na jednym, sprawdzić drugi; to samo w trybie samolotowym.
+4. ~~Test na localhost: zalogować się na komputerze i telefonie, zmienić HP na jednym, sprawdzić drugi; to samo w trybie samolotowym.~~ Zrobione.
 
 ## D2 · Drużyna
 **Jak działa (0.14.0):**
@@ -52,11 +52,25 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - Role: admin (przyjmuje, odrzuca, usuwa, nadaje/odbiera admina) i gracz. Założyciela nie można usunąć ani zdegradować; on nie opuszcza drużyny, tylko ją usuwa (dla wszystkich).
 - Status na liście „Moje drużyny”: w drużynie / prośba czeka / odrzucona / usunięty (albo drużyna usunięta).
 - Uprawnień pilnują reguły w `firestore.rules` (serwer). Ekrany: `js/views/team.js`, operacje: `js/sync/team.js`, czyste funkcje i testy: `js/sync/teamlogic.js`.
-- Dane o postaci w drużynie to na razie tylko nazwa; HP/AC/gatunek/klasa i szyk dochodzą w D3.
+- Dane o postaci w drużynie: od D3 także gatunek, klasa, poziom, HP i AC (zob. niżej).
 
 **Do zrobienia przez użytkownika:**
 1. ~~Wkleić nowe `firestore.rules` w Firestore Database → Rules → Publish.~~ Zrobione.
-2. Test: założyć drużynę na jednym koncie, otworzyć link na drugim koncie (np. telefon), poprosić, przyjąć; sprawdzić odrzucenie, usunięcie, nadanie admina, nowy link, opuszczenie i usunięcie drużyny.
+2. ~~Test: założyć drużynę na jednym koncie, otworzyć link na drugim koncie (np. telefon), poprosić, przyjąć; sprawdzić odrzucenie, usunięcie, nadanie admina, nowy link, opuszczenie i usunięcie drużyny.~~ Zrobione.
+
+## D3 · Wspólne dane
+**Jak działa (0.15.0):**
+- Ekran drużyny ma trzy zakładki: **Przegląd** (informacje, postacie, szyk), **Notatki**, **Zarządzanie** (prośby, link zaproszenia, opuszczenie/usunięcie).
+- Informacje: nazwa, kampania, następna sesja (data i godzina) w `teams/{id}` (`campaign`, `next` = `RRRR-MM-DDTGG:MM`). Edytuje admin. Zmiana nazwy idzie też do zaproszenia; listy „Moje drużyny” innych graczy poprawiają się same przy następnym otwarciu.
+- Podgląd postaci: każdy członek wysyła do drużyny tylko `sheet` = gatunek, klasa, podklasa, poziom, HP, tymczasowe HP, AC (`teamlogic.js` `sheetSummary`). Zapisuje go wyłącznie właściciel, kilka sekund po zmianie postaci (zbiorczo, żeby walka nie generowała zapisu na każde kliknięcie) i przy otwarciu ekranu drużyny. Gracz może zmienić postać w drużynie (albo grać bez postaci).
+- Szyk: `teams/{id}.march` = `{ mode: "5"|"10", order: [uid] }`. **Ustawia admin** (decyzja z planu potwierdzona w D3); widzą wszyscy na żywo. W szyku są tylko osoby z postacią; nowi trafiają na koniec, a ci, którzy odeszli, znikają sami.
+- Notatki drużyny: `teams/{id}/notes/{nid}` = `{ author, name, text, at }`; czyta cała drużyna, edytuje autor, usuwa autor albo admin. Notatki prywatne: `users/{uid}/teams/{id}/notes/{nid}` = `{ text, at }` — tylko autor (admin też nie ma dostępu). Do 4000 znaków. Przy jednoczesnej edycji wygrywa ostatni zapis.
+- Opuszczenie drużyny albo „Usuń z listy” kasuje też moje prywatne notatki tej drużyny; usunięcie drużyny kasuje notatki drużyny.
+- Ekran nie gubi tego, co piszesz: zmiany z chmury czekają, aż wyjdziesz z pola tekstowego.
+
+**Do zrobienia przez użytkownika:**
+1. Wkleić nowe `firestore.rules` w Firestore Database → Rules → Publish (bez tego zapis informacji, szyku, notatek i HP zostanie odrzucony).
+2. Test na dwóch kontach: admin wpisuje kampanię i termin, ustawia szyk 5/10 ft; obaj dodają notatki drużyny i prywatne (sprawdzić, że prywatnych drugie konto nie widzi); zmiana HP na karcie gracza pojawia się u admina po kilku sekundach.
 
 ## Gdzie co jest w kodzie
 - `js/rules/index.js` — `compute(ch)` liczy całą kartę, `normalize` migruje stare zapisy.
@@ -66,7 +80,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - `sw.js` — service worker (`VERSION`, `SHELL`).
 
 ## Zrobione (wersje)
-0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8).
+0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3).
 
 ## Następne kroki (kolejność)
 Przeniesione do `docs/backlog.md` (sekcja „Pomysły”).

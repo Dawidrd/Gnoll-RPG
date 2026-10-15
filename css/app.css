@@ -382,3 +382,22 @@ details summary { cursor: pointer; }
 .sess .body { white-space: pre-wrap; }
 .famcard input { width: 100%; }
 .famcard input[type=number] { width: 6em; }
+
+/* Team (D3): tabs, info, characters, marching order, notes */
+.team-tabs { justify-self: start; flex-wrap: wrap; }
+.team-head .team-name { margin: 0; }
+.team-next { font-family: var(--f-ui); color: var(--gold); }
+.member-vit { display: grid; grid-template-columns: auto auto 1fr; gap: 6px 16px; align-items: center; }
+.member-vit .bar { min-width: 60px; }
+ol.march { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ol.march li { display: grid; grid-template-columns: 1.6em 1fr; gap: 6px; align-items: center; }
+ol.march.two li { grid-template-columns: 1.6em 1fr 1fr; }
+.march-who { border: 1px solid var(--seam); background: var(--crypt); border-radius: var(--r); padding: 6px 10px; font-family: var(--f-ui); font-size: .92rem; text-align: center; min-width: 0; overflow-wrap: anywhere; }
+.march-who.me { border-color: var(--gold-dim); color: var(--gold); }
+ol.march-edit { margin: 0; padding-left: 1.6em; display: grid; gap: 6px; }
+ol.march-edit li { display: flex; align-items: center; gap: 8px; }
+ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.note { display: grid; gap: 6px; border-top: 1px solid var(--seam); padding-top: 10px; }
+.note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.note .hint { margin: 0; }
+.note-private { border-style: dashed; }

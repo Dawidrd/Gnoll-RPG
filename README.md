@@ -24,11 +24,12 @@
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
 - Konto (nieobowiązkowe): logowanie przez Google; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci
 - Drużyna (z kontem): zakładanie drużyny, link zaproszenia (kopiuj/udostępnij, nowy link unieważnia stary), prośba o dołączenie z wybraną postacią, akceptacja/odrzucenie, usuwanie graczy, role admin/gracz (założyciela nie da się usunąć), opuszczanie i usuwanie drużyny
+- Wspólne dane drużyny: kampania i termin następnej sesji, podgląd postaci (gatunek, klasa, poziom, HP i AC na żywo), szyk marszowy 5 ft (gęsiego) i 10 ft (dwójkami) ustawiany przez admina, notatki drużyny i prywatne notatki widoczne tylko dla autora
 
 ## Prywatność / Privacy
 
-Bez logowania postacie zapisują się tylko w przeglądarce użytkownika (`localStorage`). Logowanie jest dobrowolne: po zalogowaniu (Google) kopia postaci trafia do Firebase (Firestore, region europe-central2) i widzi ją tylko właściciel konta (`firestore.rules`). W drużynie pozostali członkowie widzą tylko imię z konta Google, nazwę postaci i rolę. Kod Firebase wczytuje się dopiero po wybraniu logowania. Brak analityki.
-Without signing in, characters are stored only in the user's browser. Signing in is optional: a copy then goes to Firebase (Firestore, europe-central2), readable only by the account owner. In a team, other members see only the Google account name, the character's name and the role. Firebase code loads only when you choose to sign in. No analytics.
+Bez logowania postacie zapisują się tylko w przeglądarce użytkownika (`localStorage`). Logowanie jest dobrowolne: po zalogowaniu (Google) kopia postaci trafia do Firebase (Firestore, region europe-central2) i widzi ją tylko właściciel konta (`firestore.rules`). W drużynie pozostali członkowie widzą tylko imię z konta Google, rolę oraz nazwę, gatunek, klasę, poziom, HP i AC postaci; notatki prywatne widzi tylko autor. Kod Firebase wczytuje się dopiero po wybraniu logowania. Brak analityki.
+Without signing in, characters are stored only in the user's browser. Signing in is optional: a copy then goes to Firebase (Firestore, europe-central2), readable only by the account owner. In a team, other members see only the Google account name, the role, and the character's name, species, class, level, HP and AC; private notes are seen only by their author. Firebase code loads only when you choose to sign in. No analytics.
 
 ## Uruchomienie lokalnie / Run locally
 
