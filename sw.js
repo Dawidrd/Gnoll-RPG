@@ -1,12 +1,13 @@
 // Offline support: keep the app shell and fonts cached. Bump VERSION when files change.
-const VERSION = "gnoll-0.12.0";
+const VERSION = "gnoll-0.13.0";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png",
   "./js/main.js", "./js/config.js", "./js/dom.js", "./js/i18n.js", "./js/store.js", "./js/glossary.js",
   "./js/lang/pl.js", "./js/lang/en.js",
   "./js/rules/core.js", "./js/rules/index.js", "./js/rules/species.js", "./js/rules/backgrounds.js", "./js/rules/classes/monk.js", "./js/rules/classes/barbarian.js", "./js/rules/classes/rogue.js", "./js/rules/classes/cleric.js", "./js/rules/classes/warlock.js", "./js/rules/classes/sorcerer.js", "./js/rules/classes/bard.js", "./js/rules/classes/druid.js", "./js/rules/classes/wizard.js", "./js/rules/beasts.js", "./js/rules/classes/fighter.js", "./js/rules/classes/paladin.js", "./js/rules/classes/ranger.js", "./js/rules/weapons.js", "./js/rules/options.js", "./js/rules/turn.js", "./js/rules/pageimport.js", "./js/rules/armor.js", "./js/rules/skills.js", "./js/rules/names.js", "./js/rules/tools.js", "./js/rules/identity.js", "./js/rules/checks.js", "./js/rules/feats-general.js", "./js/rules/feats-ravenloft.js", "./js/rules/spells.js", "./js/rules/spells/cantrips.js", "./js/rules/spells/level1.js", "./js/rules/spells/level2.js", "./js/rules/spells/level3.js", "./js/rules/magic.js",
-  "./js/views/home.js", "./js/views/form.js", "./js/views/sheet.js", "./js/views/levelchoice.js", "./js/views/msg.js", "./js/views/spellpicker.js", "./js/views/classoptions.js", "./js/views/combat.js", "./js/views/gear.js", "./js/views/weapons.js",
+  "./js/views/home.js", "./js/views/form.js", "./js/views/sheet.js", "./js/views/levelchoice.js", "./js/views/msg.js", "./js/views/spellpicker.js", "./js/views/classoptions.js", "./js/views/combat.js", "./js/views/gear.js", "./js/views/weapons.js", "./js/views/account.js",
+  "./js/sync/merge.js", "./js/sync/cloud.js",
 ];
 
 self.addEventListener("install", (e) => {
@@ -21,7 +22,9 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   const fonts = url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
-  if (e.request.method !== "GET" || (url.origin !== location.origin && !fonts)) return;
+  // Firebase code (only fetched after signing in), so a signed-in device can start offline too. Its data traffic is not cached here.
+  const firebase = url.hostname === "www.gstatic.com" && url.pathname.startsWith("/firebasejs/");
+  if (e.request.method !== "GET" || (url.origin !== location.origin && !fonts && !firebase)) return;
   e.respondWith(caches.open(VERSION).then(async (cache) => {
     const hit = await cache.match(e.request, { ignoreSearch: url.origin === location.origin });
     const net = fetch(e.request).then((res) => { if (res.ok || res.type === "opaque") cache.put(e.request, res.clone()); return res; }).catch(() => hit);

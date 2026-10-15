@@ -3,6 +3,8 @@ import { h, toast } from "../dom.js";
 import { t, tr } from "../i18n.js";
 import { loadAll, remove, exportFile, parseImport, upsert, getById } from "../store.js";
 import { CLASSES, SPECIES, compute } from "../rules/index.js";
+import { accountBox } from "./account.js";
+import { accountAvailable } from "../sync/cloud.js";
 
 const todoCount = (ch) => { try { const r = compute(structuredClone(ch)).review; return r.todo.length + r.errors.length; } catch { return 0; } };
 
@@ -69,7 +71,8 @@ export function renderHome(root, go) {
       ]),
       pasteBox,
       h("p", { cls: "hint", text: t("home.pageHint") }),
-      h("p", { cls: "hint", text: t("home.privacy") }),
+      accountBox(),
+      h("p", { cls: "hint", text: t(accountAvailable() ? "home.privacyAccount" : "home.privacy") }),
     ])
   );
 }

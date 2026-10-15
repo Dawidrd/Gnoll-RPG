@@ -7,6 +7,12 @@ import { SPELLS, spellsOf } from "../js/rules/spells.js";
 import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
+import * as MERGE from "../js/sync/merge.js";
+
+// localStorage stand-in, so store.js can be tested in Node.
+const mem = new Map();
+globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+const STORE = await import("../js/store.js");
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -675,6 +681,72 @@ test("Fighter, Paladin and Ranger characters can be completed", () => {
     featPicks: { style: "druidic-warrior" }, featChoices: { "druidic-warrior": { picks: { cantrips: ["guidance", "starry-wisp"] } } }, classOptions: { mastery: ["longbow", "shortsword"] },
     spellPicks: { prepared: ["ensnaring-strike", "cure-wounds", "goodberry"] } }));
   eq([todoKeys(ranger), ranger.review.errors.map((x) => x.key)], [[], []], "Ranger 2");
+});
+
+// --- Account sync (D1): merging device and cloud, newer change wins ---
+const sc = (id, updated, extra = {}) => ({ id, updated, abilities: {}, classId: "monk", ...extra });
+test("sync: first sign-in sends every character from the device", () => {
+  const p = MERGE.plan([sc("a", 5), sc("b", 7)], {}, {});
+  eq(p.push.map((c) => c.id), ["a", "b"]); eq([p.put, p.drop, p.pushGone], [[], [], []]);
+});
+test("sync: newer cloud copy replaces the device copy, older one is overwritten", () => {
+  const p = MERGE.plan([sc("a", 5), sc("b", 9)], {}, { a: { updated: 8, deleted: false, ch: sc("a", 8, { name: "cloud" }) }, b: { updated: 3, deleted: false, ch: sc("b", 3) } });
+  eq(p.put.map((c) => [c.id, c.name]), [["a", "cloud"]]); eq(p.push.map((c) => c.id), ["b"]);
+});
+test("sync: character only in the cloud comes to the device; equal times do nothing", () => {
+  const p = MERGE.plan([sc("a", 5)], {}, { a: { updated: 5, deleted: false, ch: sc("a", 5) }, n: { updated: 1, deleted: false, ch: sc("n", 1) } });
+  eq([p.put.map((c) => c.id), p.push, p.drop, p.pushGone], [["n"], [], [], []]);
+});
+test("sync: deletions travel both ways, the later change wins", () => {
+  // Deleted in the cloud after the device's last edit: delete here.
+  eq(MERGE.plan([sc("a", 5)], {}, { a: { updated: 6, deleted: true, ch: null } }).drop, ["a"]);
+  // Edited here after it was deleted elsewhere: the edit wins and goes back up.
+  eq(MERGE.plan([sc("a", 9)], {}, { a: { updated: 6, deleted: true, ch: null } }).push.map((c) => c.id), ["a"]);
+  // Deleted here (maybe offline) after the cloud's version: send the deletion.
+  eq(MERGE.plan([], { a: 10 }, { a: { updated: 6, deleted: false, ch: sc("a", 6) } }).pushGone, [{ id: "a", at: 10 }]);
+  // Edited elsewhere after the local deletion: it comes back.
+  eq(MERGE.plan([], { a: 4 }, { a: { updated: 6, deleted: false, ch: sc("a", 6) } }).put.map((c) => c.id), ["a"]);
+});
+test("sync: cloud documents round-trip; broken ones are ignored", () => {
+  const ch = sc("abc-1", 42, { name: "Grok", hp: { cur: 3 } });
+  eq(MERGE.fromDoc(MERGE.toDoc(ch)), { updated: 42, deleted: false, ch });
+  eq(MERGE.fromDoc(MERGE.goneDoc(7)), { updated: 7, deleted: true, ch: null });
+  eq(MERGE.fromDoc({ json: "{oops", updated: 1, deleted: false }), null);
+  eq(MERGE.fromDoc({ json: JSON.stringify({ id: "x" }), updated: 1, deleted: false }), null);
+  eq([MERGE.syncableId("a/b"), MERGE.syncableId(crypto.randomUUID())], [false, true]);
+});
+test("store: saving and deleting tell the sync, cloud changes do not echo back", () => {
+  mem.clear();
+  const seen = [];
+  const off = STORE.onChange((e) => seen.push(e.type + ":" + (e.ch ? e.ch.id : e.id)));
+  STORE.upsert(sc("a", 0)); STORE.remove("a");
+  eq(seen, ["put:a", "del:a"]); eq(typeof STORE.gone().a, "number");
+  STORE.applyRemote([sc("a", 3), sc("b", 4)], []);
+  eq(seen.length, 2, "no echo"); eq(STORE.gone().a, undefined, "deletion mark cleared");
+  eq(STORE.loadAll().map((c) => [c.id, c.updated]), [["a", 3], ["b", 4]]);
+  STORE.applyRemote([], ["b"]); eq(STORE.loadAll().map((c) => c.id), ["a"]);
+  off(); mem.clear();
+});
+
+test("store: every account has its own characters on the device", () => {
+  mem.clear();
+  STORE.upsert(sc("guest-1", 0));
+  eq(STORE.knownOwner("uidAAAA"), false);
+  STORE.setOwner("uidAAAA");
+  eq([STORE.loadAll().length, STORE.knownOwner("uidAAAA")], [0, true], "new account starts empty");
+  const sent = []; const off = STORE.onChange((e) => sent.push(e.ch.id));
+  eq(STORE.moveGuestCharacters(), 1); off();
+  eq([STORE.loadAll().map((c) => c.id), STORE.guestCharacters().length, sent], [["guest-1"], 0, ["guest-1"]], "moved and sent to the cloud");
+  STORE.upsert(sc("a-2", 0)); STORE.remove("guest-1");
+  STORE.setOwner("uidBBBB");
+  eq([STORE.loadAll().length, Object.keys(STORE.gone()).length], [0, 0], "other account sees nothing of A");
+  STORE.upsert(sc("b-1", 0));
+  STORE.setOwner("");
+  eq(STORE.loadAll().length, 0, "signed out: no-account list");
+  STORE.setOwner("uidAAAA");
+  eq([STORE.loadAll().map((c) => c.id), Object.keys(STORE.gone())], [["a-2"], ["guest-1"]], "back to A as it was");
+  eq(STORE.currentOwner(), "uidAAAA"); eq(mem.get("gnoll.account"), "uidAAAA", "remembered for the next start");
+  STORE.setOwner(""); mem.clear();
 });
 
 let failed = 0;

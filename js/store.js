@@ -1,5 +1,7 @@
-// Characters live only in this browser (localStorage). No account, no server.
-// Moving between devices: export to a file, import on the other device.
+// Characters live in this browser (localStorage); the app always reads them from here.
+// Each account signed in on this device has its own list; characters made without an account have theirs.
+// Without an account that is all. With one, js/sync/cloud.js listens to changes here and keeps a copy in the cloud.
+// Moving between devices without an account: export to a file, import on the other device.
 import { isPageExport, fromPage } from "./rules/pageimport.js";
 
 export const storage = {
@@ -7,24 +9,96 @@ export const storage = {
   set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
 };
 
-const KEY = "gnoll.characters.v1";
+const KEY = "gnoll.characters.v1"; // characters without an account
+const GONE = "gnoll.deleted.v1"; // { id: deletedAt }, so a deletion can reach the cloud later
+const OWNER = "gnoll.account"; // id of the account signed in on this device, "" = none
 
-export function loadAll() {
-  try { const list = JSON.parse(storage.get(KEY) || "[]"); return Array.isArray(list) ? list : []; }
-  catch { return []; }
+// Known at start-up, so a signed-in device shows its account's characters at once, also offline.
+let owner = /^[\w-]{6,128}$/.test(storage.get(OWNER) || "") ? storage.get(OWNER) : "";
+const listKey = (o = owner) => (o ? `gnoll.characters.u.${o}` : KEY);
+const goneKey = (o = owner) => (o ? `gnoll.deleted.u.${o}` : GONE);
+export const currentOwner = () => owner;
+/** Has this account been signed in on this device before? */
+export const knownOwner = (uid) => storage.get(listKey(uid)) != null;
+/** Switch the active list: an account id, or "" for characters without an account. */
+export function setOwner(uid) {
+  owner = uid || "";
+  storage.set(OWNER, owner);
+  if (owner && !knownOwner(owner)) storage.set(listKey(), "[]");
 }
 
-export function saveAll(list) { return storage.set(KEY, JSON.stringify(list)); }
+const listeners = new Set();
+/** Local changes made by the user: { type: "put", ch } or { type: "del", id, at }. */
+export function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+const notify = (e) => listeners.forEach((fn) => { try { fn(e); } catch { /* sync problems never block saving */ } });
+
+export function gone() {
+  try { const m = JSON.parse(storage.get(goneKey()) || "{}"); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; }
+  catch { return {}; }
+}
+const setGone = (m) => storage.set(goneKey(), JSON.stringify(m));
+
+function readList(key) {
+  try { const list = JSON.parse(storage.get(key) || "[]"); return Array.isArray(list) ? list : []; }
+  catch { return []; }
+}
+export const loadAll = () => readList(listKey());
+export function saveAll(list) { return storage.set(listKey(), JSON.stringify(list)); }
+
+/** Characters made on this device without an account (while an account is active they are hidden). */
+export const guestCharacters = () => readList(KEY);
+
+/** Move the characters made without an account into the active account; they then sync like the others. */
+export function moveGuestCharacters() {
+  const guests = readList(KEY);
+  if (!owner || !guests.length) return 0;
+  const list = loadAll();
+  for (const g of guests) {
+    const i = list.findIndex((c) => c.id === g.id);
+    if (i < 0) list.push(g);
+    else if ((g.updated || 0) > (list[i].updated || 0)) list[i] = g;
+  }
+  if (!saveAll(list)) return 0;
+  storage.set(KEY, "[]");
+  storage.set(GONE, "{}");
+  for (const g of guests) { const ch = list.find((c) => c.id === g.id); if (ch === g) notify({ type: "put", ch }); }
+  return guests.length;
+}
 
 export function upsert(ch) {
   const list = loadAll();
   ch.updated = Date.now();
   const i = list.findIndex((c) => c.id === ch.id);
   if (i >= 0) list[i] = ch; else list.push(ch);
-  return saveAll(list);
+  if (!saveAll(list)) return false;
+  const g = gone();
+  if (g[ch.id]) { delete g[ch.id]; setGone(g); }
+  notify({ type: "put", ch });
+  return true;
 }
 
-export function remove(id) { return saveAll(loadAll().filter((c) => c.id !== id)); }
+export function remove(id) {
+  if (!saveAll(loadAll().filter((c) => c.id !== id))) return false;
+  const at = Date.now();
+  setGone({ ...gone(), [id]: at });
+  notify({ type: "del", id, at });
+  return true;
+}
+
+/** Changes that came from the cloud: saved as they are (no new time, no echo back). */
+export function applyRemote(put, drop) {
+  if (!put.length && !drop.length) return false;
+  const list = loadAll().filter((c) => !drop.includes(c.id));
+  for (const ch of put) {
+    const i = list.findIndex((c) => c.id === ch.id);
+    if (i >= 0) list[i] = ch; else list.push(ch);
+  }
+  if (!saveAll(list)) return false;
+  const g = gone();
+  for (const ch of put) delete g[ch.id];
+  setGone(g);
+  return true;
+}
 export const getById = (id) => loadAll().find((c) => c.id === id) || null;
 
 /** File the user can keep or move to another device. */

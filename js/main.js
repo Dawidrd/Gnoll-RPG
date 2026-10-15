@@ -5,6 +5,7 @@ import { CONFIG } from "./config.js";
 import { renderHome } from "./views/home.js";
 import { renderForm } from "./views/form.js";
 import { renderSheet } from "./views/sheet.js";
+import { startAccount, accountAvailable } from "./sync/cloud.js";
 
 const view = h("div", { id: "view" });
 
@@ -20,7 +21,7 @@ function topbar() {
 
 function footer() {
   return h("footer", { cls: "foot" }, [
-    h("p", {}, [t("foot.free"), " ", t("foot.storage"), " ", t("app.offline"),
+    h("p", {}, [t("foot.free"), " ", t(accountAvailable() ? "foot.storageAccount" : "foot.storage"), " ", t("app.offline"),
       CONFIG.supportUrl ? [" ", h("a", { href: CONFIG.supportUrl, target: "_blank", rel: "noopener", text: t("foot.support") })] : null].flat()),
     h("p", { cls: "fan", text: t("foot.fan") }),
     h("p", { cls: "ver", text: `${CONFIG.name} ${CONFIG.version}` }),
@@ -43,8 +44,14 @@ function route() {
 function layout() { document.documentElement.dataset.layout = innerWidth >= 900 ? "desk" : "phone"; }
 addEventListener("resize", layout);
 addEventListener("hashchange", () => { route(); scrollTo(0, 0); });
+// Characters changed on another device: redraw, unless the user is in the middle of typing or editing.
+addEventListener("gnoll:remote", () => {
+  const typing = document.activeElement?.matches?.("input, textarea, select");
+  if (!typing && !/^#\/(new|edit)\b/.test(location.hash)) route();
+});
 layout();
 route();
+startAccount();
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));

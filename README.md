@@ -22,11 +22,12 @@
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
+- Konto (nieobowiązkowe): logowanie przez Google; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci
 
 ## Prywatność / Privacy
 
-Postacie zapisują się tylko w przeglądarce użytkownika (`localStorage`). Nie ma kont, serwera ani analityki.
-Characters are stored only in the user's browser. No accounts, no server, no analytics.
+Bez logowania postacie zapisują się tylko w przeglądarce użytkownika (`localStorage`). Logowanie jest dobrowolne: po zalogowaniu (Google) kopia postaci trafia do Firebase (Firestore, region europe-central2) i widzi ją tylko właściciel konta (`firestore.rules`). Kod Firebase wczytuje się dopiero po wybraniu logowania. Brak analityki.
+Without signing in, characters are stored only in the user's browser. Signing in is optional: a copy then goes to Firebase (Firestore, europe-central2), readable only by the account owner. Firebase code loads only when you choose to sign in. No analytics.
 
 ## Uruchomienie lokalnie / Run locally
 
@@ -56,7 +57,12 @@ Po każdej zmianie plików podbij `VERSION` w `sw.js`, żeby telefony pobrały n
 index.html, manifest.webmanifest, sw.js   powłoka aplikacji i tryb offline
 css/app.css                               wygląd
 js/main.js                                router, górny pasek, stopka
-js/config.js                              nazwa, wersja, link do wsparcia
+js/config.js                              nazwa, wersja, link do wsparcia, konfiguracja Firebase
+js/store.js                               postacie na urządzeniu (localStorage, osobna lista dla każdego konta), znaczniki usunięć
+js/sync/merge.js                          łączenie urządzenia z chmurą (nowsza zmiana wygrywa)
+js/sync/cloud.js                          konto Google i synchronizacja (Firebase, wczytywany na żądanie)
+js/views/account.js                       ramka „Konto” na ekranie głównym
+firestore.rules                           reguły bezpieczeństwa Firestore (wkleja się w konsoli)
 js/i18n.js, js/lang/{pl,en}.js            teksty interfejsu
 js/rules/core.js                          matematyka 5e, umiejętności, featy pochodzenia
 js/rules/feats-general.js                 featy ogólne i stylu walki (od 4. poziomu)

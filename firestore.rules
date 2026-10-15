@@ -1,0 +1,18 @@
+// Firestore security rules for Gnoll RPG (project gnoll-rpg).
+// Paste into: Firebase console -> Firestore Database -> Rules -> Publish.
+// D1: every user reads and writes only their own characters. Everything else is closed.
+// Teams (D2/D3) will add their own rules here.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/characters/{charId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['json', 'updated', 'deleted'])
+        && request.resource.data.json is string
+        && request.resource.data.json.size() < 900000
+        && request.resource.data.updated is int
+        && request.resource.data.deleted is bool;
+    }
+  }
+}
