@@ -17,6 +17,7 @@ import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
 import { writePick, readPick } from "../rules/magic.js";
 import { spellPickUI } from "./spellpicker.js";
+import { classOptionUI } from "./classoptions.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 
@@ -47,7 +48,7 @@ export function renderForm(root, go, id) {
     const c = compute(structuredClone(ch));
     const sig = JSON.stringify([c.slots.map((x) => [x.id, x.count, x.from]), c.granted, c.expertiseMax, c.languages.slots.map((x) => [x.id, x.count]),
       c.toolSlots.map((x) => [x.id, x.count, x.from.length]), c.featSlots.map((x) => x.id), ch.background, ch.speciesId,
-      c.spellSources.flatMap((s) => s.picks.map((p) => [p.id, p.count, p.options.length]))]);
+      c.spellSources.flatMap((s) => s.picks.map((p) => [p.id, p.count, p.options.length])), c.classOptions.map((g) => [g.key, g.count])]);
     const changed = lastSig !== null && sig !== lastSig;
     lastSig = sig;
     if (!changed) return;
@@ -78,6 +79,11 @@ export function renderForm(root, go, id) {
       readPick(ch, p).filter((id) => !keep.includes(id)).forEach((id) => dropped.push(tr(SPELLS[id]?.name || { pl: id, en: id }).split(" (")[0]));
       writePick(ch, p, keep);
     }
+    for (const g of c.classOptions) if (g.chosen.length > g.count) {
+      g.chosen.slice(g.count).forEach((x) => dropped.push(x.option ? tr(x.option.name).split(" (")[0] : x.raw));
+      ch.classOptions = { ...ch.classOptions, [g.key]: g.chosen.slice(0, g.count).map((x) => x.raw) };
+    }
+    for (const k of Object.keys(ch.classOptions || {})) if (!c.classOptions.some((g) => g.key === k)) delete ch.classOptions[k];
     if (!c.spells && ch.spellPicks && Object.values(ch.spellPicks).some((x) => x.length)) {
       Object.values(ch.spellPicks).flat().forEach((id) => dropped.push(tr(SPELLS[id]?.name || { pl: id, en: id }).split(" (")[0]));
       ch.spellPicks = {};
@@ -136,7 +142,7 @@ export function renderForm(root, go, id) {
     const settingSel = h("select", { id: "f-setting", onchange: (e) => { ch.setting = e.target.value; draw(); } },
       Object.entries(SETTINGS).map(([k, n]) => h("option", { value: k, text: tr(n), selected: k === (ch.setting || "standard") })));
     const clsSel = h("select", { id: "f-class", onchange: (e) => {
-      ch.classId = e.target.value; ch.subclass = ""; ch.classChoices = {}; ch.expertise = []; ch.levelChoices = {};
+      ch.classId = e.target.value; ch.subclass = ""; ch.classChoices = {}; ch.expertise = []; ch.levelChoices = {}; ch.classOptions = {}; ch.spellPicks = {};
       ch.level = Math.min(ch.level, cls().maxLevel);
       if (ch.abilityMethod === "array") ch.abilityBase = { ...cls().standardArray };
       if (ch.abilityMethod === "roll" && ch.rolled) assignByClass(ch.rolled.map((r) => r.total));
@@ -370,7 +376,9 @@ export function renderForm(root, go, id) {
   // --- Step 5: details --------------------------------------------------------
   function stepDetails(c) {
     const bg = BACKGROUNDS[ch.background];
-    const out = [skillsUI(c, bg), featsUI(c, bg), ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), armorUI(c), spellsUI(c), hpUI(c),
+    const out = [skillsUI(c, bg), ...c.classOptions.map((g) => card(null, [classOptionUI({ group: g, c, known: c.knownClassCantrips,
+      onChange: (raws) => { ch.classOptions = { ...(ch.classOptions || {}), [g.key]: raws }; draw(); } })])), featsUI(c, bg),
+      ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), armorUI(c), spellsUI(c), hpUI(c),
       ...c.asiLevels.map((L) => card(t("lvl.asiTitle", { n: L }), [levelChoiceUI({ draft: ch, L, profSkills: c.skills.filter((s) => s.prof && !s.fromFeat).map((s) => s.id),
         onChange: (lc) => { ch.levelChoices = { ...ch.levelChoices, [L]: lc }; draw(); } })]))];
     const legacy = legacyUI(c);
@@ -536,6 +544,10 @@ export function renderForm(root, go, id) {
       always.length ? h("p", { cls: "hint" }, [h("b", { text: t("form.alwaysPrepared") + ": " }), always.map((x) => tr(SPELLS[x.id].name).split(" (")[0]).join(", ")]) : null,
       ...src.fixed.filter((x) => x.fixedBy).map((x) => h("p", { cls: "hint" }, [h("b", { text: t("form.knownCantrip") + ": " }), tr(SPELLS[x.id].name)])),
       ...src.picks.map((p) => spellPickUI({ pick: p, c, onChange: (ids) => { writePick(ch, p, ids); draw(); } })),
+      // Pact of the Tome: cantrips and rituals from any list, in the Book of Shadows
+      ...c.spellSources.filter((x) => x.id === "tome").flatMap((x) => [h("p", { cls: "hint", text: t("form.tomeHint") }),
+        ...x.picks.map((p) => spellPickUI({ pick: p, c, onChange: (ids) => { writePick(ch, p, ids); draw(); } }))]),
+      c.spells.changeRule === "level" ? h("p", { cls: "hint", text: t("form.changeOnLevel") }) : null,
     ];
     if ((ch.spells?.cantrips || "").trim() || (ch.spells?.prepared || "").trim())
       parts.push(legacySpellText([ch.spells.cantrips, ch.spells.prepared].filter(Boolean).join("\n"), () => { ch.spells = { cantrips: "", prepared: "" }; draw(); }));

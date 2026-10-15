@@ -84,6 +84,16 @@ export function review(ch, c) {
       else if (p.chosen.length < p.count) T(5, "todo.spellPick", { what, n: p.count - p.chosen.length });
     }
   }
+  // Class option lists: Eldritch Invocations, Metamagic.
+  for (const g of c.classOptions || []) {
+    const ok = g.chosen.filter((x) => !x.problem);
+    for (const x of g.chosen.filter((y) => y.problem)) {
+      if (x.pending) T(5, "todo.classOptionCantrip", { name: x.option.name });
+      else E(5, "err.classOption", { name: x.option?.name || { pl: x.raw, en: x.raw }, why: x.problem });
+    }
+    if (g.chosen.length > g.count) E(5, "err.classOptionTooMany", { what: g.label, n: g.count });
+    else if (ok.length + g.chosen.filter((x) => x.pending).length < g.count) T(5, "todo.classOption", { what: g.label, n: g.count - g.chosen.length });
+  }
   const oldText = [ch.spells?.cantrips, ch.spells?.prepared, ...Object.values(ch.featChoices || {}).map((x) => x?.spells),
     ...Object.values(ch.levelChoices || {}).map((x) => (typeof x?.spells === "string" ? x.spells : ""))];
   if (oldText.some((x) => typeof x === "string" && x.trim())) T(5, "todo.legacySpells");

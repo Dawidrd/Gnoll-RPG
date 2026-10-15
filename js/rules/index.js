@@ -4,6 +4,9 @@ import { monk } from "./classes/monk.js";
 import { barbarian } from "./classes/barbarian.js";
 import { rogue } from "./classes/rogue.js";
 import { cleric } from "./classes/cleric.js";
+import { warlock } from "./classes/warlock.js";
+import { sorcerer } from "./classes/sorcerer.js";
+import { classOptions, optionInnate } from "./options.js";
 import { ARMOR, armorClass } from "./armor.js";
 import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
 import { SPECIES, SPECIES_SPELLS, speciesTraits } from "./species.js";
@@ -13,14 +16,13 @@ import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./ident
 import { review } from "./checks.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
 
-export const CLASSES = { barbarian, cleric, monk, rogue };
+export const CLASSES = { barbarian, cleric, monk, rogue, sorcerer, warlock };
 
 /** Classes listed in the creator but not built yet. */
 export const PLANNED_CLASSES = {
   bard: { pl: "Bard", en: "Bard" }, druid: { pl: "Druid", en: "Druid" },
   fighter: { pl: "Wojownik", en: "Fighter" }, paladin: { pl: "Paladyn", en: "Paladin" },
   ranger: { pl: "Łowca", en: "Ranger" },
-  sorcerer: { pl: "Zaklinacz", en: "Sorcerer" }, warlock: { pl: "Czarnoksiężnik", en: "Warlock" },
   wizard: { pl: "Czarodziej", en: "Wizard" },
 };
 
@@ -214,7 +216,14 @@ export function compute(raw) {
     .map((L) => ({ L, id: ch.levelChoices[L].feat, pick: ch.levelChoices[L] }));
   levelFeats.forEach((lf) => (FEATS[lf.id].training || []).forEach((x) => training.includes(x) || training.push(x)));
 
-  const worn = armorClass({ armorId: ch.armor, shield: !!ch.shield, mods, unarmored: cls.unarmored ? cls.unarmored(ctx) : null, training, strScore: abilities.str });
+  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
+  const unarmored = cls.unarmored ? cls.unarmored(ctx) : subclass?.unarmored ? subclass.unarmored(ctx) : null;
+  const worn = armorClass({ armorId: ch.armor, shield: !!ch.shield, mods, unarmored, training, strScore: abilities.str });
+  // Class option lists (Eldritch Invocations, Metamagic). Cantrip prerequisites look at the cantrips picked for the class and the Book of Shadows.
+  const tomeOn = (ch.classOptions?.invocations || []).includes("pact-of-the-tome");
+  const knownClassCantrips = [...(ch.spellPicks?.cantrips || []), ...(tomeOn ? ch.spellPicks?.tomeCantrips || [] : [])];
+  const opts = classOptions(ch, cls, ctx, knownClassCantrips);
+  ctx.classOptions = opts.valid;
   ctx.armor = { wearing: worn.wearing, heavy: worn.heavy, shield: !!ch.shield };
 
   // Feats: the background's feat, one per species slot (Human Versatile), plus pre-0.4 extras until removed.
@@ -228,6 +237,9 @@ export function compute(raw) {
       fixed: !darkGift && options.length === 1 ? options[0] : null });
   }
   if (sp.featSlot) featSlots.push({ ...sp.featSlot, step: 5, options: null, darkGift: ravenloft, default: null });
+  // Lessons of the First Ones (Warlock invocation): one Origin feat each time.
+  Object.values(opts.valid).flat().filter((x) => x.option?.originFeat).forEach((x, i) =>
+    featSlots.push({ id: `lessons-${i}`, step: 5, category: "origin", label: x.option.name, options: null, darkGift: ravenloft, default: null }));
   for (const sl of featSlots) {
     const raw = (ch.featPicks || {})[sl.id];
     sl.pick = raw || sl.default || "";
@@ -256,7 +268,7 @@ export function compute(raw) {
     const die = ch.hpRolls[l] ?? fixedHp(cls.hitDie);
     perLevel.push({ level: l, die, rolled: ch.hpRolls[l] != null, gain: Math.max(1, die + mods.con) });
   }
-  const hpComputed = cls.hitDie + mods.con + perLevel.reduce((s, p) => s + p.gain, 0) + hpExtra * level;
+  const hpComputed = cls.hitDie + mods.con + perLevel.reduce((s, p) => s + p.gain, 0) + hpExtra * level + (subclass?.hpBonus ? subclass.hpBonus(ctx) : 0);
   const hpMax = ch.hp.maxOverride || Math.max(1, hpComputed);
 
   const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
@@ -272,9 +284,8 @@ export function compute(raw) {
   const slowArmor = armorDef?.str && abilities.str < armorDef.str ? 10 : 0;
   const featSpeed = levelFeats.reduce((n, lf) => n + (FEATS[lf.id].speed || 0), 0);
   const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor + featSpeed;
-  const darkvision = sp.custom ? ch.customSpecies?.darkvision || 0 : spt.darkvision;
+  const darkvision = Math.max(sp.custom ? ch.customSpecies?.darkvision || 0 : spt.darkvision, subclass?.darkvision || 0);
 
-  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   // Skills from feats: Skill Expert gives a proficiency; Keen Mind and Observant give proficiency or, if you have it, Expertise.
   const featSkillGrants = levelFeats.filter((lf) => FEATS[lf.id].skillPick && lf.pick.skill).map((lf) => lf.pick.skill);
   const originGrants = originFeats.filter((f) => f.grants?.skill).map((f) => f.grants.skill); // Aberrant Anatomy: Perception
@@ -336,9 +347,20 @@ export function compute(raw) {
     dc: 8 + mods[spellcasting.ability] + pb, attack: mods[spellcasting.ability] + pb,
     always: subclass?.domainSpells ? subclass.domainSpells(level) : [],
   } : null;
-  const spellSrc = spellSources({ ch, ctx, cls, subclass, casting: spellcasting, sp, spt, originFeats, levelFeats });
-  const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: "long", slot: i + 1,
-    name: { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
+  // Invocation spells (cast without a slot) and the Book of Shadows (Pact of the Tome) count as Warlock spells.
+  const extraSources = [];
+  const invSpells = optionInnate(opts.valid.invocations || []);
+  if (invSpells.length) extraSources.push({ id: "invocations", kind: "class-extra", label: { pl: "Inwokacje", en: "Invocations" }, ability: spellcasting?.ability || "cha",
+    resPrefix: "inv-", fixed: invSpells.map((x) => ({ id: x.id, uses: x.uses, kind: "innate", self: !!x.self })), picks: [] });
+  if ((opts.valid.invocations || []).some((x) => x.base === "pact-of-the-tome")) extraSources.push({ id: "tome", kind: "class-extra", label: { pl: "Księga Cieni (Pact of the Tome)", en: "Book of Shadows (Pact of the Tome)" },
+    ability: spellcasting?.ability || "cha", resPrefix: null, fixed: [], picks: [
+      { id: "tome:cantrips", store: "class", key: "tomeCantrips", label: { pl: "Sztuczki z księgi", en: "Book cantrips" }, count: 3, circles: [0], uses: "atwill" },
+      { id: "tome:rituals", store: "class", key: "tomeRituals", label: { pl: "Rytuały z księgi", en: "Book rituals" }, count: 2, circles: [1], ritual: true, uses: "slotsOrRitual" },
+    ] });
+  const spellSrc = spellSources({ ch, ctx, cls, subclass, casting: spellcasting, sp, spt, originFeats, levelFeats, extra: extraSources });
+  ctx.knownSpells = spellSrc.flatMap((s) => s.spells.map((x) => x.id));
+  const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: spells.pact ? "short" : "long", slot: i + 1, pact: !!spells.pact,
+    name: spells.pact ? { pl: `Sloty paktu (${i + 1}. krąg)`, en: `Pact slots (level ${i + 1})` } : { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
 
   // Spells from feats (Dark Gifts): always prepared, cantrips at will, others once per long rest.
   const featMagic = originFeats.filter((f) => f.innate).map((f) => {
@@ -365,7 +387,7 @@ export function compute(raw) {
   // Death saves: Reborn have Advantage, Touch of Death gives Disadvantage (both cancel out).
   const dsMods = [spt.deathSaves, ...originFeats.map((f) => f.deathSaves || "")].filter(Boolean);
   const deathSaves = dsMods.includes("adv") && dsMods.includes("dis") ? "" : dsMods[0] || "";
-  const blindsight = Math.max(0, ...originFeats.map((f) => f.senses?.blindsight || 0));
+  const blindsight = Math.max(subclass?.blindsight || 0, ...originFeats.map((f) => f.senses?.blindsight || 0));
   const flaws = originFeats.filter((f) => f.flaw).map((f) => ({ id: f.id, name: f.name, save: f.flaw.save || "", text: f.flaw.text(ctx) }));
   // Content from The Horrors Within needs the Ravenloft game type.
   const ravenloftOnly = ravenloft ? [] : [
@@ -384,7 +406,8 @@ export function compute(raw) {
     featMagic, spellSources: spellSrc, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
     speciesSpeed: spt.speed, creatureType: sp.type || "humanoid", resistances: spt.resist, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
-    summary: [...(cls.summary ? cls.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
+    summary: [...(cls.summary ? cls.summary(ctx) : []), ...(subclass?.summary ? subclass.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
+    classOptions: opts.groups, knownClassCantrips,
     classFeatures: atLevel(cls.features),
     subclassFeatures: subclass ? atLevel(subclass.features) : [],
     speciesFeatures: atLevel(sp.features),

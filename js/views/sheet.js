@@ -12,6 +12,7 @@ import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
 import { writePick } from "../rules/magic.js";
 import { spellPickUI, spellTags, spellBody } from "./spellpicker.js";
+import { classOptionUI, classOptionList } from "./classoptions.js";
 
 const TABS = ["start", "character", "spells", "levelup", "notes"];
 let lastHp = null; // undo snapshot for the open character
@@ -182,6 +183,7 @@ export function renderSheet(root, go, id, tab) {
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.abilities") }), abil]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.skills") }), skills]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.classFeatures") }), featList(c.classFeatures)]),
+        ...c.classOptions.map((g) => classOptionList(g, c)),
         c.subclassFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: tr(c.subclass.name) }), featList(c.subclassFeatures)]) : null,
         c.customSubclass ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: c.customSubclass }), h("p", { cls: "hint", text: t("char.customSubclassHint") })]) : null,
         c.speciesFeatures.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.speciesFeatures") }), featList(c.speciesFeatures)]) : null,
@@ -231,11 +233,12 @@ export function renderSheet(root, go, id, tab) {
           const acts = [];
           const free = src.resPrefix ? resOf(src.resPrefix + x.id) : null;
           if (free) acts.push(h("button", { type: "button", cls: "btn small", disabled: free.used >= free.max, text: t("spell.free", { n: free.max - free.used, max: free.max }), onclick: () => cast(x.id, { res: free.id }) }));
-          if (s.circle > 0 && x.uses !== "ritual") for (const r of slotRes.filter((r) => r.slot >= s.circle)) {
+          if (s.circle > 0 && x.uses !== "ritual" && x.uses !== "atwill") for (const r of slotRes.filter((r) => r.slot >= s.circle)) {
             acts.push(h("button", { type: "button", cls: "btn small ghost", disabled: r.used >= r.max, text: t("spell.slotBtn", { n: r.slot }), title: t("spell.castSlotHint", { n: r.slot }), onclick: () => cast(x.id, { slot: r.slot }) }));
           }
-          if (s.circle === 0 && s.conc) acts.push(h("button", { type: "button", cls: "btn small ghost", text: t("conc.start"), onclick: () => { ch.concentration = x.id; save(); } }));
-          const why = x.kind === "always" ? t("spell.always") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "atwill" ? t("spell.atWill") : "";
+          if ((s.circle === 0 || x.uses === "atwill") && s.conc) acts.push(h("button", { type: "button", cls: "btn small ghost", text: t("conc.start"), onclick: () => { ch.concentration = x.id; save(); } }));
+          const why = [x.kind === "always" ? t("spell.always") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "slotsOrRitual" ? t("spell.slotsOrRitual")
+            : x.uses === "atwill" ? (s.circle ? t("spell.noSlot") : t("spell.atWill")) : "", x.self ? t("spell.selfOnly") : ""].filter(Boolean).join(" ");
           rows.push(h("div", { cls: "spellrow sheet" + (ch.concentration === x.id ? " on" : "") }, [
             h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null]), ...spellBody(s, c), why ? h("p", { cls: "hint", text: why }) : null]),
             acts.length ? h("div", { cls: "row acts" }, acts) : null,
@@ -247,7 +250,8 @@ export function renderSheet(root, go, id, tab) {
         const edit = picks.length ? h("div", { cls: "row" }, picks.map((p) => h("button", { type: "button", cls: "btn ghost", id: "edit-" + p.id.replace(/[^\w-]/g, "_"),
           text: `${t("spell.change")}: ${tr(p.label).toLowerCase()} (${p.chosen.length}/${p.count})`, onclick: () => { editing = editing === p.id ? null : p.id; draw(); } }))) : null;
         const open = picks.find((p) => p.id === editing);
-        out.push(h("section", { cls: "blk gl" }, [...head, ...rows, edit,
+        const rule = src.id === "class" && c.spells?.changeRule === "level" ? h("p", { cls: "hint", text: t("spell.changeLevel") }) : null;
+        out.push(h("section", { cls: "blk gl" }, [...head, ...rows, edit, rule,
           open ? spellPickUI({ pick: open, c, onChange: (ids) => { writePick(ch, open, ids); save(); } }) : null]));
       }
       return out;
@@ -257,7 +261,7 @@ export function renderSheet(root, go, id, tab) {
       const out = [];
       const nx = c.next;
       if (nx) {
-        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skill: "", lc: null, spellPicks: null };
+        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skill: "", lc: null, spellPicks: null, classOptions: null };
         const N = nx.level;
         const draft = structuredClone(ch);
         draft.level = N;
@@ -268,6 +272,7 @@ export function renderSheet(root, go, id, tab) {
         draft.levelChoices = { ...(draft.levelChoices || {}) };
         if (pending.lc) draft.levelChoices[N] = pending.lc; else delete draft.levelChoices[N];
         draft.spellPicks = structuredClone(pending.spellPicks || ch.spellPicks || {});
+        draft.classOptions = structuredClone(pending.classOptions || ch.classOptions || {});
         const cn = compute(structuredClone(draft));
         const gainOf = (die) => Math.max(1, die + nx.conMod) + nx.extra;
         const steps = [];
@@ -317,6 +322,15 @@ export function renderSheet(root, go, id, tab) {
           ok.push(levelChoiceDone(draft, N));
         }
 
+        // 4b. Class options: new invocations (Warlock 2 and 5), Metamagic (Sorcerer 2)
+        for (const g of cn.classOptions) {
+          const before = c.classOptions.find((x) => x.key === g.key);
+          if (before && before.count === g.count && !g.chosen.some((x) => x.problem) && g.chosen.length === g.count) continue;
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: tr(g.label) }), classOptionUI({ group: g, c: cn, known: cn.knownClassCantrips,
+            onChange: (raws) => { pending.classOptions = { ...(draft.classOptions || {}), [g.key]: raws }; draw(); } })]));
+          ok.push(g.chosen.length === g.count && !g.chosen.some((x) => x.problem));
+        }
+
         // 5. Spells: new cantrips and prepared spells from the class list, picked now
         const srcN = cn.spellSources.find((x) => x.id === "class");
         if (srcN) {
@@ -325,12 +339,13 @@ export function renderSheet(root, go, id, tab) {
             h("p", { text: srcB ? t("lvl.spellCounts", { c1: c.spells.cantrips, c2: cn.spells.cantrips, p1: c.spells.prepared, p2: cn.spells.prepared })
               : t("lvl.spellsNew", { c2: cn.spells.cantrips, p2: cn.spells.prepared }) }),
             cn.spells.slots.length > (c.spells?.slots.length || 0) ? h("p", { cls: "hint", text: t("lvl.newCircle", { n: cn.spells.slots.length }) }) : null]);
-          for (const p of srcN.picks) {
-            const before = srcB?.picks.find((x) => x.id === p.id);
+          for (const p of [...srcN.picks, ...(cn.spellSources.find((x) => x.id === "tome")?.picks || [])]) {
+            const before = c.spellSources.flatMap((x) => x.picks).find((x) => x.id === p.id);
             if (before && before.count === p.count && p.chosen.length === p.count && p.options.length === before.options.length) continue;
             box.append(spellPickUI({ pick: p, c: cn, onChange: (ids) => { const d = { spellPicks: structuredClone(draft.spellPicks) }; writePick(d, p, ids); pending.spellPicks = d.spellPicks; draw(); } }));
           }
-          if (box.children.length > 2 || !srcB || srcN.picks.some((p) => p.chosen.length !== p.count)) { steps.push(box); ok.push(srcN.picks.every((p) => p.chosen.length === p.count && !p.invalid.length)); }
+          const allPicks = [...srcN.picks, ...(cn.spellSources.find((x) => x.id === "tome")?.picks || [])];
+          if (box.children.length > 2 || !srcB || allPicks.some((p) => p.chosen.length !== p.count)) { steps.push(box); ok.push(allPicks.every((p) => p.chosen.length === p.count && !p.invalid.length)); }
         }
 
         const ready = ok.every(Boolean);
@@ -347,12 +362,12 @@ export function renderSheet(root, go, id, tab) {
           h("div", { cls: "row" }, [
             h("button", { type: "button", cls: "btn gold", id: "lvl-confirm", disabled: !ready, text: t("lvl.up", { n: N }), onclick: () => {
               const before = c.hpMax;
-              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, levelChoices: draft.levelChoices, spellPicks: draft.spellPicks });
+              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, levelChoices: draft.levelChoices, spellPicks: draft.spellPicks, classOptions: draft.classOptions });
               const after = compute(ch).hpMax;
               ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
               pending = null; save(); toast(t("lvl.done", { n: N }));
             } }),
-            pending.hp != null || pending.lc || pending.subclass || pending.skill || pending.spellPicks
+            pending.hp != null || pending.lc || pending.subclass || pending.skill || pending.spellPicks || pending.classOptions
               ? h("button", { type: "button", cls: "btn ghost", text: t("lvl.reset"), onclick: () => { pending = null; draw(); } }) : null,
           ]),
         ]));
@@ -391,6 +406,10 @@ export function renderSheet(root, go, id, tab) {
       // Fewer cantrips or prepared spells at the lower level: keep the first ones picked.
       for (const src of cd.spellSources) for (const p of src.picks) if (p.store === "class") writePick(ch, p, p.chosen.slice(0, p.count));
       if (!cd.spellSources.some((x) => x.id === "class")) ch.spellPicks = {};
+      // Fewer invocations at the lower level (Warlock 5 → 4): keep the first ones; Metamagic goes away below Sorcerer 2.
+      const keptOpts = {};
+      for (const g of cd.classOptions) keptOpts[g.key] = g.chosen.slice(0, g.count).map((x) => x.raw);
+      ch.classOptions = keptOpts;
       const after = compute(ch).hpMax;
       ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
       pending = null; save();
@@ -497,7 +516,7 @@ export function renderSheet(root, go, id, tab) {
 }
 
 function shortRes(r) {
-  const map = { focus: "FP", breath: { pl: "Zion.", en: "Breath" }, inspiration: "Insp.", adrenaline: "Adr." };
+  const map = { focus: "FP", breath: { pl: "Zion.", en: "Breath" }, inspiration: "Insp.", adrenaline: "Adr.", "sorcery-points": { pl: "PC", en: "SP" } };
   const m = map[r.id];
   return m ? tr(m) : tr(r.name).split(" ")[0];
 }

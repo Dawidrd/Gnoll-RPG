@@ -49,7 +49,7 @@ const entry = (id, uses, kind, extra = {}) => ({ id, uses, kind, ...extra });
  * All spell sources of a character.
  * ctx: { level, pb, mods }, cls, subclass, casting (class spellcasting or null), species traits (spt), originFeats, levelFeats.
  */
-export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originFeats, levelFeats }) {
+export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originFeats, levelFeats, extra = [] }) {
   const { level, pb, mods } = ctx;
   const out = [];
   const finish = (src) => {
@@ -82,6 +82,9 @@ export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originF
       ],
     });
   }
+
+  // Class extras: spells from Eldritch Invocations and the Book of Shadows.
+  for (const src of extra) finish({ ...src, ...magicNumbers(src.ability, mods, pb), fixed: [...src.fixed], picks: src.picks.map((p) => ({ ...p })) });
 
   // Species spells (lineages, legacies, Hexblood…): fixed by the species, ability picked in the creator.
   if (spt?.magic) {

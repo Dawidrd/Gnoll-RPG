@@ -8,9 +8,10 @@
 
 - Kreator w 5 krokach z rozdziału 2 Podręcznika Gracza 2024: klasa → pochodzenie → cechy → charakter → szczegóły
 - Limity z podręcznika wbudowane w kreator (umiejętności, języki, narzędzia, featy, point buy, jeden rzut 4k6); lista „Do uzupełnienia”
-- Barbarzyńca, Kleryk, Mnich, Łotr (poziomy 1–5) z podklasami; 16 teł; wszystkie 10 gatunków z PHB z liniami elfów i gnomów, dziedzictwami tieflingów i przodkami goliatów; czary z gatunku z DC, użyciami i odpornościami na karcie
-- Czary: wszystkie czary z PHB 2024 od sztuczek do 3. kręgu (213), z listami klas sprawdzonymi z podręcznikiem; wybór z listy z limitami (Kleryk, Arcane Trickster, Magic Initiate, Fey-Touched, Shadow-Touched, Ritual Caster); zakładka Czary z rzucaniem ze slotów, darmowymi użyciami i koncentracją
-- Tryb Ravenloft (The Horrors Within): gatunki Dhampir, Hexblood, Lupin, Reborn; tła Haunted One, Investigator, Mist Wanderer, Spirit Medium; featy Sharp Eye i Survivor; 9 Dark Gifts z ceną liczoną na karcie; podklasy Grave Domain i Phantom. W grze standardowej te opcje są niedostępne
+- Barbarzyńca, Czarnoksiężnik, Kleryk, Mnich, Łotr, Zaklinacz (poziomy 1–5) z podklasami; 16 teł; wszystkie 10 gatunków z PHB z liniami elfów i gnomów, dziedzictwami tieflingów i przodkami goliatów; czary z gatunku z DC, użyciami i odpornościami na karcie
+- Czary: wszystkie czary z PHB 2024 od sztuczek do 3. kręgu (213), z listami klas sprawdzonymi z podręcznikiem; wybór z listy z limitami (Kleryk, Czarnoksiężnik, Zaklinacz, Arcane Trickster, Magic Initiate, Fey-Touched, Shadow-Touched, Ritual Caster); zakładka Czary z rzucaniem ze slotów, darmowymi użyciami i koncentracją
+- Czarnoksiężnik: Pact Magic (sloty wracają po krótkim odpoczynku), 28 inwokacji z wymaganiami (poziom, pakt, sztuczka, inna inwokacja), Pakty Łańcucha, Ostrza i Księgi; Zaklinacz: Punkty Czarów, Metamagia, Innate Sorcery
+- Tryb Ravenloft (The Horrors Within): gatunki Dhampir, Hexblood, Lupin, Reborn; tła Haunted One, Investigator, Mist Wanderer, Spirit Medium; featy Sharp Eye i Survivor; 9 Dark Gifts z ceną liczoną na karcie; podklasy Grave Domain, Phantom, Undead Patron i Shadow Sorcery. W grze standardowej te opcje są niedostępne
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline

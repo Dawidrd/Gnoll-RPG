@@ -80,3 +80,16 @@ export function spellFacts(s, lang) {
     school: t(SCHOOLS[s.school]),
   };
 }
+
+/**
+ * Damaging cantrips, for invocation prerequisites (Agonizing Blast, Eldritch Spear, Repelling Blast):
+ * attack = uses an attack roll; range = range in feet (0 = touch or self).
+ */
+export const DAMAGE_CANTRIPS = {
+  "acid-splash": { attack: false, range: 60 }, "chill-touch": { attack: true, range: 0 }, "eldritch-blast": { attack: true, range: 120 },
+  "fire-bolt": { attack: true, range: 120 }, "mind-sliver": { attack: false, range: 60 }, "poison-spray": { attack: true, range: 30 },
+  "produce-flame": { attack: true, range: 60 }, "ray-of-frost": { attack: true, range: 60 }, "sacred-flame": { attack: false, range: 60 },
+  "shocking-grasp": { attack: true, range: 0 }, "sorcerous-burst": { attack: true, range: 120 }, "starry-wisp": { attack: true, range: 60 },
+  "thorn-whip": { attack: true, range: 30 }, thunderclap: { attack: false, range: 0 }, "toll-the-dead": { attack: false, range: 60 },
+  "vicious-mockery": { attack: false, range: 60 }, "word-of-radiance": { attack: false, range: 0 },
+};
