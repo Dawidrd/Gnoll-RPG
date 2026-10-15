@@ -5,7 +5,7 @@
 // Each account has its own list on the device (store.js), so switching accounts never mixes characters.
 // Firebase Analytics is deliberately not loaded (see docs/backlog.md).
 import { CONFIG } from "../config.js";
-import { storage, loadAll, gone, onChange, applyRemote, currentOwner, setOwner, knownOwner, guestCharacters, moveGuestCharacters } from "../store.js";
+import { storage, loadAll, gone, onChange, applyRemote, currentOwner, setOwner, knownOwner, guestCharacters, moveGuestCharacters, forgetAccount } from "../store.js";
 import { plan, syncableId, toDoc, goneDoc, fromDoc } from "./merge.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.4.0/";
@@ -77,6 +77,25 @@ let stop = null; // ends the cloud listener and the local listener
 let uid = null;
 /** For other cloud features (teams): Firebase and the signed-in account, or null when signed out. */
 export const cloud = () => (state.status === "in" && fb && uid ? { F: fb.F, db: fb.db, uid, name: state.user?.name || state.user?.email || "" } : null);
+
+// --- Deleting the account (D4; the whole order is in erase.js) ---
+
+/** Google asks the user to confirm the account once more; it refuses to delete an account signed in long ago. */
+export async function confirmIdentity() {
+  const provider = new fb.A.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  await fb.A.reauthenticateWithPopup(fb.auth.currentUser, provider);
+}
+/** Stop mirroring characters while their cloud copies are deleted (otherwise the device would send them back). */
+export function pauseSync() { stop?.(); }
+export function resumeSync() { if (fb?.auth.currentUser) signedIn(fb.auth.currentUser); }
+/** The last step: the sign-in account itself; then this device forgets it and Firebase's offline copy. */
+export async function removeAccount(keep) {
+  const user = fb.auth.currentUser;
+  await fb.A.deleteUser(user);
+  forgetAccount(user.uid, keep);
+  try { await fb.F.terminate(fb.db); await fb.F.clearIndexedDbPersistence(fb.db); } catch { /* the page reloads anyway */ }
+}
 
 function signedIn(user) {
   storage.set(REDIRECT, "0");

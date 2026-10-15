@@ -24,12 +24,13 @@
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
 - Konto (nieobowiązkowe): logowanie przez Google; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci
 - Drużyna (z kontem): zakładanie drużyny, link zaproszenia (kopiuj/udostępnij, nowy link unieważnia stary), prośba o dołączenie z wybraną postacią, akceptacja/odrzucenie, usuwanie graczy, role admin/gracz (założyciela nie da się usunąć), opuszczanie i usuwanie drużyny
+- Prywatność i bezpieczeństwo: ekran „Prywatność” (co gdzie trafia, kto co widzi, jak usunąć), przycisk „Usuń konto i dane” (postacie, notatki, miejsca w drużynach, założone drużyny i samo konto; postacie mogą zostać na urządzeniu), testy reguł bezpieczeństwa w symulatorze
 - Wspólne dane drużyny: kampania i termin następnej sesji, podgląd postaci (gatunek, klasa, poziom, HP i AC na żywo), szyk marszowy 5 ft (gęsiego) i 10 ft (dwójkami) ustawiany przez admina, notatki drużyny i prywatne notatki widoczne tylko dla autora
 
 ## Prywatność / Privacy
 
-Bez logowania postacie zapisują się tylko w przeglądarce użytkownika (`localStorage`). Logowanie jest dobrowolne: po zalogowaniu (Google) kopia postaci trafia do Firebase (Firestore, region europe-central2) i widzi ją tylko właściciel konta (`firestore.rules`). W drużynie pozostali członkowie widzą tylko imię z konta Google, rolę oraz nazwę, gatunek, klasę, poziom, HP i AC postaci; notatki prywatne widzi tylko autor. Kod Firebase wczytuje się dopiero po wybraniu logowania. Brak analityki.
-Without signing in, characters are stored only in the user's browser. Signing in is optional: a copy then goes to Firebase (Firestore, europe-central2), readable only by the account owner. In a team, other members see only the Google account name, the role, and the character's name, species, class, level, HP and AC; private notes are seen only by their author. Firebase code loads only when you choose to sign in. No analytics.
+Bez logowania postacie zapisują się tylko w przeglądarce użytkownika (`localStorage`). Logowanie jest dobrowolne: po zalogowaniu (Google) kopia postaci trafia do Firebase (Firestore, region europe-central2) i widzi ją tylko właściciel konta (`firestore.rules`). W drużynie pozostali członkowie widzą tylko imię z konta Google, rolę oraz nazwę, gatunek, klasę, poziom, HP i AC postaci; notatki prywatne widzi tylko autor. Kod Firebase wczytuje się dopiero po wybraniu logowania. Brak analityki. Przycisk „Usuń konto i dane” (ramka „Konto”) usuwa wszystko z chmury i samo konto. Pełny opis: ekran „Prywatność” w aplikacji.
+Without signing in, characters are stored only in the user's browser. Signing in is optional: a copy then goes to Firebase (Firestore, europe-central2), readable only by the account owner. In a team, other members see only the Google account name, the role, and the character's name, species, class, level, HP and AC; private notes are seen only by their author. Firebase code loads only when you choose to sign in. No analytics. “Delete account and data” (Account box) removes everything from the cloud and the account itself. Full text: the Privacy screen in the app.
 
 ## Uruchomienie lokalnie / Run locally
 
@@ -46,7 +47,7 @@ python3 -m http.server 8000
 node tests/run.mjs
 ```
 
-Testy reguł (bez zależności). Uruchamiaj przed każdą publikacją.
+Testy reguł (bez zależności). Uruchamiaj przed każdą publikacją. Reguły bezpieczeństwa (`firestore.rules`) sprawdza mały symulator `tests/rules-sim.mjs` — bez emulatora i Javy; to model serwera, więc zmiany reguł i tak warto sprawdzić na dwóch kontach.
 
 ## Publikacja / Deploy (GitHub Pages)
 
@@ -63,7 +64,10 @@ js/config.js                              nazwa, wersja, link do wsparcia, konfi
 js/store.js                               postacie na urządzeniu (localStorage, osobna lista dla każdego konta), znaczniki usunięć
 js/sync/merge.js                          łączenie urządzenia z chmurą (nowsza zmiana wygrywa)
 js/sync/cloud.js                          konto Google i synchronizacja (Firebase, wczytywany na żądanie)
-js/views/account.js                       ramka „Konto” na ekranie głównym
+js/views/account.js                       ramka „Konto” na ekranie głównym, usuwanie konta
+js/sync/erase.js                          usuwanie konta i wszystkich danych z chmury
+js/views/privacy.js                       ekran „Prywatność”
+tests/rules-sim.mjs                       symulator reguł Firestore do testów
 firestore.rules                           reguły bezpieczeństwa Firestore (wkleja się w konsoli)
 js/i18n.js, js/lang/{pl,en}.js            teksty interfejsu
 js/rules/core.js                          matematyka 5e, umiejętności, featy pochodzenia

@@ -72,7 +72,7 @@ export function renderHome(root, go) {
       pasteBox,
       h("p", { cls: "hint", text: t("home.pageHint") }),
       accountBox(),
-      h("p", { cls: "hint", text: t(accountAvailable() ? "home.privacyAccount" : "home.privacy") }),
+      h("p", { cls: "hint" }, [t(accountAvailable() ? "home.privacyAccount" : "home.privacy"), " ", h("a", { href: "#/privacy", text: t("privacy.more") })]),
     ])
   );
 }

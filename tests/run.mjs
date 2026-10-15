@@ -9,6 +9,10 @@ import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as MERGE from "../js/sync/merge.js";
 import * as TEAM from "../js/sync/teamlogic.js";
+import { rulesSim, DELETE } from "./rules-sim.mjs";
+import { readFileSync } from "node:fs";
+import LANG_PL from "../js/lang/pl.js";
+import LANG_EN from "../js/lang/en.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -750,6 +754,24 @@ test("store: every account has its own characters on the device", () => {
   STORE.setOwner(""); mem.clear();
 });
 
+test("store: a deleted account is forgotten on this device; its characters may stay without an account", () => {
+  mem.clear();
+  STORE.upsert(sc("g-1", 0));
+  STORE.setOwner("uidAAAA"); STORE.moveGuestCharacters(); STORE.upsert(sc("a-1", 0)); STORE.remove("g-1");
+  STORE.forgetAccount("uidAAAA", true);
+  eq([STORE.currentOwner(), STORE.knownOwner("uidAAAA"), mem.has("gnoll.deleted.u.uidAAAA")], ["", false, false], "account list gone");
+  eq(STORE.loadAll().map((c) => c.id), ["a-1"], "kept as a character without an account");
+  STORE.setOwner("uidBBBB"); STORE.upsert(sc("b-1", 0));
+  STORE.forgetAccount("uidBBBB", false);
+  eq([STORE.currentOwner(), STORE.loadAll().map((c) => c.id), STORE.knownOwner("uidBBBB")], ["", ["a-1"], false], "not kept");
+  mem.clear();
+});
+test("UI texts: Polish and English have the same keys", () => {
+  const [pl, en] = [LANG_PL, LANG_EN];
+  eq(Object.keys(pl).filter((k) => !(k in en)), [], "missing in en.js");
+  eq(Object.keys(en).filter((k) => !(k in pl)), [], "missing in pl.js");
+});
+
 // --- Teams (D2): invite links, statuses, who may do what ---
 test("team: invite codes are long, random-looking and survive a link round-trip", () => {
   const code = TEAM.makeCode(new Uint8Array(20).map((_, i) => i * 13));
@@ -824,6 +846,175 @@ test("team: the team sees only species, class, level, HP and AC", () => {
   ch.hp.cur = null;
   eq(TEAM.sheetSummary(ch, c).hp, c.hpMax, "not set yet = full");
   eq([TEAM.sameSheet(s, { ...s }), TEAM.sameSheet(s, { ...s, hp: 1 }), TEAM.sameSheet(null, s)], [true, false, false]);
+});
+
+// --- Security rules (D4): firestore.rules checked in a small simulator (tests/rules-sim.mjs) ---
+const RULES = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
+const CODE = "Inv1te0Code0Alpha00X", CODE2 = "Inv1te0Code0Bravo00Y";
+const chDoc = (n = 1) => ({ json: "{}", updated: n, deleted: false });
+// alice founds "t1" (no character, e.g. the GM); bob plays in it; carol is a stranger.
+function world({ bobIn = true } = {}) {
+  const db = rulesSim(RULES);
+  const [alice, bob, carol, nobody] = ["alice", "bob", "carol", null].map((u) => db.as(u));
+  eq(alice.batch([
+    ["set", "teams/t1", { name: "Kompania", owner: "alice", invite: CODE, created: 1 }],
+    ["set", "teams/t1/members/alice", { role: "admin", name: "Alice", charId: "", charName: "", at: 1 }],
+    ["set", `invites/${CODE}`, { team: "t1", name: "Kompania" }],
+    ["set", "users/alice/teams/t1", { name: "Kompania", state: "in", at: 1 }],
+  ]), true, "founding a team");
+  eq(bob.batch([
+    ["set", "teams/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 2 }],
+    ["set", "users/bob/teams/t1", { name: "Kompania", state: "asked", at: 2 }],
+  ]), true, "asking to join");
+  if (bobIn) eq(alice.batch([
+    ["set", "teams/t1/members/bob", { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 }],
+    ["delete", "teams/t1/requests/bob"],
+  ]), true, "accepting");
+  return { db, alice, bob, carol, nobody };
+}
+const sheetOk = { species: "dwarf", cls: "fighter", sub: "", level: 3, hp: 7, hpMax: 28, temp: 0, ac: 16 };
+
+test("rules: the simulator reads firestore.rules; anything not listed is closed", () => {
+  const { db, alice, nobody } = world();
+  eq([nobody.get("teams/t1"), nobody.list("teams"), alice.list("teams"), alice.set("other/x", { a: 1 }), alice.get("users/alice")], [false, false, false, false, false]);
+  eq(db.docs.has("other/x"), false, "a refused write changes nothing");
+});
+test("rules: only you read and write your characters, in the expected shape", () => {
+  const { alice, bob, nobody } = world();
+  eq(alice.set("users/alice/characters/c1", chDoc()), true);
+  eq([bob.get("users/alice/characters/c1"), bob.list("users/alice/characters"), nobody.get("users/alice/characters/c1")], [false, false, false]);
+  eq([bob.set("users/alice/characters/c2", chDoc()), bob.delete("users/alice/characters/c1")], [false, false], "nobody writes into someone else's account");
+  eq(alice.set("users/alice/characters/c3", { ...chDoc(), extra: 1 }), false, "unknown field");
+  eq(alice.set("users/alice/characters/c3", { json: "{}", updated: "1", deleted: false }), false, "wrong type");
+  eq(alice.set("users/alice/characters/c3", { json: "x".repeat(900000), updated: 1, deleted: false }), false, "too big");
+  eq([alice.list("users/alice/characters"), alice.delete("users/alice/characters/c1")], [true, true]);
+});
+test("rules: founding a team needs your own admin membership; you cannot found one for someone else", () => {
+  const { bob, carol } = world();
+  eq(carol.set("teams/t9", { name: "X", owner: "carol", invite: CODE2, created: 1 }), false, "team without its admin");
+  eq(carol.batch([
+    ["set", "teams/t9", { name: "X", owner: "bob", invite: CODE2, created: 1 }],
+    ["set", "teams/t9/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
+  ]), false, "owner must be me");
+  eq(carol.set("teams/t1/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }), false, "no admin seat in an existing team");
+  eq(bob.set(`invites/${CODE2}`, { team: "t1", name: "Kompania" }), false, "a player cannot make invites");
+});
+test("rules: invites open only by their exact code; requests need a working code", () => {
+  const { alice, bob, carol } = world({ bobIn: false });
+  eq([carol.get(`invites/${CODE}`), carol.list("invites")], [true, false]);
+  const ask = (code) => carol.set("teams/t1/requests/carol", { name: "C", charId: "c1", charName: "Mira", code, at: 1 });
+  eq(ask(CODE2), false, "unknown code");
+  eq(carol.set("teams/t1/requests/carol", { name: "C", charId: "", charName: "", code: CODE, at: 1 }), false, "a character is required");
+  eq(carol.set("teams/t1/requests/bob", { name: "B", charId: "b1", charName: "Grok", code: CODE, at: 1 }), false, "not for someone else");
+  eq(ask(CODE), true);
+  eq([carol.get("teams/t1/requests/carol"), bob.get("teams/t1/requests/carol"), bob.list("teams/t1/requests"), alice.list("teams/t1/requests")], [true, false, false, true], "requests: the asker and admins");
+  eq(bob.delete(`invites/${CODE}`), false, "only admins delete invites");
+  // a new link: the old code stops working
+  eq(alice.batch([["delete", `invites/${CODE}`], ["set", `invites/${CODE2}`, { team: "t1", name: "Kompania" }], ["update", "teams/t1", { invite: CODE2 }]]), true);
+  eq(carol.delete("teams/t1/requests/carol"), true);
+  eq(ask(CODE), false, "old link refused");
+});
+test("rules: only admins accept, and only people who asked; members cannot ask again", () => {
+  const { alice, bob, carol } = world({ bobIn: false });
+  const seat = { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 };
+  eq(bob.set("teams/t1/members/bob", seat), false, "letting yourself in");
+  eq(alice.set("teams/t1/members/carol", { ...seat, name: "C" }), false, "carol did not ask");
+  eq(alice.set("teams/t1/members/bob", { ...seat, role: "admin" }), false, "accepted as a player only");
+  eq(alice.set("teams/t1/members/bob", seat), true);
+  eq(bob.set("teams/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 4 }), false, "already a member");
+  eq(carol.get("teams/t1/members/bob"), false);
+});
+test("rules: strangers see nothing of a team", () => {
+  const { alice, carol } = world();
+  eq(alice.set("teams/t1/notes/n1", { author: "alice", name: "Alice", text: "Smok", at: 1 }), true);
+  eq([carol.get("teams/t1"), carol.list("teams/t1/members"), carol.get("teams/t1/members/alice"), carol.list("teams/t1/notes"), carol.get("teams/t1/notes/n1")], [false, false, false, false, false]);
+  eq(carol.set("teams/t1/notes/n2", { author: "carol", name: "C", text: "hi", at: 1 }), false);
+});
+test("rules: only admins change team info and the marching order, within limits", () => {
+  const { alice, bob } = world();
+  const info = { campaign: "Curse of Strahd", next: "2026-10-23T19:00", march: { mode: "10", order: ["bob"] } };
+  eq(bob.update("teams/t1", info), false, "player");
+  eq(alice.update("teams/t1", info), true);
+  eq(alice.update("teams/t1", { march: { mode: "15", order: [] } }), false, "15 ft is not a formation");
+  eq(alice.update("teams/t1", { next: "Friday" }), false, "date format");
+  eq(alice.update("teams/t1", { campaign: "x".repeat(101) }), false, "too long");
+  eq(alice.update("teams/t1", { owner: "bob" }), false, "the founder cannot be changed");
+  eq(alice.update("teams/t1", { secret: 1 }), false, "unknown field");
+});
+test("rules: a member shares only the short character summary, and only their own", () => {
+  const { alice, bob } = world();
+  eq(bob.update("teams/t1/members/bob", { sheet: sheetOk, charName: "Grok" }), true);
+  eq(alice.update("teams/t1/members/bob", { sheet: { ...sheetOk, hp: 0 } }), false, "an admin cannot change your HP");
+  eq(bob.update("teams/t1/members/bob", { sheet: { ...sheetOk, notes: "secret" } }), false, "nothing beyond the summary");
+  eq(bob.update("teams/t1/members/bob", { sheet: { ...sheetOk, hp: -5 } }), false, "numbers in range");
+  eq(bob.update("teams/t1/members/bob", { role: "admin" }), false, "no promoting yourself");
+  eq(bob.update("teams/t1/members/bob", { charId: "", charName: "", sheet: DELETE }), true, "playing without a character");
+});
+test("rules: roles; nobody removes or demotes the founder; leaving", () => {
+  const { alice, bob, carol } = world();
+  eq(bob.delete("teams/t1/members/alice"), false);
+  eq(alice.update("teams/t1/members/bob", { role: "admin" }), true, "promote");
+  eq([bob.update("teams/t1/members/alice", { role: "player" }), bob.delete("teams/t1/members/alice")], [false, false], "another admin vs the founder");
+  eq(alice.delete("teams/t1/members/alice"), false, "the founder deletes the team instead of leaving");
+  eq(alice.update("teams/t1/members/bob", { role: "player" }), true, "demote");
+  eq(carol.delete("teams/t1/members/bob"), false);
+  eq(bob.delete("teams/t1/members/bob"), true, "leaving");
+});
+test("rules: team notes are edited by their author; admins may remove any", () => {
+  const { alice, bob, carol } = world();
+  eq(bob.set("teams/t1/notes/n1", { author: "alice", name: "Alice", text: "fake", at: 1 }), false, "pretending to be someone else");
+  eq(bob.set("teams/t1/notes/n1", { author: "bob", name: "Bob", text: "Smok w jaskini", at: 1 }), true);
+  eq([alice.list("teams/t1/notes"), alice.update("teams/t1/notes/n1", { text: "edited", at: 2 })], [true, false]);
+  eq(bob.update("teams/t1/notes/n1", { author: "alice" }), false, "author cannot change");
+  eq(bob.set("teams/t1/notes/n2", { author: "bob", name: "Bob", text: "", at: 1 }), false, "empty note");
+  eq(bob.set("teams/t1/notes/n2", { author: "bob", name: "Bob", text: "x".repeat(4001), at: 1 }), false, "too long");
+  eq(carol.delete("teams/t1/notes/n1"), false);
+  eq(alice.delete("teams/t1/notes/n1"), true, "admin");
+});
+test("rules: private notes are read only by their author, admins included", () => {
+  const { alice, bob } = world();
+  eq(bob.set("users/bob/teams/t1/notes/p1", { text: "Alice is a vampire", at: 1 }), true);
+  eq([alice.get("users/bob/teams/t1/notes/p1"), alice.list("users/bob/teams/t1/notes"), alice.list("users/bob/teams")], [false, false, false]);
+  eq(alice.set("users/bob/teams/t1/notes/p2", { text: "x", at: 1 }), false);
+  eq(bob.list("users/bob/teams/t1/notes"), true);
+});
+test("rules: the founder deletes the whole team in one go; others cannot", () => {
+  const { db, alice, bob } = world();
+  bob.set("teams/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
+  eq(bob.delete("teams/t1"), false);
+  eq(alice.batch([
+    ["delete", "teams/t1/notes/n1"], ["delete", "teams/t1/members/bob"], ["delete", `invites/${CODE}`],
+    ["delete", "teams/t1"], ["delete", "teams/t1/members/alice"], ["delete", "users/alice/teams/t1"],
+  ]), true);
+  eq([...db.docs.keys()].filter((k) => k.startsWith("teams/")), [], "nothing of the team is left");
+});
+test("rules: deleting an account can remove everything the user has in the cloud", () => {
+  const { db, alice, bob, carol } = world();
+  // bob: a character, a team note, a private note, a pending request in carol's team
+  bob.set("users/bob/characters/b1", chDoc());
+  bob.set("teams/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
+  alice.set("teams/t1/notes/n2", { author: "alice", name: "Alice", text: "b", at: 1 });
+  bob.set("users/bob/teams/t1/notes/p1", { text: "c", at: 1 });
+  carol.batch([
+    ["set", "teams/t2", { name: "Druga", owner: "carol", invite: CODE2, created: 1 }],
+    ["set", "teams/t2/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
+    ["set", `invites/${CODE2}`, { team: "t2", name: "Druga" }],
+  ]);
+  eq(bob.batch([
+    ["set", "teams/t2/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE2, at: 2 }],
+    ["set", "users/bob/teams/t2", { name: "Druga", state: "asked", at: 2 }],
+  ]), true);
+  eq(bob.list("teams/t1/notes"), true, "finding my team notes");
+  eq(bob.batch([["delete", "teams/t1/notes/n1"], ["delete", "users/bob/teams/t1/notes/p1"], ["delete", "teams/t1/members/bob"], ["delete", "users/bob/teams/t1"]]), true, "leaving with my notes");
+  eq(bob.delete("teams/t1/notes/n2"), false, "other people's notes stay");
+  eq(bob.batch([["delete", "teams/t2/requests/bob"], ["delete", "users/bob/teams/t2"]]), true, "taking back a request");
+  eq(bob.delete("users/bob/characters/b1"), true);
+  eq([...db.docs.keys()].filter((k) => k.includes("bob") || db.docs.get(k).author === "bob"), [], "nothing of bob is left");
+});
+test("rules: the team summary fields in firestore.rules match what the app sends", () => {
+  const listed = /s\.keys\(\)\.hasOnly\(\[([^\]]*)\]\)/.exec(RULES)[1].match(/'(\w+)'/g).map((x) => x.slice(1, -1));
+  const ch = make({ classId: "fighter" });
+  eq(listed, Object.keys(TEAM.sheetSummary(ch, run(ch))));
 });
 
 let failed = 0;

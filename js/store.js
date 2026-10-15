@@ -7,6 +7,7 @@ import { isPageExport, fromPage } from "./rules/pageimport.js";
 export const storage = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch { /* nothing to remove */ } },
 };
 
 const KEY = "gnoll.characters.v1"; // characters without an account
@@ -63,6 +64,22 @@ export function moveGuestCharacters() {
   storage.set(GONE, "{}");
   for (const g of guests) { const ch = list.find((c) => c.id === g.id); if (ch === g) notify({ type: "put", ch }); }
   return guests.length;
+}
+
+/** After an account is deleted this device forgets it. keep: its characters stay here, as characters without an account. */
+export function forgetAccount(uid, keep) {
+  if (!uid) return;
+  if (keep) {
+    const guests = readList(KEY);
+    for (const ch of readList(listKey(uid))) {
+      const i = guests.findIndex((g) => g.id === ch.id);
+      if (i < 0) guests.push(ch); else if ((ch.updated || 0) > (guests[i].updated || 0)) guests[i] = ch;
+    }
+    storage.set(KEY, JSON.stringify(guests));
+  }
+  storage.del(listKey(uid));
+  storage.del(goneKey(uid));
+  if (owner === uid) setOwner("");
 }
 
 export function upsert(ch) {

@@ -72,6 +72,18 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 1. Wkleić nowe `firestore.rules` w Firestore Database → Rules → Publish (bez tego zapis informacji, szyku, notatek i HP zostanie odrzucony).
 2. Test na dwóch kontach: admin wpisuje kampanię i termin, ustawia szyk 5/10 ft; obaj dodają notatki drużyny i prywatne (sprawdzić, że prywatnych drugie konto nie widzi); zmiana HP na karcie gracza pojawia się u admina po kilku sekundach.
 
+## D4 · Zabezpieczenia i wdrożenie
+**Jak działa (0.16.0):**
+- Testy reguł: `tests/rules-sim.mjs` czyta `firestore.rules` i odpowiada „czy serwer by na to pozwolił” (odczyty, zapisy, paczki zapisów). Bez emulatora Firebase (wymaga Javy, której tu nie ma). Testy w `tests/run.mjs` („rules: …”) sprawdzają m.in.: obcy nie czyta postaci ani drużyny, prośba tylko z ważnym kodem, akceptuje tylko admin, nikt nie usuwa ani nie degraduje założyciela, drużyna widzi tylko skrót postaci, notatki prywatne tylko autor, usunięcie konta da się przeprowadzić do końca. Sprawdzone celowym psuciem reguł: każde osłabienie wywala test.
+- **Usuń konto i dane** (ramka „Konto”, `js/sync/erase.js`): Google prosi o ponowne wybranie konta → z serwera (nie z pamięci urządzenia) czytane są drużyny, notatki i postacie → usuwane po kolei: moje notatki drużyny (póki jestem członkiem), moje miejsce lub prośba, drużyny założone przeze mnie (dla wszystkich, jak „Usuń drużynę”), notatki prywatne, postacie → na koniec konto logowania. Wymaga internetu. Synchronizacja jest na ten czas wstrzymana; przy błędzie wraca i odsyła postacie z urządzenia (nic nie ginie).
+- Opcja (domyślnie włączona) „Zostaw moje postacie na tym urządzeniu”: postacie konta stają się postaciami bez konta. Na innych urządzeniach kopie zostają w pamięci przeglądarki (aplikacja nie wie, że konto usunięto; tekst w aplikacji to mówi).
+- Ekran **Prywatność** (`#/privacy`, link w stopce i pod ramką „Konto”): bez konta, z kontem, w drużynie, usługi (GitHub Pages, Google Fonts, Firebase), czego nie ma, jak usunąć dane.
+- `firestore.rules` bez zmian względem 0.15.0 — nie trzeba nic wklejać ponownie (wystarczy wklejenie z D3).
+
+**Do zrobienia przez użytkownika:**
+1. Próba z adminem i 1–2 graczami (łącznie z testem D3).
+2. Test „Usuń konto i dane” na **zapasowym** koncie Google: założyć postać i drużynę, dołączyć drugim kontem, dodać notatki, usunąć konto; sprawdzić, że drużyna zniknęła u drugiego gracza, a postać została na urządzeniu (gdy opcja była zaznaczona).
+
 ## Gdzie co jest w kodzie
 - `js/rules/index.js` — `compute(ch)` liczy całą kartę, `normalize` migruje stare zapisy.
 - `js/rules/checks.js` — `review()` zwraca todo/errors/notices.
@@ -80,7 +92,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - `sw.js` — service worker (`VERSION`, `SHELL`).
 
 ## Zrobione (wersje)
-0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3).
+0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3). 0.16: testy reguł bezpieczeństwa, ekran Prywatność, usuwanie konta (D4).
 
 ## Następne kroki (kolejność)
 Przeniesione do `docs/backlog.md` (sekcja „Pomysły”).

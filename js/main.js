@@ -6,6 +6,8 @@ import { renderHome } from "./views/home.js";
 import { renderForm } from "./views/form.js";
 import { renderSheet } from "./views/sheet.js";
 import { renderTeams, renderTeam, renderJoin } from "./views/team.js";
+import { renderPrivacy } from "./views/privacy.js";
+import { showNotice } from "./views/account.js";
 import { startAccount, accountAvailable } from "./sync/cloud.js";
 import { stopWatching, startSharing } from "./sync/team.js";
 
@@ -24,7 +26,8 @@ function topbar() {
 function footer() {
   return h("footer", { cls: "foot" }, [
     h("p", {}, [t("foot.free"), " ", t(accountAvailable() ? "foot.storageAccount" : "foot.storage"), " ", t("app.offline"),
-      CONFIG.supportUrl ? [" ", h("a", { href: CONFIG.supportUrl, target: "_blank", rel: "noopener", text: t("foot.support") })] : null].flat()),
+      CONFIG.supportUrl ? [" ", h("a", { href: CONFIG.supportUrl, target: "_blank", rel: "noopener", text: t("foot.support") })] : null,
+      " ", h("a", { href: "#/privacy", text: t("privacy.title") })].flat()),
     h("p", { cls: "fan", text: t("foot.fan") }),
     h("p", { cls: "ver", text: `${CONFIG.name} ${CONFIG.version}` }),
   ]);
@@ -43,6 +46,7 @@ function route() {
   else if (parts[0] === "team" && parts[1]) renderTeam(view, go, parts[1]);
   else if (parts[0] === "team") renderTeams(view, go);
   else if (parts[0] === "join" && parts[1]) renderJoin(view, go, parts[1]);
+  else if (parts[0] === "privacy") renderPrivacy(view);
   else renderHome(view, go);
   document.title = CONFIG.name;
 }
@@ -58,6 +62,7 @@ addEventListener("gnoll:remote", () => {
 layout();
 route();
 startAccount();
+showNotice(); // e.g. "your account was deleted", left before the page reloaded
 startSharing(); // characters played in a team send their HP/AC summary there
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
