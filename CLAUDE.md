@@ -10,6 +10,8 @@ node tests/run.mjs
 
 - Testy reguł bez zależności; uruchamiaj po każdej zmianie i przed każdym commitem. Wszystkie muszą przechodzić.
 - Nowa reguła lub poprawka = nowy test w `tests/run.mjs` (`test("nazwa", () => { ... })`, asercje przez `eq`).
+- Reguły bezpieczeństwa (`firestore.rules`) testuje oficjalny emulator Firestore: `npm run test:rules` (testy w `tests/rules.test.mjs`, `ok(...)` = dozwolone, `no(...)` = odrzucone). Wymaga Javy 21 (`C:\Program Files\Java\jdk-21.0.12.1`) i jednorazowego `npm install`. Uruchamiaj przy każdej zmianie `firestore.rules` albo zapisów do Firebase.
+- `package.json` i `node_modules` służą tylko testom; aplikacja nadal nie ma zależności ani kroku budowania.
 - Podgląd w przeglądarce: `python3 -m http.server 8000` → http://localhost:8000
 
 ## Wersja — podbijaj przy każdej zmianie

@@ -74,7 +74,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 
 ## D4 · Zabezpieczenia i wdrożenie
 **Jak działa (0.16.0):**
-- Testy reguł: `tests/rules-sim.mjs` czyta `firestore.rules` i odpowiada „czy serwer by na to pozwolił” (odczyty, zapisy, paczki zapisów). Bez emulatora Firebase (wymaga Javy, której tu nie ma). Testy w `tests/run.mjs` („rules: …”) sprawdzają m.in.: obcy nie czyta postaci ani drużyny, prośba tylko z ważnym kodem, akceptuje tylko admin, nikt nie usuwa ani nie degraduje założyciela, drużyna widzi tylko skrót postaci, notatki prywatne tylko autor, usunięcie konta da się przeprowadzić do końca. Sprawdzone celowym psuciem reguł: każde osłabienie wywala test.
+- *(Od 0.17.0 zastąpione emulatorem — zob. „Testy reguł na emulatorze” niżej.)* Testy reguł: `tests/rules-sim.mjs` czyta `firestore.rules` i odpowiada „czy serwer by na to pozwolił” (odczyty, zapisy, paczki zapisów). Bez emulatora Firebase (wymaga Javy, której tu nie ma). Testy w `tests/run.mjs` („rules: …”) sprawdzają m.in.: obcy nie czyta postaci ani drużyny, prośba tylko z ważnym kodem, akceptuje tylko admin, nikt nie usuwa ani nie degraduje założyciela, drużyna widzi tylko skrót postaci, notatki prywatne tylko autor, usunięcie konta da się przeprowadzić do końca. Sprawdzone celowym psuciem reguł: każde osłabienie wywala test.
 - **Usuń konto i dane** (ramka „Konto”, `js/sync/erase.js`): Google prosi o ponowne wybranie konta → z serwera (nie z pamięci urządzenia) czytane są drużyny, notatki i postacie → usuwane po kolei: moje notatki drużyny (póki jestem członkiem), moje miejsce lub prośba, drużyny założone przeze mnie (dla wszystkich, jak „Usuń drużynę”), notatki prywatne, postacie → na koniec konto logowania. Wymaga internetu. Synchronizacja jest na ten czas wstrzymana; przy błędzie wraca i odsyła postacie z urządzenia (nic nie ginie).
 - Opcja (domyślnie włączona) „Zostaw moje postacie na tym urządzeniu”: postacie konta stają się postaciami bez konta. Na innych urządzeniach kopie zostają w pamięci przeglądarki (aplikacja nie wie, że konto usunięto; tekst w aplikacji to mówi).
 - Ekran **Prywatność** (`#/privacy`, link w stopce i pod ramką „Konto”): bez konta, z kontem, w drużynie, usługi (GitHub Pages, Google Fonts, Firebase), czego nie ma, jak usunąć dane.
@@ -97,6 +97,12 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 **Do zrobienia przez użytkownika:**
 1. Wkleić nowe `firestore.rules` (Firestore Database → Rules → Publish). Stare drużyny testowe przestaną być widoczne — trzeba założyć nowe.
 2. Test na dwóch kontach: założyć drużynę z zakładki „Drużyna” na karcie postaci, wysłać link, dołączyć drugim kontem z jego karty; nadać rolę MG (np. sobie) i sprawdzić Widok MG; sprawdzić, że gracz bez roli MG go nie widzi; zmiana HP/rzutów przeciw śmierci u gracza pojawia się u MG; postać z drużyny nie da się wybrać do drugiej drużyny.
+
+## Testy reguł na emulatorze
+- Java 21 zainstalowana przez użytkownika; testy uprawnień przeniesione z autorskiego symulatora na oficjalny **Firebase Local Emulator Suite** (emulator Firestore) i `@firebase/rules-unit-testing`. Symulator usunięty.
+- `npm run test:rules` uruchamia emulator (projekt `demo-gnoll`, bez łączenia z prawdziwym Firebase), testy z `tests/rules.test.mjs` (16) i zamyka emulator. `node tests/run.mjs` (87) zostaje bez zależności.
+- Testy SDK używają `firebase@13` (wymóg `@firebase/rules-unit-testing@6`); aplikacja dalej ładuje SDK 12.4.0 z gstatic — reguły ocenia serwer, więc wersja SDK nie wpływa na wynik.
+- Wynik przeniesienia: wszystkie 16 testów przeszło na emulatorze bez zmian w regułach (symulator nie przepuścił żadnej luki). Celowe osłabienia reguł emulator wyłapuje.
 
 ## Gdzie co jest w kodzie
 - `js/rules/index.js` — `compute(ch)` liczy całą kartę, `normalize` migruje stare zapisy.

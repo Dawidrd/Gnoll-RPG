@@ -9,7 +9,6 @@ import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as MERGE from "../js/sync/merge.js";
 import * as PARTY from "../js/sync/partylogic.js";
-import { rulesSim, DELETE } from "./rules-sim.mjs";
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
@@ -849,171 +848,9 @@ test("party: the party sees only species, class, level, HP and AC", () => {
   eq([PARTY.sameSheet(s, { ...s }), PARTY.sameSheet(s, { ...s, hp: 1 }), PARTY.sameSheet(null, s)], [true, false, false]);
 });
 
-// --- Security rules (D4): firestore.rules checked in a small simulator (tests/rules-sim.mjs) ---
+// --- Security rules: the permission tests run on the official Firestore emulator (tests/rules.test.mjs, npm run test:rules).
+// Here only checks that need no emulator: the rules know every field the app sends.
 const RULES = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
-const CODE = "Inv1te0Code0Alpha00X", CODE2 = "Inv1te0Code0Bravo00Y";
-const chDoc = (n = 1) => ({ json: "{}", updated: n, deleted: false });
-// alice founds "t1" (no character, e.g. the GM); bob plays in it; carol is a stranger.
-function world({ bobIn = true } = {}) {
-  const db = rulesSim(RULES);
-  const [alice, bob, carol, nobody] = ["alice", "bob", "carol", null].map((u) => db.as(u));
-  eq(alice.batch([
-    ["set", "parties/t1", { name: "Kompania", owner: "alice", invite: CODE, created: 1 }],
-    ["set", "parties/t1/members/alice", { role: "admin", name: "Alice", charId: "", charName: "", at: 1 }],
-    ["set", `invites/${CODE}`, { party: "t1", name: "Kompania" }],
-    ["set", "users/alice/parties/t1", { name: "Kompania", state: "in", at: 1 }],
-  ]), true, "founding a party");
-  eq(bob.batch([
-    ["set", "parties/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 2 }],
-    ["set", "users/bob/parties/t1", { name: "Kompania", state: "asked", at: 2 }],
-  ]), true, "asking to join");
-  if (bobIn) eq(alice.batch([
-    ["set", "parties/t1/members/bob", { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 }],
-    ["delete", "parties/t1/requests/bob"],
-  ]), true, "accepting");
-  return { db, alice, bob, carol, nobody };
-}
-const sheetOk = { species: "dwarf", cls: "fighter", sub: "", level: 3, hp: 7, hpMax: 28, temp: 0, ac: 16 };
-
-test("rules: the simulator reads firestore.rules; anything not listed is closed", () => {
-  const { db, alice, nobody } = world();
-  eq([nobody.get("parties/t1"), nobody.list("parties"), alice.list("parties"), alice.set("other/x", { a: 1 }), alice.get("users/alice")], [false, false, false, false, false]);
-  eq(db.docs.has("other/x"), false, "a refused write changes nothing");
-});
-test("rules: only you read and write your characters, in the expected shape", () => {
-  const { alice, bob, nobody } = world();
-  eq(alice.set("users/alice/characters/c1", chDoc()), true);
-  eq([bob.get("users/alice/characters/c1"), bob.list("users/alice/characters"), nobody.get("users/alice/characters/c1")], [false, false, false]);
-  eq([bob.set("users/alice/characters/c2", chDoc()), bob.delete("users/alice/characters/c1")], [false, false], "nobody writes into someone else's account");
-  eq(alice.set("users/alice/characters/c3", { ...chDoc(), extra: 1 }), false, "unknown field");
-  eq(alice.set("users/alice/characters/c3", { json: "{}", updated: "1", deleted: false }), false, "wrong type");
-  eq(alice.set("users/alice/characters/c3", { json: "x".repeat(900000), updated: 1, deleted: false }), false, "too big");
-  eq([alice.list("users/alice/characters"), alice.delete("users/alice/characters/c1")], [true, true]);
-});
-test("rules: founding a party needs your own admin membership; you cannot found one for someone else", () => {
-  const { bob, carol } = world();
-  eq(carol.set("parties/t9", { name: "X", owner: "carol", invite: CODE2, created: 1 }), false, "party without its admin");
-  eq(carol.batch([
-    ["set", "parties/t9", { name: "X", owner: "bob", invite: CODE2, created: 1 }],
-    ["set", "parties/t9/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
-  ]), false, "owner must be me");
-  eq(carol.set("parties/t1/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }), false, "no admin seat in an existing party");
-  eq(bob.set(`invites/${CODE2}`, { party: "t1", name: "Kompania" }), false, "a player cannot make invites");
-});
-test("rules: invites open only by their exact code; requests need a working code", () => {
-  const { alice, bob, carol } = world({ bobIn: false });
-  eq([carol.get(`invites/${CODE}`), carol.list("invites")], [true, false]);
-  const ask = (code) => carol.set("parties/t1/requests/carol", { name: "C", charId: "c1", charName: "Mira", code, at: 1 });
-  eq(ask(CODE2), false, "unknown code");
-  eq(carol.set("parties/t1/requests/carol", { name: "C", charId: "", charName: "", code: CODE, at: 1 }), false, "a character is required");
-  eq(carol.set("parties/t1/requests/bob", { name: "B", charId: "b1", charName: "Grok", code: CODE, at: 1 }), false, "not for someone else");
-  eq(ask(CODE), true);
-  eq([carol.get("parties/t1/requests/carol"), bob.get("parties/t1/requests/carol"), bob.list("parties/t1/requests"), alice.list("parties/t1/requests")], [true, false, false, true], "requests: the asker and admins");
-  eq(bob.delete(`invites/${CODE}`), false, "only admins delete invites");
-  // a new link: the old code stops working
-  eq(alice.batch([["delete", `invites/${CODE}`], ["set", `invites/${CODE2}`, { party: "t1", name: "Kompania" }], ["update", "parties/t1", { invite: CODE2 }]]), true);
-  eq(carol.delete("parties/t1/requests/carol"), true);
-  eq(ask(CODE), false, "old link refused");
-});
-test("rules: only admins accept, and only people who asked; members cannot ask again", () => {
-  const { alice, bob, carol } = world({ bobIn: false });
-  const seat = { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 };
-  eq(bob.set("parties/t1/members/bob", seat), false, "letting yourself in");
-  eq(alice.set("parties/t1/members/carol", { ...seat, name: "C" }), false, "carol did not ask");
-  eq(alice.set("parties/t1/members/bob", { ...seat, role: "admin" }), false, "accepted as a player only");
-  eq(alice.set("parties/t1/members/bob", seat), true);
-  eq(bob.set("parties/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 4 }), false, "already a member");
-  eq(carol.get("parties/t1/members/bob"), false);
-});
-test("rules: strangers see nothing of a party", () => {
-  const { alice, carol } = world();
-  eq(alice.set("parties/t1/notes/n1", { author: "alice", name: "Alice", text: "Smok", at: 1 }), true);
-  eq([carol.get("parties/t1"), carol.list("parties/t1/members"), carol.get("parties/t1/members/alice"), carol.list("parties/t1/notes"), carol.get("parties/t1/notes/n1")], [false, false, false, false, false]);
-  eq(carol.set("parties/t1/notes/n2", { author: "carol", name: "C", text: "hi", at: 1 }), false);
-});
-test("rules: only admins change party info and the marching order, within limits", () => {
-  const { alice, bob } = world();
-  const info = { campaign: "Curse of Strahd", next: "2026-10-23T19:00", march: { mode: "10", order: ["bob"] } };
-  eq(bob.update("parties/t1", info), false, "player");
-  eq(alice.update("parties/t1", info), true);
-  eq(alice.update("parties/t1", { march: { mode: "15", order: [] } }), false, "15 ft is not a formation");
-  eq(alice.update("parties/t1", { next: "Friday" }), false, "date format");
-  eq(alice.update("parties/t1", { campaign: "x".repeat(101) }), false, "too long");
-  eq(alice.update("parties/t1", { owner: "bob" }), false, "the founder cannot be changed");
-  eq(alice.update("parties/t1", { secret: 1 }), false, "unknown field");
-});
-test("rules: a member shares only the short character summary, and only their own", () => {
-  const { alice, bob } = world();
-  eq(bob.update("parties/t1/members/bob", { sheet: sheetOk, charName: "Grok" }), true);
-  eq(alice.update("parties/t1/members/bob", { sheet: { ...sheetOk, hp: 0 } }), false, "an admin cannot change your HP");
-  eq(bob.update("parties/t1/members/bob", { sheet: { ...sheetOk, notes: "secret" } }), false, "nothing beyond the summary");
-  eq(bob.update("parties/t1/members/bob", { sheet: { ...sheetOk, hp: -5 } }), false, "numbers in range");
-  eq(bob.update("parties/t1/members/bob", { role: "admin" }), false, "no promoting yourself");
-  eq(bob.update("parties/t1/members/bob", { charId: "", charName: "", sheet: DELETE }), true, "playing without a character");
-});
-test("rules: roles; nobody removes or demotes the founder; leaving", () => {
-  const { alice, bob, carol } = world();
-  eq(bob.delete("parties/t1/members/alice"), false);
-  eq(alice.update("parties/t1/members/bob", { role: "admin" }), true, "promote");
-  eq([bob.update("parties/t1/members/alice", { role: "player" }), bob.delete("parties/t1/members/alice")], [false, false], "another admin vs the founder");
-  eq(alice.delete("parties/t1/members/alice"), false, "the founder deletes the party instead of leaving");
-  eq(alice.update("parties/t1/members/bob", { role: "player" }), true, "demote");
-  eq(carol.delete("parties/t1/members/bob"), false);
-  eq(bob.delete("parties/t1/members/bob"), true, "leaving");
-});
-test("rules: party notes are edited by their author; admins may remove any", () => {
-  const { alice, bob, carol } = world();
-  eq(bob.set("parties/t1/notes/n1", { author: "alice", name: "Alice", text: "fake", at: 1 }), false, "pretending to be someone else");
-  eq(bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", text: "Smok w jaskini", at: 1 }), true);
-  eq([alice.list("parties/t1/notes"), alice.update("parties/t1/notes/n1", { text: "edited", at: 2 })], [true, false]);
-  eq(bob.update("parties/t1/notes/n1", { author: "alice" }), false, "author cannot change");
-  eq(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", text: "", at: 1 }), false, "empty note");
-  eq(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", text: "x".repeat(4001), at: 1 }), false, "too long");
-  eq(carol.delete("parties/t1/notes/n1"), false);
-  eq(alice.delete("parties/t1/notes/n1"), true, "admin");
-});
-test("rules: private notes are read only by their author, admins included", () => {
-  const { alice, bob } = world();
-  eq(bob.set("users/bob/parties/t1/notes/p1", { text: "Alice is a vampire", at: 1 }), true);
-  eq([alice.get("users/bob/parties/t1/notes/p1"), alice.list("users/bob/parties/t1/notes"), alice.list("users/bob/parties")], [false, false, false]);
-  eq(alice.set("users/bob/parties/t1/notes/p2", { text: "x", at: 1 }), false);
-  eq(bob.list("users/bob/parties/t1/notes"), true);
-});
-test("rules: the founder deletes the whole party in one go; others cannot", () => {
-  const { db, alice, bob } = world();
-  bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
-  bob.set("parties/t1/gm/bob", { v: gmOk(), at: 1 });
-  eq(bob.delete("parties/t1"), false);
-  eq(alice.batch([
-    ["delete", "parties/t1/notes/n1"], ["delete", "parties/t1/gm/bob"], ["delete", "parties/t1/gm/alice"], ["delete", "parties/t1/members/bob"], ["delete", `invites/${CODE}`],
-    ["delete", "parties/t1"], ["delete", "parties/t1/members/alice"], ["delete", "users/alice/parties/t1"],
-  ]), true);
-  eq([...db.docs.keys()].filter((k) => k.startsWith("parties/")), [], "nothing of the party is left");
-});
-test("rules: deleting an account can remove everything the user has in the cloud", () => {
-  const { db, alice, bob, carol } = world();
-  // bob: a character, a party note, a private note, a pending request in carol's party
-  bob.set("users/bob/characters/b1", chDoc());
-  bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
-  alice.set("parties/t1/notes/n2", { author: "alice", name: "Alice", text: "b", at: 1 });
-  bob.set("users/bob/parties/t1/notes/p1", { text: "c", at: 1 });
-  bob.set("parties/t1/gm/bob", { v: gmOk(), at: 1 });
-  carol.batch([
-    ["set", "parties/t2", { name: "Druga", owner: "carol", invite: CODE2, created: 1 }],
-    ["set", "parties/t2/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
-    ["set", `invites/${CODE2}`, { party: "t2", name: "Druga" }],
-  ]);
-  eq(bob.batch([
-    ["set", "parties/t2/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE2, at: 2 }],
-    ["set", "users/bob/parties/t2", { name: "Druga", state: "asked", at: 2 }],
-  ]), true);
-  eq(bob.list("parties/t1/notes"), true, "finding my party notes");
-  eq(bob.batch([["delete", "parties/t1/notes/n1"], ["delete", "users/bob/parties/t1/notes/p1"], ["delete", "parties/t1/gm/bob"], ["delete", "parties/t1/members/bob"], ["delete", "users/bob/parties/t1"]]), true, "leaving with my notes");
-  eq(bob.delete("parties/t1/notes/n2"), false, "other people's notes stay");
-  eq(bob.batch([["delete", "parties/t2/requests/bob"], ["delete", "users/bob/parties/t2"]]), true, "taking back a request");
-  eq(bob.delete("users/bob/characters/b1"), true);
-  eq([...db.docs.keys()].filter((k) => k.includes("bob") || db.docs.get(k).author === "bob"), [], "nothing of bob is left");
-});
 // The field list after "function <fn>(s)" in firestore.rules.
 const rulesKeys = (fn) => new RegExp(`function ${fn}\\(s\\)[^]*?s\\.keys\\(\\)\\.hasOnly\\(\\[([^\\]]*)\\]\\)`).exec(RULES)[1].match(/'(\w+)'/g).map((x) => x.slice(1, -1));
 test("rules: the party summary and GM view fields in firestore.rules match what the app sends", () => {
@@ -1023,38 +860,7 @@ test("rules: the party summary and GM view fields in firestore.rules match what 
   eq(RULES.match(/gmNum\(s\.get\('(\w+)', 0\)\)/g).length, PARTY.GM_KEYS.length, "every GM value is range-checked");
 });
 
-// --- Game Master (0.17): the GM role and the GM view ---
-const gmOk = () => PARTY.gmSummary(make({ classId: "fighter" }), run(make({ classId: "fighter" })));
-test("rules: admins give the GM role (also to themselves and the founder); players cannot", () => {
-  const { alice, bob } = world();
-  eq(bob.update("parties/t1/members/bob", { gm: true }), false, "a player cannot make themselves the GM");
-  eq(bob.update("parties/t1/members/alice", { gm: true }), false);
-  eq(alice.update("parties/t1/members/alice", { gm: true }), true, "the founder as the GM");
-  eq(alice.update("parties/t1/members/bob", { gm: "yes" }), false, "true or false only");
-  eq(alice.update("parties/t1/members/bob", { gm: true, role: "admin" }), false, "one change at a time (the app sends them separately)");
-  eq(alice.update("parties/t1/members/bob", { role: "admin" }), true);
-  eq(bob.update("parties/t1/members/alice", { gm: false }), true, "another admin may take the GM role from the founder");
-});
-test("rules: the GM view is written only by its player and read only by the party's GMs", () => {
-  const { alice, bob, carol } = world();
-  eq(bob.set("parties/t1/gm/bob", { v: gmOk(), at: 1 }), true);
-  eq(alice.set("parties/t1/gm/bob", { v: gmOk(), at: 1 }), false, "nobody writes someone else's");
-  eq(carol.set("parties/t1/gm/carol", { v: gmOk(), at: 1 }), false, "strangers cannot write into the party");
-  eq(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), notes: 1 }, at: 1 }), false, "nothing beyond the GM view");
-  eq(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), per: 5000 }, at: 1 }), false, "numbers in range");
-  eq(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), per: "x".repeat(50) }, at: 1 }), false, "no text");
-  eq([alice.get("parties/t1/gm/bob"), alice.list("parties/t1/gm"), carol.get("parties/t1/gm/bob")], [false, false, false], "admins without the GM role do not see it");
-  eq(bob.get("parties/t1/gm/bob"), true, "my own");
-  alice.update("parties/t1/members/alice", { gm: true });
-  eq([alice.get("parties/t1/gm/bob"), alice.list("parties/t1/gm")], [true, true], "the GM sees it");
-  eq(alice.delete("parties/t1/gm/bob"), true, "an admin removing a player removes it too");
-});
-test("rules: my list of parties remembers the character playing there", () => {
-  const { bob } = world();
-  eq(bob.update("users/bob/parties/t1", { charId: "b2" }), true);
-  eq(bob.update("users/bob/parties/t1", { charId: 7 }), false);
-  eq(bob.update("users/bob/parties/t1", { secret: 1 }), false);
-});
+// --- Game Master (0.17): the GM view ---
 test("party: the GM view holds what a GM needs for rolls; the GM's choice of groups is tidied", () => {
   const ch = make({ classId: "cleric", speciesId: "dwarf", abilities: { str: 14, dex: 10, con: 15, int: 8, wis: 15, cha: 12 } });
   ch.death = { ok: 2, fail: 9 };

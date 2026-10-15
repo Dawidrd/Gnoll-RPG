@@ -24,7 +24,7 @@
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
 - Konto (nieobowiązkowe): logowanie przez Google; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci
 - Drużyna (z kontem, po angielsku „Party”) w zakładce „Drużyna” na karcie postaci: jedna postać = jedna drużyna; MG bez postaci wchodzi z listy „Moje drużyny”. Zakładanie drużyny, link zaproszenia (kopiuj/udostępnij, nowy link unieważnia stary), prośba o dołączenie z wybraną postacią, akceptacja/odrzucenie, usuwanie graczy, role admin/gracz i MG (założyciela nie da się usunąć), opuszczanie i usuwanie drużyny
-- Prywatność i bezpieczeństwo: ekran „Prywatność” (co gdzie trafia, kto co widzi, jak usunąć), przycisk „Usuń konto i dane” (postacie, notatki, miejsca w drużynach, założone drużyny i samo konto; postacie mogą zostać na urządzeniu), testy reguł bezpieczeństwa w symulatorze
+- Prywatność i bezpieczeństwo: ekran „Prywatność” (co gdzie trafia, kto co widzi, jak usunąć), przycisk „Usuń konto i dane” (postacie, notatki, miejsca w drużynach, założone drużyny i samo konto; postacie mogą zostać na urządzeniu), testy reguł bezpieczeństwa na oficjalnym emulatorze Firestore
 - Wspólne dane drużyny: kampania i termin następnej sesji, podgląd postaci (gatunek, klasa, poziom, HP i AC na żywo), szyk marszowy 5 ft (gęsiego) i 10 ft (dwójkami) ustawiany przez admina, notatki drużyny i prywatne notatki widoczne tylko dla autora
 - Widok MG: tabela postaci z wartościami do decyzji i rzutów w ukryciu (pasywne, inicjatywa, szybkość, widzenie w ciemności, ST czarów, rzuty obronne, umiejętności, rzuty przeciw śmierci); MG wybiera, co pokazać. Widzą ją tylko MG drużyny
 
@@ -48,7 +48,15 @@ python3 -m http.server 8000
 node tests/run.mjs
 ```
 
-Testy reguł (bez zależności). Uruchamiaj przed każdą publikacją. Reguły bezpieczeństwa (`firestore.rules`) sprawdza mały symulator `tests/rules-sim.mjs` — bez emulatora i Javy; to model serwera, więc zmiany reguł i tak warto sprawdzić na dwóch kontach.
+Testy reguł (bez zależności). Uruchamiaj przed każdą publikacją.
+
+Reguły bezpieczeństwa (`firestore.rules`) na oficjalnym emulatorze Firestore (potrzebne: Java 11+, jednorazowo `npm install`):
+
+```sh
+npm run test:rules
+```
+
+`package.json` zawiera tylko narzędzia testowe (`firebase-tools`, `@firebase/rules-unit-testing`); sama aplikacja nie ma zależności.
 
 ## Publikacja / Deploy (GitHub Pages)
 
@@ -68,7 +76,8 @@ js/sync/cloud.js                          konto Google i synchronizacja (Firebas
 js/views/account.js                       ramka „Konto” na ekranie głównym, usuwanie konta
 js/sync/erase.js                          usuwanie konta i wszystkich danych z chmury
 js/views/privacy.js                       ekran „Prywatność”
-tests/rules-sim.mjs                       symulator reguł Firestore do testów
+tests/rules.test.mjs                      testy reguł bezpieczeństwa na emulatorze Firestore
+firebase.json, package.json               konfiguracja emulatora i narzędzi testowych
 firestore.rules                           reguły bezpieczeństwa Firestore (wkleja się w konsoli)
 js/i18n.js, js/lang/{pl,en}.js            teksty interfejsu
 js/rules/core.js                          matematyka 5e, umiejętności, featy pochodzenia

@@ -1,0 +1,15 @@
+{
+  "name": "gnoll-rpg",
+  "private": true,
+  "type": "module",
+  "description": "Test tools only. The app itself has no dependencies and no build step.",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-gnoll \"node --test tests/rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0",
+    "firebase-tools": "^15.34.0"
+  }
+}
