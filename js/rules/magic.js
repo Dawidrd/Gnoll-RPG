@@ -3,7 +3,7 @@
 // A "source" is the class, a species, or a feat. Each has a spellcasting ability (DC and attack), fixed spells
 // (always known or always prepared — outside every limit) and "picks": a number of spells chosen from a filtered list.
 // Picks are stored on the character:
-//   class picks        ch.spellPicks.cantrips / ch.spellPicks.prepared
+//   class picks        ch.spellPicks.cantrips / ch.spellPicks.prepared (Wizard also .book, .savant, .savant5)
 //   origin feat picks  ch.featChoices[featId].picks[key]      (Magic Initiate)
 //   level feat picks   ch.levelChoices[L].spells               (Fey-Touched, Shadow-Touched, Ritual Caster)
 import { SPELLS, spellId } from "./spells.js";
@@ -12,7 +12,7 @@ import { FEATS } from "./core.js";
 const MENTAL = ["int", "wis", "cha"];
 const L = (pl, en) => ({ pl, en });
 const PICK_LABEL = {
-  cantrips: L("Sztuczki", "Cantrips"), prepared: L("Przygotowane czary", "Prepared spells"), spell: L("Czary", "Spells"),
+  cantrips: L("Sztuczki", "Cantrips"), prepared: L("Przygotowane czary", "Prepared spells"), spell: L("Czary", "Spells"), book: L("Księga czarów", "Spellbook"),
 };
 
 export function readPick(ch, p) {
@@ -55,30 +55,47 @@ export function spellSources({ ch, ctx, cls, subclass, casting, sp, spt, originF
   const finish = (src) => {
     for (const p of src.picks) {
       p.options = pickOptions(p);
+      // Wizard: prepared spells come from the spellbook (picks listed in fromKeys, filled earlier in the list).
+      if (p.fromKeys) { const pool = new Set(src.picks.filter((q) => p.fromKeys.includes(q.key)).flatMap((q) => q.chosen || [])); p.options = p.options.filter((id) => pool.has(id)); }
       const raw = readPick(ch, p);
       p.chosen = raw.filter((id) => p.options.includes(id));
       p.invalid = raw.filter((id) => !p.options.includes(id));
       p.label = p.label || PICK_LABEL[p.key] || PICK_LABEL.spell;
     }
+    const castable = src.picks.filter((p) => !p.book);
+    const prepared = new Set(castable.flatMap((p) => p.chosen));
+    // Spellbook spells aren't cast from the book, except Rituals (Ritual Adept) that aren't prepared.
+    src.book = [...new Set(src.picks.filter((p) => p.book).flatMap((p) => p.chosen))];
     src.spells = [
       ...src.fixed,
-      ...src.picks.flatMap((p) => p.chosen.map((id) => entry(id, p.uses || (SPELLS[id].circle === 0 ? "atwill" : src.id === "class" ? "slots" : "long"), p.key === "cantrips" ? "cantrip" : "picked", { pick: p.id }))),
+      ...castable.flatMap((p) => p.chosen.map((id) => entry(id, p.uses || (SPELLS[id].circle === 0 ? "atwill" : src.id === "class" ? "slots" : "long"), p.key === "cantrips" ? "cantrip" : "picked", { pick: p.id }))),
+      ...src.book.filter((id) => SPELLS[id].ritual && !prepared.has(id)).map((id) => entry(id, "ritual", "book")),
     ].filter((x) => SPELLS[x.id]);
     out.push(src);
   };
 
-  // Class spellcasting (Cleric; Arcane Trickster): cantrips + prepared spells of circles you have slots for.
+  // Class spellcasting (Cleric, Bard, Druid, Wizard…; Arcane Trickster): cantrips + prepared spells of circles you have slots for.
+  // Always-prepared spells come from the class (Druidic) and the subclass; bonus cantrips (Guidance, Minor Illusion) are outside the limit.
   if (casting) {
-    const always = (subclass?.domainSpells ? subclass.domainSpells(level) : []).map(spellId).filter((id) => SPELLS[id]);
+    const always = [...new Set([...(cls.alwaysSpells ? cls.alwaysSpells(level, ctx) : []), ...(subclass?.domainSpells ? subclass.domainSpells(level, ctx) : [])])].map(spellId).filter((id) => SPELLS[id]);
     const fixedC = casting.fixedCantrips || [];
+    const bonusC = (subclass?.bonusCantrips ? subclass.bonusCantrips(level) : []).filter((id) => SPELLS[id] && !always.includes(id) && !fixedC.includes(id));
+    const freeCasts = subclass?.freeCasts || {};
     const circles = casting.slots.map((_, i) => i + 1);
+    // Wizard: the spellbook (+2 per level) and the subclass's free school spells; prepared spells are picked from them.
+    const book = casting.spellbook ? [
+      { id: "class:book", store: "class", key: "book", count: casting.spellbook, circles, lists: [casting.listId], exclude: always, book: true },
+      ...(subclass?.bookPicks ? subclass.bookPicks(level) : []).map((p) => ({ ...p, id: "class:" + p.key, store: "class", lists: [casting.listId], exclude: always, book: true })),
+    ] : [];
     finish({
       id: "class", kind: "class", label: subclass?.spellcasting ? subclass.name : cls.name, list: casting.listId, ability: casting.ability,
       ...magicNumbers(casting.ability, mods, pb), slots: casting.slots, resPrefix: null,
-      fixed: [...fixedC.map((id) => entry(id, "atwill", "cantrip", { fixedBy: "class" })), ...always.map((id) => entry(id, SPELLS[id].circle ? "slots" : "atwill", "always"))],
+      fixed: [...[...fixedC, ...bonusC].map((id) => entry(id, "atwill", "cantrip", { fixedBy: "class" })),
+        ...always.map((id) => entry(id, SPELLS[id].circle ? "slots" : "atwill", "always", freeCasts[id] ? { free: freeCasts[id] } : {}))],
       picks: [
-        { id: "class:cantrips", store: "class", key: "cantrips", count: Math.max(0, casting.cantrips - fixedC.length), circles: [0], lists: [casting.listId], exclude: [...fixedC, ...always] },
-        { id: "class:prepared", store: "class", key: "prepared", count: casting.prepared, circles, lists: [casting.listId], exclude: always },
+        { id: "class:cantrips", store: "class", key: "cantrips", count: Math.max(0, casting.cantrips - fixedC.length), circles: [0], lists: [casting.listId], exclude: [...fixedC, ...bonusC, ...always] },
+        ...book,
+        { id: "class:prepared", store: "class", key: "prepared", count: casting.prepared, circles, lists: [casting.listId], exclude: always, fromKeys: book.length ? book.map((p) => p.key) : null },
       ],
     });
   }

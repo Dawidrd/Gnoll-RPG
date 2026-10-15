@@ -1,4 +1,4 @@
-// Picking class options with limits and prerequisites: Eldritch Invocations, Metamagic.
+// Picking class options with limits and prerequisites: Eldritch Invocations, Metamagic, Wild Shape forms.
 // Options tied to a cantrip (Agonizing Blast, Eldritch Spear, Repelling Blast) appear once per qualifying cantrip you know.
 import { h } from "../dom.js";
 import { t, tr } from "../i18n.js";
@@ -14,6 +14,7 @@ function blockedBy(o, c, chosenBases, options) {
   if (p.level && c.level < p.level) return t("opt.needLevel", { n: p.level });
   if (p.pact && !chosenBases.includes(`pact-of-the-${p.pact}`)) return t("opt.needPact", { pact: p.pact[0].toUpperCase() + p.pact.slice(1) });
   if (p.invocation && !chosenBases.includes(p.invocation)) return t("opt.needOption", { name: tr(options[p.invocation].name).split(" (")[0] });
+  if (o.blocked?.(c)) return tr(o.blocked(c));
   return null;
 }
 
@@ -28,6 +29,8 @@ export function classOptionUI({ group, c, known, onChange }) {
   const rows = [];
   const toggle = (raw, on) => onChange(on ? [...raws, raw] : raws.filter((r) => r !== raw));
   const sorted = Object.entries(group.options).sort(([, a], [, b]) => nameOf(a).localeCompare(nameOf(b)));
+  // Wild Shape forms: the ones you can't take yet go to the end of the list.
+  if (group.key === "forms") sorted.sort(([, a], [, b]) => (a.blocked?.(c) ? 1 : 0) - (b.blocked?.(c) ? 1 : 0));
   for (const [id, o] of sorted) {
     const block = blockedBy(o, c, bases, group.options);
     const combos = o.prereq?.cantrip ? qualifyingCantrips(o.prereq.cantrip, known).map((sp) => [`${id}@${sp}`, `${nameOf(o)} — ${tr(SPELLS[sp].name).split(" (")[0]}`]) : [[id, nameOf(o)]];
@@ -54,6 +57,7 @@ export function classOptionUI({ group, c, known, onChange }) {
     h("button", { type: "button", cls: "btn small ghost", text: t("form.remove"), onclick: () => onChange(raws.filter((r) => r !== x.raw)) })]));
   return h("div", { cls: "stack pickbox", id: `opts-${group.key}` }, [
     h("div", { cls: "pickhead" }, [h("b", { text: tr(group.label) }), h("p", { cls: "picked" + (raws.length === group.count && !stale.length ? " done" : ""), text: t("spell.pickedOf", { n: raws.length, max: group.count }) })]),
+    group.changeRule === "longRest" ? h("p", { cls: "hint", text: t("opt.changeLongRest") }) : null,
     ...warn,
     h("div", { cls: "spellpick" }, rows),
   ]);

@@ -7,9 +7,10 @@ export function grantedSkills({ cls, bg, subclass }) {
 }
 
 /** Choice slots in a sensible order: restricted lists first, "any skill" last. */
-export function skillSlots({ cls, sp, bg, skilledCount = 0, level, extra = [] }) {
+export function skillSlots({ cls, subclass, sp, bg, skilledCount = 0, level, extra = [] }) {
   const slots = [{ id: "class", label: cls.name, count: cls.skillChoices.count, from: cls.skillChoices.from }];
   if (cls.extraSkills) slots.push(...cls.extraSkills(level));
+  if (subclass?.extraSkills) slots.push(...subclass.extraSkills(level)); // College of Lore
   if (sp?.skillChoice) slots.push(sp.skillChoice);
   if (bg?.custom) slots.push({ id: "bg", label: bg.name, count: 2, from: null });
   if (skilledCount > 0) slots.push({ id: "skilled", label: { pl: "Feat Skilled", en: "Skilled feat" }, count: skilledCount, from: null });

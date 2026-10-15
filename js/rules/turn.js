@@ -3,6 +3,8 @@
 // filtered by level. Each option may cost a resource use or a spell slot; the sheet spends it and gives it back on undo.
 import { SPELLS } from "./spells.js";
 import { signed } from "./core.js";
+import { BEASTS, speedText } from "./beasts.js";
+import { bardicDie } from "./classes/bard.js";
 
 const L = (pl, en) => ({ pl, en });
 const has = (c, id) => c.resources.some((r) => r.id === id);
@@ -127,6 +129,62 @@ function featureOptions(c, ch) {
       if (sub === "fiend" && lv >= 3) add("free", { id: "dark-blessing", label: L("Dark One's Blessing", "Dark One's Blessing"), desc: L(`Wróg spada do 0 HP: ${Math.max(1, c.mods.cha + lv)} tymczasowych HP.`, `An enemy drops to 0 HP: ${Math.max(1, c.mods.cha + lv)} temporary HP.`) });
       break;
     }
+    case "bard": {
+      const d = bardicDie(lv), cha = c.mods.cha, dc = 8 + cha + pb;
+      add("bonus", { id: "bardic-inspiration", label: L("Bardic Inspiration", "Bardic Inspiration"), cost: { res: "bardic-inspiration", n: 1 },
+        desc: L(`Sojusznik w 60 ft dostaje k${d}; w ciągu godziny doda ją do nieudanego testu k20.`, `An ally within 60 ft gets a d${d}; within an hour they can add it to a failed D20 Test.`) });
+      if (sub === "lore" && lv >= 3) add("reaction", { id: "cutting-words", label: L("Cutting Words", "Cutting Words"), cost: { res: "bardic-inspiration", n: 1 },
+        desc: L(`Istota w 60 ft rzuca na obrażenia, zdaje test albo trafia: odejmij k${d}.`, `A creature within 60 ft rolls damage, succeeds on a check or hits: subtract a d${d}.`) });
+      if (sub === "glamour" && lv >= 3) {
+        add("bonus", { id: "mantle-of-inspiration", label: L("Mantle of Inspiration", "Mantle of Inspiration"), cost: { res: "bardic-inspiration", n: 1 },
+          desc: L(`Do ${Math.max(1, cha)} istot w 60 ft: 2 × k${d} tymczasowych HP i ruch reakcją bez ataków okazyjnych.`, `Up to ${Math.max(1, cha)} creatures within 60 ft: 2 × d${d} Temporary HP and a Reaction move without Opportunity Attacks.`) });
+        add("free", { id: "beguiling-magic", label: L("Beguiling Magic", "Beguiling Magic"), cost: { res: "beguiling-magic", n: 1 },
+          desc: L(`Po czarze zauroczenia lub iluzji ze slotu: istota w 60 ft rzuca MĄD (DC ${dc}) albo jest Charmed lub Frightened.`, `After an Enchantment or Illusion spell with a slot: a creature within 60 ft makes a WIS save (DC ${dc}) or is Charmed or Frightened.`) });
+      }
+      if (sub === "dance" && lv >= 3) add("free", { id: "agile-strikes", label: L("Agile Strikes", "Agile Strikes"),
+        desc: L(`Wydajesz inspirację w akcji, akcji bonusowej albo reakcji: do tego cios bez broni ${signed(c.mods.dex + pb)}, k${d} ${signed(c.mods.dex)} obuchowych.`, `When you spend Inspiration in an action, Bonus Action or Reaction: also an Unarmed Strike ${signed(c.mods.dex + pb)}, d${d} ${signed(c.mods.dex)} bludgeoning.`) });
+      if (sub === "spirits" && lv >= 3) {
+        add("bonus", { id: "controlled-channeling", label: L("Controlled Channeling (wybrany duch)", "Controlled Channeling"), cost: { res: "bardic-inspiration", n: 1 },
+          desc: L(`Przywołujesz ducha o numerze do ${d} (opis na karcie Postać).`, `Channel a spirit numbered up to ${d} (see the Character tab).`) });
+        add("action", { id: "unleash-spirit", label: L("Uwolnienie ducha", "Unleash a spirit"), desc: L(`Akcja Magic: przywołany duch działa na istotę w 30 ft (DC ${dc}).`, `Magic action: your channeled spirit affects a creature within 30 ft (DC ${dc}).`) });
+      }
+      break;
+    }
+    case "druid": {
+      const ws = c.wildShape, wsDc = 8 + wis + pb, temp = (sub === "moon" ? 3 : 1) * lv;
+      if (lv >= 2) {
+        if (!ws) for (const id of c.forms || []) {
+          const b = BEASTS[id];
+          const ac = sub === "moon" ? Math.max(b.ac, 13 + wis) : b.ac;
+          add("bonus", { id: "ws-" + id, label: L(`Wild Shape: ${b.name.pl}`, `Wild Shape: ${b.name.en}`), cost: { res: "wild-shape", n: 1 }, set: { wildShape: id }, tempHp: temp,
+            desc: L(`KP ${ac}, ${speedText(b).pl}; ${temp} tymczasowych HP.`, `AC ${ac}, ${speedText(b).en}; ${temp} Temporary HP.`) });
+        }
+        else add("bonus", { id: "ws-leave", label: L("Powrót do swojej postaci", "Leave Wild Shape"), set: { wildShape: "" }, desc: L("Kończysz Wild Shape.", "End Wild Shape.") });
+        add("action", { id: "wild-companion", label: L("Wild Companion", "Wild Companion"), cost: { res: "wild-shape", n: 1 },
+          desc: L("Za użycie Wild Shape rzucasz Find Familiar (chowaniec Fey do długiego odpoczynku). Można też za slot.", "Spend a Wild Shape use to cast Find Familiar (a Fey familiar until a long rest). A slot works too.") });
+      }
+      if (ws) add("attack", { id: "beast-attack", label: L(`Atak: ${ws.beast.name.pl}`, `Attack: ${ws.beast.name.en}`), attack: true, desc: ws.beast.attacks });
+      if (sub === "land" && lv >= 3) add("action", { id: "lands-aid", label: L("Land's Aid", "Land's Aid"), cost: { res: "wild-shape", n: 1 },
+        desc: L(`Kula 10 ft do 60 ft: wybrane istoty KON (DC ${wsDc}), 2k6 nekrotycznych (połowa przy sukcesie); jedna istota leczy 2k6.`, `10-ft Sphere within 60 ft: chosen creatures CON save (DC ${wsDc}), 2d6 Necrotic (half on a success); one creature heals 2d6.`) });
+      if (sub === "sea" && lv >= 3) {
+        add("bonus", { id: "wrath-of-the-sea", label: L("Wrath of the Sea", "Wrath of the Sea"), cost: { res: "wild-shape", n: 1 },
+          desc: L(`10 minut mgiełki 5 ft; istota w niej: KON (DC ${wsDc}) albo ${Math.max(1, wis)}k6 od zimna i odepchnięcie 15 ft.`, `10 minutes of spray, 5 ft; a creature in it: CON save (DC ${wsDc}) or ${Math.max(1, wis)}d6 Cold and pushed 15 ft.`) });
+        add("bonus", { id: "wrath-again", label: L("Wrath of the Sea: kolejny cel", "Wrath of the Sea: next target"), desc: L("Gdy mgiełka trwa: kolejna istota rzuca KON.", "While the spray lasts: another creature makes a CON save.") });
+      }
+      if (sub === "stars" && lv >= 3) {
+        add("bonus", { id: "starry-form", label: L("Starry Form", "Starry Form"), cost: { res: "wild-shape", n: 1 }, desc: L("10 minut: Łucznik, Kielich albo Smok.", "10 minutes: Archer, Chalice or Dragon.") });
+        add("bonus", { id: "starry-archer", label: L("Gwiezdna strzała (Łucznik)", "Luminous arrow (Archer)"), attack: true,
+          desc: L(`W Starry Form: atak czarem ${signed(wis + pb)}, 60 ft, 1k8 ${signed(wis)} promienistych.`, `In Starry Form: spell attack ${signed(wis + pb)}, 60 ft, 1d8 ${signed(wis)} Radiant.`) });
+      }
+      break;
+    }
+    case "wizard": {
+      if (sub === "diviner" && lv >= 3) add("free", { id: "portent", label: L("Portent", "Portent"), cost: { res: "portent", n: 1 }, desc: L("Zastępujesz rzut k20 (Twój albo widocznej istoty) zapisanym wynikiem.", "Replace a d20 roll (yours or a creature you can see) with a recorded roll.") });
+      if (sub === "evoker" && lv >= 3) add("free", { id: "potent-cantrip", label: L("Potent Cantrip", "Potent Cantrip"), desc: L("Chybiona sztuczka albo zdany rzut celu: i tak połowa obrażeń.", "A missed cantrip or a successful save: still half damage.") });
+      if (sub === "illusionist" && lv >= 3) add("bonus", { id: "quick-illusion", label: L("Minor Illusion (akcja bonusowa)", "Minor Illusion (Bonus Action)"), desc: L("Dźwięk i obraz jednym rzuceniem.", "Sound and image with one casting.") });
+      if (sub === "abjurer" && lv >= 3) add("bonus", { id: "ward-charge", label: L("Arcane Ward: slot → HP osłony", "Arcane Ward: slot → ward HP"), desc: L("Wydajesz slot; osłona odzyskuje 2 × jego krąg HP.", "Spend a slot; the ward regains 2 × its level HP.") });
+      break;
+    }
     case "sorcerer": {
       add("bonus", { id: "innate-sorcery", label: L("Innate Sorcery", "Innate Sorcery"), cost: { res: "innate-sorcery", n: 1 }, desc: L("Minuta: DC czarów +1 i Przewaga na ataki czarami Zaklinacza.", "One minute: spell save DC +1 and Advantage on Sorcerer spell attacks.") });
       if (lv >= 2) add("bonus", { id: "font", label: L("Font of Magic", "Font of Magic"), desc: L("Zamieniasz Punkty Czarów na slot albo slot na punkty.", "Turn Sorcery Points into a slot, or a slot into points.") });
@@ -174,10 +232,11 @@ function spellOptions(c) {
   for (const src of c.spellSources) for (const x of src.spells) {
     const s = SPELLS[x.id];
     if (!s || seen.has(x.id) || x.uses === "ritual") continue;
+    if (c.wildShape && !(c.subclassId === "moon" && x.kind === "always")) continue; // no spellcasting in Wild Shape (Moon: circle spells)
     const slot = s.time === "A" ? "action" : s.time === "BA" ? "bonus" : s.time === "R" ? "reaction" : null;
     if (!slot) continue;
     seen.add(x.id);
-    const free = src.resPrefix ? c.resources.find((r) => r.id === src.resPrefix + x.id) : null;
+    const free = x.free ? c.resources.find((r) => r.id === x.free) : src.resPrefix ? c.resources.find((r) => r.id === src.resPrefix + x.id) : null;
     out.push({ slot, group: "spell", id: "spell:" + x.id, spell: x.id, label: s.name, conc: s.conc,
       cost: s.circle > 0 && x.uses !== "atwill" ? { spell: { circle: s.circle, free: free ? free.id : null } } : null,
       desc: L(s.circle ? `${s.circle}. krąg${s.conc ? " · koncentracja" : ""}` : `Sztuczka${s.conc ? " · koncentracja" : ""}`, s.circle ? `Level ${s.circle}${s.conc ? " · concentration" : ""}` : `Cantrip${s.conc ? " · concentration" : ""}`) });

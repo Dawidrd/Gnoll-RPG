@@ -238,18 +238,25 @@ export function renderSheet(root, go, id, tab) {
           ? [t("form.spellAbility") + ": ", h("b", { text: ABILITY_NAMES[src.ability][lang()] }), ` · DC ${src.dc} · ${t("char.spellAttack")} ${signed(src.attack)}`]
           : [t("char.speciesSpellsNoAbility")]));
         if (src.id === "class" && slotRes.length) head.push(h("div", { cls: "res" }, slotRes.map(resRow)));
+        // Circle of the Land: pick the land after each long rest; it decides the circle spells.
+        const landChoice = c.cls.choices?.land;
+        if (src.id === "class" && landChoice && c.subclassId === landChoice.subclass) head.push(h("label", { cls: "wide" }, [tr(landChoice.label),
+          h("select", { id: "spell-land", onchange: (e) => { ch.classChoices = { ...(ch.classChoices || {}), land: e.target.value }; save(); } },
+            Object.entries(landChoice.options).map(([k, o]) => h("option", { value: k, text: tr(o), selected: k === c.classChoices.land })))]));
+        // Wizard: what's in the spellbook (only Rituals are cast straight from it).
+        if (src.book?.length) head.push(h("p", { cls: "hint" }, [h("b", { text: t("spell.bookList") + ": " }), src.book.map((id) => tr(SPELLS[id].name).split(" (")[0]).join(", ")]));
         const rows = [];
         const byCircle = [...src.spells].sort((a, b) => SPELLS[a.id].circle - SPELLS[b.id].circle || tr(SPELLS[a.id].name).localeCompare(tr(SPELLS[b.id].name)));
         for (const x of byCircle) {
           const s = SPELLS[x.id];
           const acts = [];
-          const free = src.resPrefix ? resOf(src.resPrefix + x.id) : null;
+          const free = x.free ? resOf(x.free) : src.resPrefix ? resOf(src.resPrefix + x.id) : null;
           if (free) acts.push(h("button", { type: "button", cls: "btn small", disabled: free.used >= free.max, text: t("spell.free", { n: free.max - free.used, max: free.max }), onclick: () => cast(x.id, { res: free.id }) }));
           if (s.circle > 0 && x.uses !== "ritual" && x.uses !== "atwill") for (const r of slotRes.filter((r) => r.slot >= s.circle)) {
             acts.push(h("button", { type: "button", cls: "btn small ghost", disabled: r.used >= r.max, text: t("spell.slotBtn", { n: r.slot }), title: t("spell.castSlotHint", { n: r.slot }), onclick: () => cast(x.id, { slot: r.slot }) }));
           }
           if ((s.circle === 0 || x.uses === "atwill") && s.conc) acts.push(h("button", { type: "button", cls: "btn small ghost", text: t("conc.start"), onclick: () => { ch.concentration = x.id; save(); } }));
-          const why = [x.kind === "always" ? t("spell.always") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "slotsOrRitual" ? t("spell.slotsOrRitual")
+          const why = [x.kind === "always" ? t("spell.always") : x.kind === "book" ? t("spell.bookRitual") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "slotsOrRitual" ? t("spell.slotsOrRitual")
             : x.uses === "atwill" ? (s.circle ? t("spell.noSlot") : t("spell.atWill")) : "", x.self ? t("spell.selfOnly") : ""].filter(Boolean).join(" ");
           rows.push(h("div", { cls: "spellrow sheet" + (ch.concentration === x.id ? " on" : "") }, [
             h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null]), ...spellBody(s, c), why ? h("p", { cls: "hint", text: why }) : null]),
@@ -273,14 +280,15 @@ export function renderSheet(root, go, id, tab) {
       const out = [];
       const nx = c.next;
       if (nx) {
-        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skill: "", lc: null, spellPicks: null, classOptions: null };
+        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skills: [], expertise: [], lc: null, spellPicks: null, classOptions: null };
         const N = nx.level;
         const draft = structuredClone(ch);
         draft.level = N;
         draft.hpRolls = { ...(draft.hpRolls || {}) };
         if (typeof pending.hp === "number") draft.hpRolls[N] = pending.hp; else delete draft.hpRolls[N];
         if (pending.subclass) draft.subclass = pending.subclass;
-        if (pending.skill) draft.skills = [...(draft.skills || []), pending.skill];
+        if (pending.skills.length) draft.skills = [...(draft.skills || []), ...pending.skills];
+        if (pending.expertise.length) draft.expertise = [...(draft.expertise || []), ...pending.expertise];
         draft.levelChoices = { ...(draft.levelChoices || {}) };
         if (pending.lc) draft.levelChoices[N] = pending.lc; else delete draft.levelChoices[N];
         draft.spellPicks = structuredClone(pending.spellPicks || ch.spellPicks || {});
@@ -315,16 +323,34 @@ export function renderSheet(root, go, id, tab) {
           ok.push(!!pending.subclass);
         }
 
-        // 3. New skill slots (e.g. Barbarian Primal Knowledge)
-        const newSlots = (c.cls.extraSkills ? c.cls.extraSkills(N) : []).filter((sl) => !(c.cls.extraSkills(N - 1) || []).some((x) => x.id === sl.id));
-        for (const sl of newSlots) {
+        // 3. New skill slots (Barbarian Primal Knowledge, College of Lore)
+        const newSlots = cn.slots.filter((sl) => !c.slots.some((x) => x.id === sl.id));
+        if (newSlots.length) {
           const have = c.skills.filter((x) => x.prof).map((x) => x.id);
-          steps.push(h("div", { cls: "stack" }, [h("h4", { text: tr(sl.label) }),
-            h("label", { cls: "wide" }, [t("lvl.newSkill"), h("select", { id: "lvl-skill", onchange: (e) => { pending.skill = e.target.value; draw(); } }, [
-              h("option", { value: "", text: "—" }),
-              ...sl.from.filter((x) => !have.includes(x)).map((x) => h("option", { value: x, text: c.skills.find((k) => k.id === x)[lang()], selected: x === pending.skill })),
-            ])])]));
-          ok.push(!!pending.skill);
+          const total = newSlots.reduce((n, sl) => n + sl.count, 0);
+          const allowed = c.skills.filter((k) => !have.includes(k.id) && newSlots.some((sl) => !sl.from || sl.from.includes(k.id)));
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: newSlots.map((sl) => tr(sl.label)).join(", ") }),
+            h("p", { cls: "hint", text: t("lvl.newSkills", { n: total }) + " " + t("form.picked", { n: pending.skills.length, max: total }) }),
+            h("div", { cls: "checks" }, allowed.map((k) => {
+              const on = pending.skills.includes(k.id);
+              return h("label", { cls: "check" + (!on && pending.skills.length >= total ? " blocked" : "") }, [h("input", { type: "checkbox", id: "lvl-skill-" + k.id, checked: on,
+                disabled: !on && pending.skills.length >= total, onchange: (e) => { pending.skills = e.target.checked ? [...pending.skills, k.id] : pending.skills.filter((x) => x !== k.id); draw(); } }), k[lang()]]);
+            }))]));
+          ok.push(pending.skills.length === total);
+        }
+
+        // 3b. Expertise gained at this level (Bard 2, Wizard 2: Scholar)
+        const expNew = cn.expertiseMax - Math.min(c.expertiseMax, (ch.expertise || []).length);
+        if (expNew > 0) {
+          const pool = cn.skills.filter((k) => k.prof && !(ch.expertise || []).includes(k.id) && (!cn.expertiseFrom || cn.expertiseFrom.includes(k.id)));
+          steps.push(h("div", { cls: "stack" }, [h("h4", { text: t("form.expertise") }),
+            h("p", { cls: "hint", text: t("form.expertiseHint", { n: expNew }) + (cn.expertiseFrom ? " " + t("form.expertiseFrom", { list: cn.expertiseFrom.map((x) => c.skills.find((k) => k.id === x)[lang()]).join(", ") }) : "") }),
+            pool.length ? h("div", { cls: "checks" }, pool.map((k) => {
+              const on = pending.expertise.includes(k.id);
+              return h("label", { cls: "check" + (!on && pending.expertise.length >= expNew ? " blocked" : "") }, [h("input", { type: "checkbox", id: "lvl-exp-" + k.id, checked: on,
+                disabled: !on && pending.expertise.length >= expNew, onchange: (e) => { pending.expertise = e.target.checked ? [...pending.expertise, k.id] : pending.expertise.filter((x) => x !== k.id); draw(); } }), k[lang()]]);
+            })) : h("p", { cls: "hint", text: t("lvl.noExpertise") })]));
+          ok.push(pending.expertise.length === expNew || !pool.length);
         }
 
         // 4. Ability Score Improvement or feat
@@ -374,12 +400,12 @@ export function renderSheet(root, go, id, tab) {
           h("div", { cls: "row" }, [
             h("button", { type: "button", cls: "btn gold", id: "lvl-confirm", disabled: !ready, text: t("lvl.up", { n: N }), onclick: () => {
               const before = c.hpMax;
-              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, levelChoices: draft.levelChoices, spellPicks: draft.spellPicks, classOptions: draft.classOptions });
+              Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, expertise: draft.expertise || [], levelChoices: draft.levelChoices, spellPicks: draft.spellPicks, classOptions: draft.classOptions });
               const after = compute(ch).hpMax;
               ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
               pending = null; save(); toast(t("lvl.done", { n: N }));
             } }),
-            pending.hp != null || pending.lc || pending.subclass || pending.skill || pending.spellPicks || pending.classOptions
+            pending.hp != null || pending.lc || pending.subclass || pending.skills.length || pending.expertise.length || pending.spellPicks || pending.classOptions
               ? h("button", { type: "button", cls: "btn ghost", text: t("lvl.reset"), onclick: () => { pending = null; draw(); } }) : null,
           ]),
         ]));
@@ -415,6 +441,7 @@ export function renderSheet(root, go, id, tab) {
       const chosen = (ch.skills || []).filter((x) => !cd.granted.includes(x));
       const kept = trimSkills(chosen, cd.slots);
       ch.skills = [...(ch.skills || []).filter((x) => cd.granted.includes(x)), ...kept];
+      ch.expertise = (ch.expertise || []).filter((x) => cd.skills.find((k) => k.id === x)?.prof).slice(0, cd.expertiseMax);
       // Fewer cantrips or prepared spells at the lower level: keep the first ones picked.
       for (const src of cd.spellSources) for (const p of src.picks) if (p.store === "class") writePick(ch, p, p.chosen.slice(0, p.count));
       if (!cd.spellSources.some((x) => x.id === "class")) ch.spellPicks = {};

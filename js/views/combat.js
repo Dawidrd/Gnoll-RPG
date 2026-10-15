@@ -1,4 +1,4 @@
-// Combat tab (turn planner) and the "switched on" card on Start (Rage, Mage Armor, armor off, shield, familiar).
+// Combat tab (turn planner) and the "switched on" card on Start (Rage, Wild Shape, Mage Armor, armor off, shield, familiar).
 import { h, toast } from "../dom.js";
 import { t, tr } from "../i18n.js";
 import { newTurn } from "../rules/index.js";
@@ -6,6 +6,7 @@ import { turnOptions, turnTips } from "../rules/turn.js";
 import { SPELLS } from "../rules/spells.js";
 import { ARMOR } from "../rules/armor.js";
 import { clamp } from "../rules/core.js";
+import { BEASTS, speedText } from "../rules/beasts.js";
 
 const left = (r) => (r ? r.max - r.used : 0);
 const short = (x) => tr(x).split(" (")[0];
@@ -40,7 +41,7 @@ export function combatTab({ ch, c, save }) {
     if (!pay) return toast(t("turn.cantPay"));
     spendAll(pay.spend, -1);
     const p = { id: o.id, label: o.label, desc: o.desc, fx: o.fx || null, attack: !!o.attack, spent: pay.spend, prev: {} };
-    if (o.set?.rage) { p.prev.rage = !!ch.active.rage; ch.active = { ...ch.active, rage: true }; toast(t("active.rageOn")); }
+    if (o.set) { p.prev.active = { ...ch.active }; ch.active = { ...ch.active, ...o.set }; if (o.set.rage) toast(t("active.rageOn")); } // Rage, Wild Shape
     if (o.tempHp) { p.prev.temp = ch.hp.temp || 0; ch.hp.temp = Math.max(ch.hp.temp || 0, o.tempHp); }
     if (o.spell && SPELLS[o.spell].conc) {
       p.prev.conc = ch.concentration || null;
@@ -58,6 +59,7 @@ export function combatTab({ ch, c, save }) {
     spendAll(p.spent || [], 1);
     p.prev = p.prev || {};
     if ("rage" in p.prev) ch.active = { ...ch.active, rage: p.prev.rage };
+    if ("active" in p.prev) ch.active = p.prev.active;
     if ("temp" in p.prev) ch.hp.temp = p.prev.temp;
     if ("conc" in p.prev) ch.concentration = p.prev.conc;
     if (slot === "free") turn.free = turn.free.filter((_, k) => k !== i); else turn[slot] = null;
@@ -168,16 +170,44 @@ export function activeCard({ ch, c, save }) {
       ch.used = { ...ch.used, rage: (ch.used?.rage || 0) + 1 }; set("rage", true); toast(t("active.rageOn"));
     });
   }
+  // Wild Shape (Druid): pick a known form and shift (spends a use, gives Temporary HP), or leave the form.
+  let wildBox = null;
+  if (c.cls.id === "druid" && c.level >= 2) {
+    const r = c.resources.find((x) => x.id === "wild-shape");
+    const ws = c.wildShape;
+    if (ws) {
+      toggle("wild-shape", t("active.wildShape", { name: short(ws.beast.name) }), true, t("active.wildShapeHint"), () => set("wildShape", ""));
+      wildBox = h("div", { cls: "stack famcard", id: "wild-shape" }, [
+        h("div", { cls: "orn", text: tr(ws.beast.name) }),
+        h("p", { cls: "small", text: t("active.wildStats", { ac: ws.ac, speed: tr(speedText(ws.beast)), str: ws.beast.str, dex: ws.beast.dex, con: ws.beast.con }) + (ws.beast.senses ? " · " + tr(ws.beast.senses) : "") }),
+        h("p", { cls: "small", text: tr(ws.beast.attacks) }),
+        ws.beast.traits ? h("p", { cls: "hint", text: tr(ws.beast.traits) }) : null,
+        h("p", { cls: "hint", text: t("active.wildKeep") }),
+      ]);
+    } else if (c.forms.length) {
+      const sel = h("select", { id: "act-ws-form", "aria-label": t("active.wildPick") }, c.forms.map((id) => h("option", { value: id, text: tr(BEASTS[id].name) })));
+      rows.push(h("div", { cls: "resrow" }, [
+        h("span", { cls: "lbl" }, [t("active.wildPick"), h("small", { text: t("active.wildLeft", { n: left(r) }) })]), sel,
+        h("button", { type: "button", cls: "btn small", id: "act-ws-go", text: t("active.wildGo"), onclick: () => {
+          if (!left(r)) return toast(t("turn.cantPay"));
+          const temp = (c.subclassId === "moon" ? 3 : 1) * c.level;
+          ch.used = { ...ch.used, "wild-shape": (ch.used?.["wild-shape"] || 0) + 1 };
+          ch.hp.temp = Math.max(ch.hp.temp || 0, temp);
+          set("wildShape", sel.value); toast(t("active.wildOn", { n: temp }));
+        } })]));
+    } else rows.push(h("p", { cls: "hint", text: t("active.wildNoForms") }));
+  }
   if (ch.armor !== "none") toggle("armor", t("active.armor", { name: short(ARMOR[ch.armor].name) }), !c.active.armorOff, t("active.armorHint"), () => set("armorOff", !c.active.armorOff));
   if (c.training.includes("shield") || ch.shield) toggle("shield", t("active.shield"), !!ch.shield, t("active.shieldHint"), () => { ch.shield = !ch.shield; save(); });
   if ((c.spellSources || []).some((s) => s.spells.some((x) => x.id === "mage-armor"))) {
     const wearing = ch.armor !== "none" && !c.active.armorOff;
     toggle("mage-armor", "Mage Armor", c.active.mageArmor, wearing ? t("active.mageArmorWorn") : t("active.mageArmorHint", { ac: 13 + c.mods.dex }), () => set("mageArmor", !c.active.mageArmor));
   }
-  const fam = (c.spellSources || []).some((s) => s.spells.some((x) => x.id === "find-familiar"));
+  // Find Familiar, also through the Druid's Wild Companion
+  const fam = (c.spellSources || []).some((s) => s.spells.some((x) => x.id === "find-familiar")) || (c.cls.id === "druid" && c.level >= 2);
   const famBox = fam ? familiarBox({ ch, save }) : null;
   if (!rows.length && !famBox) return null;
-  return h("section", { cls: "card", id: "active-card" }, [h("h4", { text: t("active.title") }), h("div", { cls: "res" }, rows), famBox,
+  return h("section", { cls: "card", id: "active-card" }, [h("h4", { text: t("active.title") }), h("div", { cls: "res" }, rows), wildBox, famBox,
     h("p", { cls: "hint", text: t("active.acNow", { ac: c.ac.value, note: tr(c.ac.note) }) })]);
 }
 

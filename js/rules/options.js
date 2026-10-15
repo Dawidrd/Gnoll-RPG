@@ -1,4 +1,4 @@
-// Class option lists picked by the player: Eldritch Invocations (Warlock), Metamagic (Sorcerer).
+// Class option lists picked by the player: Eldritch Invocations (Warlock), Metamagic (Sorcerer), Wild Shape forms (Druid).
 // Stored as ch.classOptions[key] = ["armor-of-shadows", "agonizing-blast@eldritch-blast", …] — "@cantrip" for options tied to a cantrip.
 import { DAMAGE_CANTRIPS, SPELLS } from "./spells.js";
 
@@ -31,6 +31,7 @@ export function classOptions(ch, cls, ctx, known) {
       else if (p.level && ctx.level < p.level) problem = L(`wymaga ${p.level}. poziomu`, `requires level ${p.level}`);
       else if (p.pact && !has(`pact-of-the-${p.pact}`)) problem = L(`wymaga Pact of the ${p.pact[0].toUpperCase() + p.pact.slice(1)}`, `requires Pact of the ${p.pact[0].toUpperCase() + p.pact.slice(1)}`);
       else if (p.invocation && !has(p.invocation)) problem = L(`wymaga ${g.options[p.invocation].name.pl}`, `requires ${g.options[p.invocation].name.en}`);
+      else if (o.blocked?.(ctx)) problem = o.blocked(ctx); // e.g. a Wild Shape form above the Challenge Rating limit
       else if (p.cantrip) {
         if (!x.cantrip) { problem = L("wybierz sztuczkę", "pick a cantrip"); x.pending = true; }
         else if (!qualifyingCantrips(p.cantrip, known).includes(x.cantrip)) problem = L("ta sztuczka się nie nadaje albo jej nie znasz", "that cantrip doesn't qualify or isn't known");

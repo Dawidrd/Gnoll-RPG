@@ -450,6 +450,118 @@ test("import from an old character page: state, picks, equipment, journal, quest
   eq(report.notes.map((n) => [n.key, n.vars]), [["imp.levelChanged", { from: 1, to: 2 }], ["imp.hpDiff", { page: 20, app: 15 }], ["imp.acDiff", { page: 13, app: 15 }]]);
 });
 
+// --- Bard, Druid, Wizard (PHB ch. 3; College of Spirits from The Horrors Within) ---
+const todoKeys = (c) => keys(c.review.todo);
+test("Bard: any 3 skills, 3 instruments, Bardic Inspiration, Expertise and Jack of All Trades from level 2", () => {
+  const b = (over = {}) => run(make({ classId: "bard", speciesId: "dwarf", abilityBase: { str: 8, dex: 14, con: 12, int: 13, wis: 10, cha: 15 }, ...over }));
+  const b1 = b();
+  eq([b1.slots.find((s) => s.id === "class").count, b1.slots.find((s) => s.id === "class").from], [3, null]);
+  eq([b1.toolSlots.find((s) => s.id === "class").count, b1.toolSlots.find((s) => s.id === "class").from.includes("lute")], [3, true]);
+  eq([b1.expertiseMax, b1.resources.find((r) => r.id === "bardic-inspiration").max, b1.resources.find((r) => r.id === "bardic-inspiration").recharge], [0, 2, "long"]);
+  eq(src(b1, "class").picks.map((p) => p.count), [2, 4]);
+  const b2 = b({ level: 2 });
+  eq(b2.expertiseMax, 2);
+  eq(b2.skills.find((s) => s.id === "athletics").value, -1 + 1, "STR 8 (−1) + half of PB 2");
+  eq(b({ level: 2, skills: ["athletics"] }).skills.find((s) => s.id === "athletics").value, -1 + 2, "proficient: no Jack of All Trades on top");
+  const b5 = b({ level: 5 });
+  eq([b5.resources.find((r) => r.id === "bardic-inspiration").recharge, b5.resources.find((r) => r.id === "bardic-inspiration").name.en], ["short", "Bardic Inspiration (d8)"], "Font of Inspiration, d8");
+});
+test("Bard colleges: Lore skills, Valor armor, Dance AC, Glamour spells, Spirits only in Ravenloft", () => {
+  const b = (subclass, over = {}) => run(make({ classId: "bard", level: 3, subclass, speciesId: "dwarf", abilityBase: { str: 8, dex: 14, con: 12, int: 13, wis: 10, cha: 15 }, ...over }));
+  eq(b("lore").slots.find((s) => s.id === "lore").count, 3);
+  eq(fitSkills(["arcana", "history", "nature", "religion", "stealth", "survival"], b("lore").slots).ok, true, "3 class + 3 Lore");
+  eq(["medium", "shield"].every((x) => b("valor").training.includes(x)), true);
+  const dance = { abilityBase: { str: 8, dex: 14, con: 15, int: 13, wis: 10, cha: 12 } };
+  eq(b("dance", dance).ac.value, 10 + 2 + 1, "10 + DEX + CHA");
+  eq(b("dance", { ...dance, shield: true }).ac.value, 10 + 2 + 2, "a shield turns Dazzling Footwork off: 10 + DEX + shield");
+  eq(src(b("glamour"), "class").fixed.filter((x) => x.kind === "always").map((x) => x.id), ["charm-person", "mirror-image"]);
+  eq(errKeys(b("spirits")).includes("err.ravenloftOnly"), true);
+  const sp = b("spirits", { setting: "ravenloft" });
+  eq([src(sp, "class").fixed.map((x) => x.id), src(sp, "class").picks[0].count, sp.toolIds.includes("cards")], [["guidance"], 2, true], "Guidance outside the cantrip limit");
+});
+test("Druid: Druidic, Speak with Animals, Primal Order", () => {
+  const d = (over = {}) => run(make({ classId: "druid", speciesId: "dwarf", ...over }));
+  const d1 = d();
+  eq([d1.languages.known, d1.toolIds, d1.saves.int.prof, d1.training], [["common", "druidic"], ["herbalism"], true, ["light", "shield"]]);
+  eq(src(d1, "class").fixed.map((x) => [x.id, x.kind]), [["speak-with-animals", "always"]]);
+  eq(src(d1, "class").picks[0].count, 3, "Magician (default): +1 cantrip");
+  eq(d1.skills.find((s) => s.id === "nature").value, 0 + 2, "INT 10 + WIS 14 → +2 (Magician)");
+  const w = d({ classChoices: { order: "warden" } });
+  eq([w.training.includes("medium"), src(w, "class").picks[0].count, w.skills.find((s) => s.id === "nature").value], [true, 2, 0]);
+});
+test("Wild Shape: uses, known forms, CR limit, Circle of the Moon", () => {
+  const d = (over = {}) => run(make({ classId: "druid", speciesId: "dwarf", ...over }));
+  eq(d().classOptions.length, 0, "no Wild Shape at level 1");
+  const d2 = d({ level: 2, classOptions: { forms: ["wolf", "cat", "rat", "brown-bear"] } });
+  eq([d2.resources.find((r) => r.id === "wild-shape").max, d2.classOptions[0].count], [2, 4]);
+  eq(optErr(d2), 1, "Brown Bear (CR 1) is too much at level 2");
+  eq(d({ level: 4, classOptions: { forms: ["ape"] } }).classOptions[0].count, 6);
+  eq(optErr(d({ level: 4, classOptions: { forms: ["ape"] } })), 0, "CR 1/2 from level 4");
+  eq(optErr(d({ level: 3, subclass: "land", classOptions: { forms: ["ape"] } })), 1, "Land: still CR 1/4 at level 3");
+  const moon = d({ level: 3, subclass: "moon", classOptions: { forms: ["brown-bear", "wolf", "cat", "rat"] }, active: { wildShape: "brown-bear" } });
+  eq([optErr(moon), moon.wildShape.ac, moon.wildShape.tempHp], [0, 13 + 2, 9], "Moon: CR 1, AC 13 + WIS, 3 × level temp HP");
+  eq(moon.ac.value, 15, "the sheet shows the form's AC");
+  eq(d({ level: 2, classOptions: { forms: ["wolf"] }, active: { wildShape: "wolf" } }).wildShape.ac, 12, "the Beast's own AC");
+  eq(d({ level: 2, classOptions: { forms: ["wolf"] }, active: { wildShape: "tiger" } }).wildShape, null, "only a known form");
+  const ch = make({ classId: "druid", speciesId: "dwarf", level: 2, classOptions: { forms: ["wolf", "cat"] } });
+  const t = turnOptions(run(ch), ch);
+  eq([t.bonus.filter((o) => o.id.startsWith("ws-")).map((o) => o.set.wildShape), t.bonus[0].cost], [["wolf", "cat"], { res: "wild-shape", n: 1 }]);
+  const shifted = { ...ch, active: { wildShape: "wolf" }, spellPicks: { cantrips: ["produce-flame"], prepared: ["cure-wounds"] } };
+  const ts = turnOptions(run(shifted), shifted);
+  eq([ts.action.some((o) => o.id === "beast-attack"), ts.action.some((o) => o.group === "spell"), ts.bonus.some((o) => o.id === "ws-leave")], [true, false, true], "no spells in Wild Shape");
+});
+test("Druid circles: Land spells follow the land, Moon and Sea spells, Star Map", () => {
+  const d = (subclass, over = {}) => run(make({ classId: "druid", level: 5, subclass, speciesId: "dwarf", ...over }));
+  const always = (c) => src(c, "class").fixed.filter((x) => x.kind === "always").map((x) => x.id);
+  eq(always(d("land")), ["speak-with-animals", "misty-step", "shocking-grasp", "sleep", "lightning-bolt"], "temperate by default");
+  eq(always(d("land", { classChoices: { land: "arid" } })), ["speak-with-animals", "blur", "burning-hands", "fire-bolt", "fireball"]);
+  eq(always(d("moon")), ["speak-with-animals", "cure-wounds", "moonbeam", "starry-wisp", "conjure-animals"]);
+  eq(always(d("sea")).length, 1 + 7);
+  const st = d("stars");
+  eq([st.resources.find((r) => r.id === "star-map").max, src(st, "class").fixed.find((x) => x.id === "guiding-bolt").free], [2, "star-map"]);
+});
+test("Wizard: spellbook of 6 + 2 per level, prepared spells only from the book, rituals from the book", () => {
+  const w = (over = {}) => run(make({ classId: "wizard", speciesId: "dwarf", ...over }));
+  const w1 = w();
+  eq(src(w1, "class").picks.map((p) => [p.key, p.count]), [["cantrips", 3], ["book", 6], ["prepared", 4]]);
+  eq(src(w({ level: 5 }), "class").picks.find((p) => p.key === "book").count, 14);
+  const book = ["magic-missile", "shield", "mage-armor", "detect-magic", "sleep", "find-familiar"];
+  const s = src(w({ spellPicks: { book, prepared: ["magic-missile", "shield", "sleep", "fire-bolt"] } }), "class");
+  eq(s.picks.find((p) => p.key === "prepared").options, ["detect-magic", "find-familiar", "mage-armor", "magic-missile", "shield", "sleep"]);
+  eq(s.picks.find((p) => p.key === "prepared").invalid, ["fire-bolt"]);
+  eq(s.spells.filter((x) => x.kind === "book").map((x) => [x.id, x.uses]), [["detect-magic", "ritual"], ["find-familiar", "ritual"]], "unprepared Rituals from the book");
+  eq(s.spells.some((x) => x.id === "mage-armor"), false, "an unprepared non-ritual spell can't be cast");
+});
+test("Wizard: Scholar Expertise from its list, school savant picks, Illusionist's Minor Illusion", () => {
+  const w = (over = {}) => run(make({ classId: "wizard", speciesId: "dwarf", skills: ["arcana", "insight"], ...over }));
+  eq(w({ level: 2 }).expertiseMax, 1);
+  eq(errKeys(w({ level: 2, expertise: ["insight"] })).includes("err.expertiseFrom"), true, "Insight isn't a Scholar skill");
+  eq(w({ level: 2, expertise: ["arcana"] }).skills.find((s) => s.id === "arcana").expert, true);
+  const ev = src(w({ level: 3, subclass: "evoker" }), "class");
+  const sav = ev.picks.find((p) => p.key === "savant");
+  eq([sav.count, sav.options.every((id) => SPELLS[id].school === "evo" && SPELLS[id].circle <= 2)], [2, true]);
+  eq(src(w({ level: 5, subclass: "evoker" }), "class").picks.find((p) => p.key === "savant5").options.includes("fireball"), true);
+  const il = src(w({ level: 3, subclass: "illusionist" }), "class");
+  eq([il.fixed.map((x) => x.id), il.picks[0].count, il.picks[0].options.includes("minor-illusion")], [["minor-illusion"], 3, false]);
+});
+test("Bard, Druid and Wizard characters can be completed", () => {
+  const base = { speciesId: "dwarf", size: "medium", alignment: "NG", languages: ["elvish", "giant"], name: "Test" };
+  const bard = run(make({ ...base, classId: "bard", background: "wayfarer", bgIncrease: { mode: "21", plus2: "cha", plus1: "dex" },
+    skills: ["performance", "persuasion", "deception"], toolPicks: { class: ["lute", "flute", "drum"] },
+    spellPicks: { cantrips: ["vicious-mockery", "dancing-lights"], prepared: ["charm-person", "healing-word", "dissonant-whispers", "faerie-fire"] } }));
+  eq([todoKeys(bard), bard.review.errors.map((x) => x.key)], [[], []], "Bard 1");
+  const druid = run(make({ ...base, classId: "druid", level: 2, background: "hermit", bgIncrease: { mode: "21", plus2: "wis", plus1: "con" },
+    skills: ["nature", "perception"], classOptions: { forms: ["wolf", "cat", "rat", "riding-horse"] },
+    spellPicks: { cantrips: ["druidcraft", "produce-flame", "guidance"], prepared: ["cure-wounds", "entangle", "faerie-fire", "thunderwave", "goodberry"] } }));
+  eq([todoKeys(druid), druid.review.errors.map((x) => x.key)], [[], []], "Druid 2");
+  const wiz = run(make({ ...base, classId: "wizard", level: 3, subclass: "evoker", background: "criminal", bgIncrease: { mode: "21", plus2: "int", plus1: "con" },
+    skills: ["arcana", "history"], expertise: ["arcana"],
+    spellPicks: { cantrips: ["fire-bolt", "mage-hand", "light"], book: ["magic-missile", "shield", "mage-armor", "detect-magic", "sleep", "thunderwave", "feather-fall", "find-familiar", "misty-step", "scorching-ray"],
+      savant: ["burning-hands", "shatter"], prepared: ["magic-missile", "shield", "mage-armor", "sleep", "misty-step", "shatter"] } }));
+  eq([todoKeys(wiz), wiz.review.errors.map((x) => x.key)], [[], []], "Wizard 3");
+  eq([wiz.spells.dc, wiz.hpMax], [8 + 1 + 2, 6 + 2 + 2 * (4 + 2) + 3], "INT 12; CON 14, two fixed 4s, Dwarven Toughness +1 per level");
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

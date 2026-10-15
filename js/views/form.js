@@ -58,7 +58,7 @@ export function renderForm(root, go, id) {
     chosen.filter((x) => !kept.includes(x)).forEach((x) => dropped.push(skillName(x)));
     ch.skills = kept;
     const prof = new Set([...c.granted, ...kept]);
-    ch.expertise = ch.expertise.filter((x) => prof.has(x)).slice(0, c.expertiseMax);
+    ch.expertise = ch.expertise.filter((x) => prof.has(x) && (!c.expertiseFrom || c.expertiseFrom.includes(x))).slice(0, c.expertiseMax);
     const langKept = trimSkills(c.languages.chosen, c.languages.slots);
     c.languages.chosen.filter((x) => !langKept.includes(x)).forEach((x) => dropped.push(tr(LANGUAGES[x].name)));
     ch.languages = langKept;
@@ -163,7 +163,8 @@ export function renderForm(root, go, id) {
         .map(([k, s]) => h("option", { value: k, text: tr(s.name) + (s.source === "ravenloft" ? " · Ravenloft" : ""), selected: k === ch.subclass })),
       ch.subclass === "custom" ? h("option", { value: "custom", text: `${ch.subclassCustom || "?"} (${t("form.oldVersion")})`, selected: true, disabled: true }) : null,
     ]);
-    const choiceFields = Object.entries(cls().choices || {}).map(([k, d]) => {
+    // Choices tied to a subclass (Circle of the Land: the land) show up only once that subclass is taken.
+    const choiceFields = Object.entries(cls().choices || {}).filter(([, d]) => !d.subclass || (ch.subclass === d.subclass && ch.level >= cls().subclassLevel)).map(([k, d]) => {
       const cur = ch.classChoices[k] || d.default;
       return field(tr(d.label), h("select", { id: "f-choice-" + k, onchange: (e) => { ch.classChoices = { ...ch.classChoices, [k]: e.target.value }; draw(); } },
         Object.entries(d.options).map(([ok, o]) => h("option", { value: ok, text: tr(o), selected: ok === cur }))), "wide");
@@ -391,7 +392,7 @@ export function renderForm(root, go, id) {
     const chosen = ch.skills.filter((x) => !granted.includes(x));
     const fit = c.skillFit;
     const canAdd = (sid) => fitSkills([...chosen, sid], c.slots).ok;
-    const classList = cls().skillChoices.from;
+    const classList = cls().skillChoices.from || [];
     const grid = h("div", { cls: "checks" }, SKILLS.map((s) => {
       const isGranted = granted.includes(s.id);
       const on = isGranted || chosen.includes(s.id);
@@ -405,10 +406,10 @@ export function renderForm(root, go, id) {
         } }), `${s[lang()]} (${short(s.ab)})`, tag ? h("small", { text: tag }) : null]);
     }));
     const expCount = c.expertiseMax;
-    const profSkills = SKILLS.filter((s) => granted.includes(s.id) || chosen.includes(s.id));
+    const profSkills = SKILLS.filter((s) => (granted.includes(s.id) || chosen.includes(s.id)) && (!c.expertiseFrom || c.expertiseFrom.includes(s.id)));
     const expert = expCount ? h("div", { cls: "stack" }, [
       h("h4", { text: t("form.expertise") }),
-      h("p", { cls: "hint", text: t("form.expertiseHint", { n: expCount }) + " " + t("form.picked", { n: ch.expertise.length, max: expCount }) }),
+      h("p", { cls: "hint", text: t("form.expertiseHint", { n: expCount }) + (c.expertiseFrom ? " " + t("form.expertiseFrom", { list: c.expertiseFrom.map(skillName).join(", ") }) : "") + " " + t("form.picked", { n: ch.expertise.length, max: expCount }) }),
       profSkills.length ? h("div", { cls: "checks" }, profSkills.map((s) => {
         const on = ch.expertise.includes(s.id);
         const blocked = !on && ch.expertise.length >= expCount;
@@ -543,6 +544,8 @@ export function renderForm(root, go, id) {
       h("p", { cls: "hint", text: t("form.spellsHint2", { list: tr(sc.list), dc: src.dc, attack: (src.attack >= 0 ? "+" : "") + src.attack, slots: sc.slots.map((n, i) => `${n}× ${i + 1}`).join(", ") }) }),
       always.length ? h("p", { cls: "hint" }, [h("b", { text: t("form.alwaysPrepared") + ": " }), always.map((x) => tr(SPELLS[x.id].name).split(" (")[0]).join(", ")]) : null,
       ...src.fixed.filter((x) => x.fixedBy).map((x) => h("p", { cls: "hint" }, [h("b", { text: t("form.knownCantrip") + ": " }), tr(SPELLS[x.id].name)])),
+      // Wizard: the book first, then prepared spells chosen from it
+      sc.spellbook ? h("p", { cls: "hint", text: t("form.bookHint", { n: sc.spellbook, p: sc.prepared }) }) : null,
       ...src.picks.map((p) => spellPickUI({ pick: p, c, onChange: (ids) => { writePick(ch, p, ids); draw(); } })),
       // Pact of the Tome: cantrips and rituals from any list, in the Book of Shadows
       ...c.spellSources.filter((x) => x.id === "tome").flatMap((x) => [h("p", { cls: "hint", text: t("form.tomeHint") }),

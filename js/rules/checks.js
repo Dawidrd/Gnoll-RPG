@@ -59,6 +59,7 @@ export function review(ch, c) {
   if (!c.skillFit.ok) E(5, "err.skills");
   else if (chosen.length < totalSkills) T(5, "todo.skills", { n: totalSkills - chosen.length });
   if ((ch.expertise || []).length > c.expertiseMax) E(5, "err.expertise", { n: c.expertiseMax });
+  else if (c.expertiseFrom && (ch.expertise || []).some((x) => !c.expertiseFrom.includes(x))) E(5, "err.expertiseFrom");
   else if ((ch.expertise || []).length < c.expertiseMax) T(5, "todo.expertise", { n: c.expertiseMax - (ch.expertise || []).length });
   for (const s of c.featSlots) {
     const id = s.pick;

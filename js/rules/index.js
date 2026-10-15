@@ -6,6 +6,10 @@ import { rogue } from "./classes/rogue.js";
 import { cleric } from "./classes/cleric.js";
 import { warlock } from "./classes/warlock.js";
 import { sorcerer } from "./classes/sorcerer.js";
+import { bard } from "./classes/bard.js";
+import { druid } from "./classes/druid.js";
+import { wizard } from "./classes/wizard.js";
+import { BEASTS } from "./beasts.js";
 import { classOptions, optionInnate } from "./options.js";
 import { ARMOR, armorClass } from "./armor.js";
 import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
@@ -16,14 +20,12 @@ import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./ident
 import { review } from "./checks.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
 
-export const CLASSES = { barbarian, cleric, monk, rogue, sorcerer, warlock };
+export const CLASSES = { barbarian, bard, cleric, druid, monk, rogue, sorcerer, warlock, wizard };
 
 /** Classes listed in the creator but not built yet. */
 export const PLANNED_CLASSES = {
-  bard: { pl: "Bard", en: "Bard" }, druid: { pl: "Druid", en: "Druid" },
   fighter: { pl: "Wojownik", en: "Fighter" }, paladin: { pl: "Paladyn", en: "Paladin" },
   ranger: { pl: "Łowca", en: "Ranger" },
-  wizard: { pl: "Czarodziej", en: "Wizard" },
 };
 
 export { SPECIES, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES };
@@ -90,6 +92,7 @@ function stateBefore(ch, L) {
     (f?.training || []).forEach((x) => training.add(x));
   }
   const subclass = L >= (cls.subclassLevel || 99) ? cls.subclasses?.[ch.subclass] : null;
+  (subclass?.armorTraining || []).forEach((x) => training.add(x));
   const casts = !!(cls.spellcasting || subclass?.spellcasting?.(L, ctx));
   return { abilities, training, casts, fightingStyle: !!cls.fightingStyle, saves: cls.saves };
 }
@@ -218,15 +221,15 @@ export function compute(raw) {
   const abilities = finalAbilities(ch);
   const mods = Object.fromEntries(ABILITIES.map((a) => [a, mod(abilities[a])]));
   const classChoices = Object.fromEntries(Object.entries(cls.choices || {}).map(([k, d]) => [k, ch.classChoices[k] || d.default]));
-  const ctx = { level, pb, mods, abilities, choice: ch.speciesChoice || {}, classChoices };
-  const training = [...(cls.armorTraining || []), ...(cls.extraArmorTraining ? cls.extraArmorTraining(ctx) : [])];
+  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
+  const ctx = { level, pb, mods, abilities, choice: ch.speciesChoice || {}, classChoices, subclassId: subclass ? ch.subclass : "" };
+  const training = [...new Set([...(cls.armorTraining || []), ...(cls.extraArmorTraining ? cls.extraArmorTraining(ctx) : []), ...(subclass?.armorTraining || [])])];
   // Choices at Ability Score Improvement levels (4 within levels 1–5): ASI or a general feat.
   const asiLevels = (cls.asiLevels || []).filter((L) => L <= level);
   const levelFeats = asiLevels.filter((L) => ch.levelChoices?.[L]?.kind === "feat" && FEATS[ch.levelChoices[L].feat])
     .map((L) => ({ L, id: ch.levelChoices[L].feat, pick: ch.levelChoices[L] }));
   levelFeats.forEach((lf) => (FEATS[lf.id].training || []).forEach((x) => training.includes(x) || training.push(x)));
 
-  const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   const unarmored = cls.unarmored ? cls.unarmored(ctx) : subclass?.unarmored ? subclass.unarmored(ctx) : null;
   // Armor taken off for now (e.g. to use Mage Armor) counts as no armor until put back on.
   const armorId = ch.active?.armorOff ? "none" : ch.armor;
@@ -323,7 +326,7 @@ export function compute(raw) {
   const skilledTools = (toolPicks.skilled || []).slice(0, skilledCount);
   if (skilledCount) toolSlots.push({ id: "skilled", step: 5, label: FEATS.skilled.name, count: skilledCount, from: ALL_TOOLS, required: false });
   for (const sl of toolSlots) sl.picked = (toolPicks[sl.id] || []).filter((x) => sl.from.includes(x));
-  const fixedTools = [...(cls.toolsFixed || []), ...(bg?.tool && TOOLS[bg.tool] ? [bg.tool] : []), ...levelFeats.flatMap((lf) => FEATS[lf.id].tools || [])];
+  const fixedTools = [...(cls.toolsFixed || []), ...(subclass?.toolsFixed || []), ...(bg?.tool && TOOLS[bg.tool] ? [bg.tool] : []), ...levelFeats.flatMap((lf) => FEATS[lf.id].tools || [])];
   const toolIds = [...new Set([...fixedTools, ...toolSlots.flatMap((sl) => sl.picked)])];
 
   // Languages: Common, plus two standard ones, plus whatever the class adds.
@@ -336,7 +339,7 @@ export function compute(raw) {
     fit: fitSkills(langChosen, langSlots), known: [...langAuto, ...langChosen] };
 
   const featSkillSlots = originFeats.filter((f) => f.skillSlot).map((f) => ({ id: "feat-" + f.id, label: f.name, count: f.skillSlot.count, from: f.skillSlot.from }));
-  const slots = skillSlots({ cls, sp, bg, skilledCount: Math.max(0, skilledCount - skilledTools.length), level, extra: featSkillSlots });
+  const slots = skillSlots({ cls, subclass, sp, bg, skilledCount: Math.max(0, skilledCount - skilledTools.length), level, extra: featSkillSlots });
   const skillFit = fitSkills((ch.skills || []).filter((x) => !granted.includes(x)), slots);
   const saveProfs = [...cls.saves, ...levelFeats.filter((lf) => FEATS[lf.id].saveFromIncrease && lf.pick.inc).map((lf) => lf.pick.inc)];
   const saves = Object.fromEntries(ABILITIES.map((a) => [a, { prof: saveProfs.includes(a), value: mods[a] + (saveProfs.includes(a) ? pb : 0) }]));
@@ -347,7 +350,7 @@ export function compute(raw) {
     const fromSub = isGranted && !fromBg && !fromFeat;
     const prof = isGranted || (ch.skills || []).includes(s.id);
     const expert = prof && ((ch.expertise || []).includes(s.id) || featExpertise.includes(s.id));
-    const extra = cls.skillBonus ? cls.skillBonus(ctx, s.id) : 0;
+    const extra = cls.skillBonus ? cls.skillBonus(ctx, s.id, prof) : 0;
     return { ...s, prof, fromBg, fromSub, fromFeat, expert, value: mods[s.ab] + (expert ? pb * 2 : prof ? pb : 0) + extra };
   });
   const perception = skills.find((s) => s.id === "perception").value;
@@ -356,7 +359,7 @@ export function compute(raw) {
   const spells = spellcasting ? {
     ...spellcasting,
     dc: 8 + mods[spellcasting.ability] + pb, attack: mods[spellcasting.ability] + pb,
-    always: subclass?.domainSpells ? subclass.domainSpells(level) : [],
+    always: [...(cls.alwaysSpells ? cls.alwaysSpells(level, ctx) : []), ...(subclass?.domainSpells ? subclass.domainSpells(level, ctx) : [])],
   } : null;
   // Invocation spells (cast without a slot) and the Book of Shadows (Pact of the Tome) count as Warlock spells.
   const extraSources = [];
@@ -376,13 +379,19 @@ export function compute(raw) {
     rage: !!ch.active?.rage && cls.id === "barbarian",
     armorOff: !!ch.active?.armorOff && ch.armor !== "none",
   };
+  // Wild Shape (Druid): the form switched on, if it's one of the known forms. Circle of the Moon: AC at least 13 + WIS.
+  const forms = (opts.valid.forms || []).map((x) => x.base).filter((id) => BEASTS[id]);
+  active.wildShape = cls.id === "druid" && forms.includes(ch.active?.wildShape) ? ch.active.wildShape : "";
+  const wildShape = active.wildShape ? { beast: BEASTS[active.wildShape], ac: ch.subclass === "moon" && subclass ? Math.max(BEASTS[active.wildShape].ac, 13 + mods.wis) : BEASTS[active.wildShape].ac,
+    tempHp: (ch.subclass === "moon" && subclass ? 3 : 1) * level } : null;
   if (active.mageArmor && !worn.wearing) {
     const ma = 13 + mods.dex;
     const base = unarmored && (unarmored.shieldOk || !ch.shield) ? unarmored.value : 10 + mods.dex;
     if (ma > base) worn = { ...worn, value: ma + (ch.shield ? 2 : 0),
       note: { pl: "Mage Armor 13 + ZRĘ" + (ch.shield ? " + tarcza 2" : ""), en: "Mage Armor 13 + DEX" + (ch.shield ? " + shield 2" : "") } };
   }
-  const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
+  const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] }
+    : wildShape ? { ...worn, value: wildShape.ac, note: { pl: `Wild Shape: ${wildShape.beast.name.pl.split(" (")[0]}`, en: `Wild Shape: ${wildShape.beast.name.en}` } } : worn;
   const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: spells.pact ? "short" : "long", slot: i + 1, pact: !!spells.pact,
     name: spells.pact ? { pl: `Sloty paktu (${i + 1}. krąg)`, en: `Pact slots (level ${i + 1})` } : { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
 
@@ -424,15 +433,15 @@ export function compute(raw) {
     asiLevels, levelProblems: Object.fromEntries(asiLevels.map((L) => [L, levelChoiceProblems(ch, L)])),
     setting: ch.setting || "standard", size, alignment: ch.alignment || "", languages, toolSlots, toolIds, fixedTools,
     featSlots, featInstances,
-    granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0,
-    cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
+    granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0, expertiseFrom: cls.expertiseFrom || null,
+    cls, sp, bg, subclass, subclassId: ctx.subclassId, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
     featMagic, spellSources: spellSrc, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
     speciesSpeed: spt.speed, creatureType: sp.type || "humanoid",
     resistances: active.rage ? [...new Set([...spt.resist, "bludgeoning", "piercing", "slashing"])] : spt.resist, active, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(subclass?.summary ? subclass.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
-    classOptions: opts.groups, knownClassCantrips,
+    classOptions: opts.groups, knownClassCantrips, wildShape, forms,
     classFeatures: atLevel(cls.features),
     subclassFeatures: subclass ? atLevel(subclass.features) : [],
     speciesFeatures: atLevel(sp.features),
