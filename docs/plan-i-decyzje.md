@@ -55,7 +55,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - Dane o postaci w drużynie to na razie tylko nazwa; HP/AC/gatunek/klasa i szyk dochodzą w D3.
 
 **Do zrobienia przez użytkownika:**
-1. Wkleić nowe `firestore.rules` w Firestore Database → Rules → Publish (zastępują reguły z D1, zawierają je).
+1. ~~Wkleić nowe `firestore.rules` w Firestore Database → Rules → Publish.~~ Zrobione.
 2. Test: założyć drużynę na jednym koncie, otworzyć link na drugim koncie (np. telefon), poprosić, przyjąć; sprawdzić odrzucenie, usunięcie, nadanie admina, nowy link, opuszczenie i usunięcie drużyny.
 
 ## Gdzie co jest w kodzie

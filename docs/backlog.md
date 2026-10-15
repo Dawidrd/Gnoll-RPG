@@ -18,7 +18,7 @@ _(brak)_
 
 ## W trakcie
 
-- **Partia D2 · Drużyna** — zakładanie, link zaproszenia, prośby, akceptacja/odrzucenie, usuwanie graczy, role (admin, gracz). Kod gotowy w **0.14.0**; czeka na wklejenie nowych `firestore.rules` w konsoli i test na dwóch kontach (`docs/plan-i-decyzje.md`, sekcja D2).
+- **Partia D2 · Drużyna** — zakładanie, link zaproszenia, prośby, akceptacja/odrzucenie, usuwanie graczy, role (admin, gracz). Kod gotowy w **0.14.0**; reguły wklejone; czeka na test na dwóch kontach (`docs/plan-i-decyzje.md`, sekcja D2).
 - **Partia D1 · Konta** — opcjonalne logowanie; przy pierwszym logowaniu postacie z urządzenia trafiają do chmury; synchronizacja między urządzeniami; offline. Szczegóły: `docs/druzyna-synchronizacja.md`. Kod gotowy w **0.13.0**; konfiguracja Firebase wpisana, reguły wklejone; czeka na test użytkownika na localhost i dwóch urządzeniach (`docs/plan-i-decyzje.md`, sekcja D1).
 
 ## Zrobione
