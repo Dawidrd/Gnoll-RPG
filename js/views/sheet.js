@@ -16,8 +16,10 @@ import { classOptionUI, classOptionList } from "./classoptions.js";
 import { combatTab, activeCard } from "./combat.js";
 import { attacksBlock } from "./weapons.js";
 import { inventoryTab, journalTab } from "./gear.js";
+import { partyTab } from "./party.js";
+import { accountAvailable } from "../sync/cloud.js";
 
-const TABS = ["start", "combat", "character", "spells", "inventory", "levelup", "journal", "notes"];
+const TABS = ["start", "combat", "character", "spells", "inventory", "party", "levelup", "journal", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
@@ -27,7 +29,7 @@ export function renderSheet(root, go, id, tab) {
   const ch = getById(id);
   if (!ch) return go("#/");
   let c = compute(ch);
-  const tabsFor = (cc) => TABS.filter((k) => k !== "spells" || cc.spellSources.length);
+  const tabsFor = (cc) => TABS.filter((k) => (k !== "spells" || cc.spellSources.length) && (k !== "party" || accountAvailable()));
   if (!tabsFor(c).includes(tab)) tab = "start";
   if (ch.hp.cur == null) { ch.hp.cur = c.hpMax; upsert(ch); }
 
@@ -74,7 +76,7 @@ export function renderSheet(root, go, id, tab) {
 
     if (!tabsFor(c).includes(tab)) tab = "start";
     const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes,
-      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save }), journal: () => journalTab({ ch, save }) }[tab]();
+      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save }), journal: () => journalTab({ ch, save }), party: () => partyTab({ ch, go }) }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
 

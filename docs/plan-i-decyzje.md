@@ -84,6 +84,20 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 1. Próba z adminem i 1–2 graczami (łącznie z testem D3).
 2. Test „Usuń konto i dane” na **zapasowym** koncie Google: założyć postać i drużynę, dołączyć drugim kontem, dodać notatki, usunąć konto; sprawdzić, że drużyna zniknęła u drugiego gracza, a postać została na urządzeniu (gdy opcja była zaznaczona).
 
+## Drużyna w karcie postaci, rola MG (0.17.0)
+**Jak działa:**
+- Po angielsku drużyna to **Party** wszędzie: w interfejsie, w kodzie (`js/sync/party.js`, `js/sync/partylogic.js`, `js/views/party.js`), w adresach (`#/party`) i w bazie: `parties/{id}`, `users/{uid}/parties/{id}`, pole `party` w `invites/{kod}`. Stare dane testowe pod `teams/` nie są czytane (decyzja użytkownika: zmiana przed prawdziwymi drużynami).
+- Karta postaci ma zakładkę **Drużyna** (tylko gdy konto jest dostępne). Postać w drużynie → pełny widok drużyny (Przegląd, Notatki, Zarządzanie). Postać czeka na akceptację → informacja i „Wycofaj prośbę”. Postać bez drużyny → dołączenie linkiem i założenie drużyny z tą postacią. Zakładka i jej połączenia przeżywają odświeżanie karty (np. klik HP); kończą się po wyjściu z karty.
+- **Jedna postać = jedna drużyna** (decyzja użytkownika; kilka drużyn na postać — pomysł na przyszłość w backlogu). Moja lista drużyn pamięta postać (`users/{uid}/parties/{id}.charId`); postacie zajęte gdzie indziej są wyłączone w wyborze (zakładanie, dołączanie, zmiana postaci). Odrzucona prośba zwalnia postać.
+- **MG bez postaci** wchodzi z listy „Moje drużyny” (ramka Konto); tam też można założyć drużynę bez postaci. „Otwórz” przy drużynie z postacią prowadzi do zakładki na karcie.
+- **Rola MG** (`members/{uid}.gm = true`): nadaje i odbiera admin, każdemu — także sobie i założycielowi. Założyciel nie musi być MG.
+- **Widok MG**: każdy gracz wysyła obok skrótu postaci osobny dokument `parties/{id}/gm/{uid}` = `{ v, at }` (`partylogic.js` `gmSummary`: pasywna Percepcja/Wnikliwość/Śledztwo, inicjatywa, szybkość, widzenie w ciemności, ST czarów, 6 rzutów obronnych, 18 umiejętności, rzuty przeciw śmierci — same liczby). Czytają go tylko członkowie z rolą MG (reguły). MG wybiera grupy kolumn; wybór zapamiętuje urządzenie (`gnoll.gmview`).
+- Opuszczenie drużyny, usunięcie gracza, usunięcie drużyny i usunięcie konta kasują też dokumenty widoku MG.
+
+**Do zrobienia przez użytkownika:**
+1. Wkleić nowe `firestore.rules` (Firestore Database → Rules → Publish). Stare drużyny testowe przestaną być widoczne — trzeba założyć nowe.
+2. Test na dwóch kontach: założyć drużynę z zakładki „Drużyna” na karcie postaci, wysłać link, dołączyć drugim kontem z jego karty; nadać rolę MG (np. sobie) i sprawdzić Widok MG; sprawdzić, że gracz bez roli MG go nie widzi; zmiana HP/rzutów przeciw śmierci u gracza pojawia się u MG; postać z drużyny nie da się wybrać do drugiej drużyny.
+
 ## Gdzie co jest w kodzie
 - `js/rules/index.js` — `compute(ch)` liczy całą kartę, `normalize` migruje stare zapisy.
 - `js/rules/checks.js` — `review()` zwraca todo/errors/notices.
@@ -92,7 +106,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - `sw.js` — service worker (`VERSION`, `SHELL`).
 
 ## Zrobione (wersje)
-0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3). 0.16: testy reguł bezpieczeństwa, ekran Prywatność, usuwanie konta (D4).
+0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3). 0.16: testy reguł bezpieczeństwa, ekran Prywatność, usuwanie konta (D4). 0.17: drużyna w karcie postaci, rola MG, Party zamiast Team.
 
 ## Następne kroki (kolejność)
 Przeniesione do `docs/backlog.md` (sekcja „Pomysły”).

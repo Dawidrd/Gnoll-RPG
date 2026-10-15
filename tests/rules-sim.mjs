@@ -149,7 +149,7 @@ class Parser {
     if (this.take("(")) { const args = this.args(); return (env) => call(env, w, args.map((a) => a(env))); }
     return (env) => (Object.hasOwn(env.vars, w) ? env.vars[w] : fail(`unknown name ${w}`));
   }
-  // /databases/$(database)/documents/teams/$(t)
+  // /databases/$(database)/documents/parties/$(t)
   path() {
     const parts = [];
     while (this.s[this.i] === "/") {
@@ -229,7 +229,7 @@ const METHODS = { get: ["get", "read"], list: ["list", "read"], create: ["create
 
 export function rulesSim(source) {
   const root = new Parser(source).file();
-  const docs = new Map(); // "teams/abc" -> data
+  const docs = new Map(); // "parties/abc" -> data
 
   // Which allow conditions apply to this path (with the wildcards they bind).
   function matching(block, segs, vars, fns, out) {
@@ -264,7 +264,7 @@ export function rulesSim(source) {
   function as(uid) {
     const client = {
       get: (path) => allowed(uid, "get", path, null, docs),
-      // A query of a collection, e.g. list("teams/t1/members").
+      // A query of a collection, e.g. list("parties/t1/members").
       list: (path) => allowed(uid, "list", `${path}/(listed)`, null, docs),
       set: (path, data) => client.batch([["set", path, data]]),
       update: (path, patch) => client.batch([["update", path, patch]]),

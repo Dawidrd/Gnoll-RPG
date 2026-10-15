@@ -2,7 +2,7 @@
 import { h } from "../dom.js";
 import { t } from "../i18n.js";
 
-const SECTIONS = ["local", "account", "team", "services", "never", "delete"];
+const SECTIONS = ["local", "account", "party", "services", "never", "delete"];
 
 export function renderPrivacy(root) {
   root.replaceChildren(h("section", { cls: "panel", id: "privacy" }, [

@@ -8,7 +8,7 @@ import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as MERGE from "../js/sync/merge.js";
-import * as TEAM from "../js/sync/teamlogic.js";
+import * as PARTY from "../js/sync/partylogic.js";
 import { rulesSim, DELETE } from "./rules-sim.mjs";
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
@@ -772,80 +772,81 @@ test("UI texts: Polish and English have the same keys", () => {
   eq(Object.keys(en).filter((k) => !(k in pl)), [], "missing in pl.js");
 });
 
-// --- Teams (D2): invite links, statuses, who may do what ---
-test("team: invite codes are long, random-looking and survive a link round-trip", () => {
-  const code = TEAM.makeCode(new Uint8Array(20).map((_, i) => i * 13));
-  eq([code.length, TEAM.validCode(code), TEAM.validCode(TEAM.makeCode())], [20, true, true]);
-  eq(TEAM.makeCode() === TEAM.makeCode(), false, "two codes differ");
-  const link = TEAM.inviteLink("https://dawidrd.github.io/Gnoll-RPG/#/team/abc", code);
+// --- Parties (D2): invite links, statuses, who may do what ---
+test("party: invite codes are long, random-looking and survive a link round-trip", () => {
+  const code = PARTY.makeCode(new Uint8Array(20).map((_, i) => i * 13));
+  eq([code.length, PARTY.validCode(code), PARTY.validCode(PARTY.makeCode())], [20, true, true]);
+  eq(PARTY.makeCode() === PARTY.makeCode(), false, "two codes differ");
+  const link = PARTY.inviteLink("https://dawidrd.github.io/Gnoll-RPG/#/party/abc", code);
   eq(link, `https://dawidrd.github.io/Gnoll-RPG/#/join/${code}`);
-  eq([TEAM.codeFrom(link), TEAM.codeFrom("  " + code + " "), TEAM.codeFrom("hello"), TEAM.codeFrom("#/join/a/b")], [code, code, "", ""]);
-  eq([TEAM.validCode("short"), TEAM.validCode("a".repeat(16) + "/x"), TEAM.validCode(null)], [false, false, false]);
+  eq([PARTY.codeFrom(link), PARTY.codeFrom("  " + code + " "), PARTY.codeFrom("hello"), PARTY.codeFrom("#/join/a/b")], [code, code, "", ""]);
+  eq([PARTY.validCode("short"), PARTY.validCode("a".repeat(16) + "/x"), PARTY.validCode(null)], [false, false, false]);
 });
-test("team: my status follows my request and membership", () => {
-  const s = TEAM.teamStatus;
+test("party: my status follows my request and membership", () => {
+  const s = PARTY.partyStatus;
   eq(s({ state: "asked", member: false, request: true }), "asked");
   eq(s({ state: "asked", member: true, request: false }), "in", "accepted");
   eq(s({ state: "asked", member: false, request: false }), "rejected");
-  eq(s({ state: "in", member: false, request: false }), "removed", "removed or team deleted");
+  eq(s({ state: "in", member: false, request: false }), "removed", "removed or party deleted");
   eq([s({ state: "in", member: null, request: null }), s({ state: "asked", member: false, request: null })], ["checking", "checking"], "offline: unknown");
 });
-test("team: admins manage others, nobody removes or demotes the founder", () => {
+test("party: admins manage others, nobody removes or demotes the founder", () => {
   const owner = { uid: "o", role: "admin" }, adm = { uid: "a", role: "admin" }, pl = { uid: "p", role: "player" };
-  eq(TEAM.canManage(owner, pl, "o"), { remove: true, promote: true, demote: false });
-  eq(TEAM.canManage(owner, adm, "o"), { remove: true, promote: false, demote: true });
-  eq(TEAM.canManage(adm, owner, "o"), { remove: false, promote: false, demote: false }, "founder protected");
-  eq(TEAM.canManage(pl, adm, "o"), { remove: false, promote: false, demote: false }, "players manage nobody");
-  eq(TEAM.canManage(adm, adm, "o").remove, false, "not yourself (use Leave)");
-  eq([TEAM.canLeave("p", "o"), TEAM.canLeave("o", "o")], [true, false]);
+  eq(PARTY.canManage(owner, pl, "o"), { remove: true, promote: true, demote: false, gm: true });
+  eq(PARTY.canManage(owner, adm, "o"), { remove: true, promote: false, demote: true, gm: true });
+  eq(PARTY.canManage(adm, owner, "o"), { remove: false, promote: false, demote: false, gm: true }, "founder protected, but may be made the GM");
+  eq(PARTY.canManage(pl, adm, "o"), { remove: false, promote: false, demote: false, gm: false }, "players manage nobody");
+  eq(PARTY.canManage(owner, owner, "o").gm, true, "an admin may make themselves the GM");
+  eq(PARTY.canManage(adm, adm, "o").remove, false, "not yourself (use Leave)");
+  eq([PARTY.canLeave("p", "o"), PARTY.canLeave("o", "o")], [true, false]);
 });
-test("team: names are tidied and members listed admins first", () => {
-  eq([TEAM.cleanName("  Kompania   Szarej\nMgły "), TEAM.cleanName("x".repeat(80)).length, TEAM.cleanName(null)], ["Kompania Szarej Mgły", 60, ""]);
-  eq(TEAM.sortMembers([{ name: "Zoe", role: "player" }, { name: "Bob", role: "player" }, { name: "Ann", role: "admin" }]).map((m) => m.name), ["Ann", "Bob", "Zoe"]);
+test("party: names are tidied and members listed admins first", () => {
+  eq([PARTY.cleanName("  Kompania   Szarej\nMgły "), PARTY.cleanName("x".repeat(80)).length, PARTY.cleanName(null)], ["Kompania Szarej Mgły", 60, ""]);
+  eq(PARTY.sortMembers([{ name: "Zoe", role: "player" }, { name: "Bob", role: "player" }, { name: "Ann", role: "admin" }]).map((m) => m.name), ["Ann", "Bob", "Zoe"]);
 });
 
-// --- Team shared data (D3) ---
-test("team: marching order keeps the admin's order, adds newcomers at the back, skips people without a character", () => {
+// --- Party shared data (D3) ---
+test("party: marching order keeps the admin's order, adds newcomers at the back, skips people without a character", () => {
   const members = [{ uid: "a", charId: "1", at: 1 }, { uid: "b", charId: "2", at: 3 }, { uid: "c", charId: "3", at: 2 }, { uid: "gm", charId: "", at: 0 }];
-  eq(TEAM.marchOrder([], members), ["a", "c", "b"], "no order yet: order of joining");
-  eq(TEAM.marchOrder(["b", "x", "a", "b"], members), ["b", "a", "c"], "left (x) and duplicates dropped, new (c) at the back");
-  eq(TEAM.marchOrder(undefined, []), []);
+  eq(PARTY.marchOrder([], members), ["a", "c", "b"], "no order yet: order of joining");
+  eq(PARTY.marchOrder(["b", "x", "a", "b"], members), ["b", "a", "c"], "left (x) and duplicates dropped, new (c) at the back");
+  eq(PARTY.marchOrder(undefined, []), []);
 });
-test("team: 5 ft is single file, 10 ft two abreast with the odd one out alone at the back", () => {
-  eq(TEAM.marchRows(["a", "b", "c"], "5"), [["a"], ["b"], ["c"]]);
-  eq(TEAM.marchRows(["a", "b", "c", "d", "e"], "10"), [["a", "b"], ["c", "d"], ["e"]]);
-  eq(TEAM.marchRows([], "10"), []);
+test("party: 5 ft is single file, 10 ft two abreast with the odd one out alone at the back", () => {
+  eq(PARTY.marchRows(["a", "b", "c"], "5"), [["a"], ["b"], ["c"]]);
+  eq(PARTY.marchRows(["a", "b", "c", "d", "e"], "10"), [["a", "b"], ["c", "d"], ["e"]]);
+  eq(PARTY.marchRows([], "10"), []);
 });
-test("team: moving in the marching order stays in range", () => {
-  eq(TEAM.moveIn(["a", "b", "c"], 2, -1), ["a", "c", "b"]);
-  eq(TEAM.moveIn(["a", "b", "c"], 0, -1), ["a", "b", "c"], "front cannot move forward");
-  eq(TEAM.moveIn(["a", "b", "c"], 2, 1), ["a", "b", "c"], "back cannot move back");
-  eq([TEAM.validMarch({ mode: "10", order: ["a"] }), TEAM.validMarch({ mode: "15", order: [] }), TEAM.validMarch({ mode: "5" })], [true, false, false]);
+test("party: moving in the marching order stays in range", () => {
+  eq(PARTY.moveIn(["a", "b", "c"], 2, -1), ["a", "c", "b"]);
+  eq(PARTY.moveIn(["a", "b", "c"], 0, -1), ["a", "b", "c"], "front cannot move forward");
+  eq(PARTY.moveIn(["a", "b", "c"], 2, 1), ["a", "b", "c"], "back cannot move back");
+  eq([PARTY.validMarch({ mode: "10", order: ["a"] }), PARTY.validMarch({ mode: "15", order: [] }), PARTY.validMarch({ mode: "5" })], [true, false, false]);
 });
-test("team: next session date and notes are checked and tidied", () => {
-  eq([TEAM.validWhen(""), TEAM.validWhen("2026-10-23T19:00"), TEAM.validWhen("piątek"), TEAM.validWhen("2026-13-45T19:00")], [true, true, false, false]);
-  eq(TEAM.sessionWhen(""), null);
+test("party: next session date and notes are checked and tidied", () => {
+  eq([PARTY.validWhen(""), PARTY.validWhen("2026-10-23T19:00"), PARTY.validWhen("piątek"), PARTY.validWhen("2026-13-45T19:00")], [true, true, false, false]);
+  eq(PARTY.sessionWhen(""), null);
   const now = new Date("2026-10-15T12:00").getTime();
-  eq([TEAM.sessionWhen("2026-10-23T19:00", now).past, TEAM.sessionWhen("2026-10-01T19:00", now).past], [false, true]);
-  eq(TEAM.cleanNote("  Smok   \r\n\n\n\n w jaskini  \n"), "Smok\n\n w jaskini");
-  eq(TEAM.cleanNote("x".repeat(5000)).length, TEAM.NOTE_MAX);
-  eq(TEAM.sortNotes([{ at: 1 }, { at: 3 }, { at: 2 }]).map((n) => n.at), [3, 2, 1]);
+  eq([PARTY.sessionWhen("2026-10-23T19:00", now).past, PARTY.sessionWhen("2026-10-01T19:00", now).past], [false, true]);
+  eq(PARTY.cleanNote("  Smok   \r\n\n\n\n w jaskini  \n"), "Smok\n\n w jaskini");
+  eq(PARTY.cleanNote("x".repeat(5000)).length, PARTY.NOTE_MAX);
+  eq(PARTY.sortNotes([{ at: 1 }, { at: 3 }, { at: 2 }]).map((n) => n.at), [3, 2, 1]);
 });
-test("team: authors edit their notes, admins may also remove others'", () => {
+test("party: authors edit their notes, admins may also remove others'", () => {
   const note = { author: "p" };
-  eq([TEAM.canEditNote(note, "p"), TEAM.canEditNote(note, "a")], [true, false]);
-  eq([TEAM.canDeleteNote(note, { uid: "p", role: "player" }), TEAM.canDeleteNote(note, { uid: "a", role: "admin" }), TEAM.canDeleteNote(note, { uid: "q", role: "player" })], [true, true, false]);
+  eq([PARTY.canEditNote(note, "p"), PARTY.canEditNote(note, "a")], [true, false]);
+  eq([PARTY.canDeleteNote(note, { uid: "p", role: "player" }), PARTY.canDeleteNote(note, { uid: "a", role: "admin" }), PARTY.canDeleteNote(note, { uid: "q", role: "player" })], [true, true, false]);
 });
-test("team: the team sees only species, class, level, HP and AC", () => {
+test("party: the party sees only species, class, level, HP and AC", () => {
   const ch = make({ classId: "fighter", speciesId: "dwarf", level: 3, armor: "chain-mail", abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 13, cha: 10 } });
   ch.hp = { cur: 7, temp: 4, maxOverride: null };
   const c = run(ch);
-  const s = TEAM.sheetSummary(ch, c);
+  const s = PARTY.sheetSummary(ch, c);
   eq(Object.keys(s), ["species", "cls", "sub", "level", "hp", "hpMax", "temp", "ac"]);
   eq([s.species, s.cls, s.level, s.hp, s.temp, s.ac, s.hpMax], ["dwarf", "fighter", 3, 7, 4, c.ac.value, c.hpMax]);
   ch.hp.cur = null;
-  eq(TEAM.sheetSummary(ch, c).hp, c.hpMax, "not set yet = full");
-  eq([TEAM.sameSheet(s, { ...s }), TEAM.sameSheet(s, { ...s, hp: 1 }), TEAM.sameSheet(null, s)], [true, false, false]);
+  eq(PARTY.sheetSummary(ch, c).hp, c.hpMax, "not set yet = full");
+  eq([PARTY.sameSheet(s, { ...s }), PARTY.sameSheet(s, { ...s, hp: 1 }), PARTY.sameSheet(null, s)], [true, false, false]);
 });
 
 // --- Security rules (D4): firestore.rules checked in a small simulator (tests/rules-sim.mjs) ---
@@ -857,18 +858,18 @@ function world({ bobIn = true } = {}) {
   const db = rulesSim(RULES);
   const [alice, bob, carol, nobody] = ["alice", "bob", "carol", null].map((u) => db.as(u));
   eq(alice.batch([
-    ["set", "teams/t1", { name: "Kompania", owner: "alice", invite: CODE, created: 1 }],
-    ["set", "teams/t1/members/alice", { role: "admin", name: "Alice", charId: "", charName: "", at: 1 }],
-    ["set", `invites/${CODE}`, { team: "t1", name: "Kompania" }],
-    ["set", "users/alice/teams/t1", { name: "Kompania", state: "in", at: 1 }],
-  ]), true, "founding a team");
+    ["set", "parties/t1", { name: "Kompania", owner: "alice", invite: CODE, created: 1 }],
+    ["set", "parties/t1/members/alice", { role: "admin", name: "Alice", charId: "", charName: "", at: 1 }],
+    ["set", `invites/${CODE}`, { party: "t1", name: "Kompania" }],
+    ["set", "users/alice/parties/t1", { name: "Kompania", state: "in", at: 1 }],
+  ]), true, "founding a party");
   eq(bob.batch([
-    ["set", "teams/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 2 }],
-    ["set", "users/bob/teams/t1", { name: "Kompania", state: "asked", at: 2 }],
+    ["set", "parties/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 2 }],
+    ["set", "users/bob/parties/t1", { name: "Kompania", state: "asked", at: 2 }],
   ]), true, "asking to join");
   if (bobIn) eq(alice.batch([
-    ["set", "teams/t1/members/bob", { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 }],
-    ["delete", "teams/t1/requests/bob"],
+    ["set", "parties/t1/members/bob", { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 }],
+    ["delete", "parties/t1/requests/bob"],
   ]), true, "accepting");
   return { db, alice, bob, carol, nobody };
 }
@@ -876,7 +877,7 @@ const sheetOk = { species: "dwarf", cls: "fighter", sub: "", level: 3, hp: 7, hp
 
 test("rules: the simulator reads firestore.rules; anything not listed is closed", () => {
   const { db, alice, nobody } = world();
-  eq([nobody.get("teams/t1"), nobody.list("teams"), alice.list("teams"), alice.set("other/x", { a: 1 }), alice.get("users/alice")], [false, false, false, false, false]);
+  eq([nobody.get("parties/t1"), nobody.list("parties"), alice.list("parties"), alice.set("other/x", { a: 1 }), alice.get("users/alice")], [false, false, false, false, false]);
   eq(db.docs.has("other/x"), false, "a refused write changes nothing");
 });
 test("rules: only you read and write your characters, in the expected shape", () => {
@@ -889,132 +890,185 @@ test("rules: only you read and write your characters, in the expected shape", ()
   eq(alice.set("users/alice/characters/c3", { json: "x".repeat(900000), updated: 1, deleted: false }), false, "too big");
   eq([alice.list("users/alice/characters"), alice.delete("users/alice/characters/c1")], [true, true]);
 });
-test("rules: founding a team needs your own admin membership; you cannot found one for someone else", () => {
+test("rules: founding a party needs your own admin membership; you cannot found one for someone else", () => {
   const { bob, carol } = world();
-  eq(carol.set("teams/t9", { name: "X", owner: "carol", invite: CODE2, created: 1 }), false, "team without its admin");
+  eq(carol.set("parties/t9", { name: "X", owner: "carol", invite: CODE2, created: 1 }), false, "party without its admin");
   eq(carol.batch([
-    ["set", "teams/t9", { name: "X", owner: "bob", invite: CODE2, created: 1 }],
-    ["set", "teams/t9/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
+    ["set", "parties/t9", { name: "X", owner: "bob", invite: CODE2, created: 1 }],
+    ["set", "parties/t9/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
   ]), false, "owner must be me");
-  eq(carol.set("teams/t1/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }), false, "no admin seat in an existing team");
-  eq(bob.set(`invites/${CODE2}`, { team: "t1", name: "Kompania" }), false, "a player cannot make invites");
+  eq(carol.set("parties/t1/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }), false, "no admin seat in an existing party");
+  eq(bob.set(`invites/${CODE2}`, { party: "t1", name: "Kompania" }), false, "a player cannot make invites");
 });
 test("rules: invites open only by their exact code; requests need a working code", () => {
   const { alice, bob, carol } = world({ bobIn: false });
   eq([carol.get(`invites/${CODE}`), carol.list("invites")], [true, false]);
-  const ask = (code) => carol.set("teams/t1/requests/carol", { name: "C", charId: "c1", charName: "Mira", code, at: 1 });
+  const ask = (code) => carol.set("parties/t1/requests/carol", { name: "C", charId: "c1", charName: "Mira", code, at: 1 });
   eq(ask(CODE2), false, "unknown code");
-  eq(carol.set("teams/t1/requests/carol", { name: "C", charId: "", charName: "", code: CODE, at: 1 }), false, "a character is required");
-  eq(carol.set("teams/t1/requests/bob", { name: "B", charId: "b1", charName: "Grok", code: CODE, at: 1 }), false, "not for someone else");
+  eq(carol.set("parties/t1/requests/carol", { name: "C", charId: "", charName: "", code: CODE, at: 1 }), false, "a character is required");
+  eq(carol.set("parties/t1/requests/bob", { name: "B", charId: "b1", charName: "Grok", code: CODE, at: 1 }), false, "not for someone else");
   eq(ask(CODE), true);
-  eq([carol.get("teams/t1/requests/carol"), bob.get("teams/t1/requests/carol"), bob.list("teams/t1/requests"), alice.list("teams/t1/requests")], [true, false, false, true], "requests: the asker and admins");
+  eq([carol.get("parties/t1/requests/carol"), bob.get("parties/t1/requests/carol"), bob.list("parties/t1/requests"), alice.list("parties/t1/requests")], [true, false, false, true], "requests: the asker and admins");
   eq(bob.delete(`invites/${CODE}`), false, "only admins delete invites");
   // a new link: the old code stops working
-  eq(alice.batch([["delete", `invites/${CODE}`], ["set", `invites/${CODE2}`, { team: "t1", name: "Kompania" }], ["update", "teams/t1", { invite: CODE2 }]]), true);
-  eq(carol.delete("teams/t1/requests/carol"), true);
+  eq(alice.batch([["delete", `invites/${CODE}`], ["set", `invites/${CODE2}`, { party: "t1", name: "Kompania" }], ["update", "parties/t1", { invite: CODE2 }]]), true);
+  eq(carol.delete("parties/t1/requests/carol"), true);
   eq(ask(CODE), false, "old link refused");
 });
 test("rules: only admins accept, and only people who asked; members cannot ask again", () => {
   const { alice, bob, carol } = world({ bobIn: false });
   const seat = { role: "player", name: "Bob", charId: "b1", charName: "Grok", at: 3 };
-  eq(bob.set("teams/t1/members/bob", seat), false, "letting yourself in");
-  eq(alice.set("teams/t1/members/carol", { ...seat, name: "C" }), false, "carol did not ask");
-  eq(alice.set("teams/t1/members/bob", { ...seat, role: "admin" }), false, "accepted as a player only");
-  eq(alice.set("teams/t1/members/bob", seat), true);
-  eq(bob.set("teams/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 4 }), false, "already a member");
-  eq(carol.get("teams/t1/members/bob"), false);
+  eq(bob.set("parties/t1/members/bob", seat), false, "letting yourself in");
+  eq(alice.set("parties/t1/members/carol", { ...seat, name: "C" }), false, "carol did not ask");
+  eq(alice.set("parties/t1/members/bob", { ...seat, role: "admin" }), false, "accepted as a player only");
+  eq(alice.set("parties/t1/members/bob", seat), true);
+  eq(bob.set("parties/t1/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE, at: 4 }), false, "already a member");
+  eq(carol.get("parties/t1/members/bob"), false);
 });
-test("rules: strangers see nothing of a team", () => {
+test("rules: strangers see nothing of a party", () => {
   const { alice, carol } = world();
-  eq(alice.set("teams/t1/notes/n1", { author: "alice", name: "Alice", text: "Smok", at: 1 }), true);
-  eq([carol.get("teams/t1"), carol.list("teams/t1/members"), carol.get("teams/t1/members/alice"), carol.list("teams/t1/notes"), carol.get("teams/t1/notes/n1")], [false, false, false, false, false]);
-  eq(carol.set("teams/t1/notes/n2", { author: "carol", name: "C", text: "hi", at: 1 }), false);
+  eq(alice.set("parties/t1/notes/n1", { author: "alice", name: "Alice", text: "Smok", at: 1 }), true);
+  eq([carol.get("parties/t1"), carol.list("parties/t1/members"), carol.get("parties/t1/members/alice"), carol.list("parties/t1/notes"), carol.get("parties/t1/notes/n1")], [false, false, false, false, false]);
+  eq(carol.set("parties/t1/notes/n2", { author: "carol", name: "C", text: "hi", at: 1 }), false);
 });
-test("rules: only admins change team info and the marching order, within limits", () => {
+test("rules: only admins change party info and the marching order, within limits", () => {
   const { alice, bob } = world();
   const info = { campaign: "Curse of Strahd", next: "2026-10-23T19:00", march: { mode: "10", order: ["bob"] } };
-  eq(bob.update("teams/t1", info), false, "player");
-  eq(alice.update("teams/t1", info), true);
-  eq(alice.update("teams/t1", { march: { mode: "15", order: [] } }), false, "15 ft is not a formation");
-  eq(alice.update("teams/t1", { next: "Friday" }), false, "date format");
-  eq(alice.update("teams/t1", { campaign: "x".repeat(101) }), false, "too long");
-  eq(alice.update("teams/t1", { owner: "bob" }), false, "the founder cannot be changed");
-  eq(alice.update("teams/t1", { secret: 1 }), false, "unknown field");
+  eq(bob.update("parties/t1", info), false, "player");
+  eq(alice.update("parties/t1", info), true);
+  eq(alice.update("parties/t1", { march: { mode: "15", order: [] } }), false, "15 ft is not a formation");
+  eq(alice.update("parties/t1", { next: "Friday" }), false, "date format");
+  eq(alice.update("parties/t1", { campaign: "x".repeat(101) }), false, "too long");
+  eq(alice.update("parties/t1", { owner: "bob" }), false, "the founder cannot be changed");
+  eq(alice.update("parties/t1", { secret: 1 }), false, "unknown field");
 });
 test("rules: a member shares only the short character summary, and only their own", () => {
   const { alice, bob } = world();
-  eq(bob.update("teams/t1/members/bob", { sheet: sheetOk, charName: "Grok" }), true);
-  eq(alice.update("teams/t1/members/bob", { sheet: { ...sheetOk, hp: 0 } }), false, "an admin cannot change your HP");
-  eq(bob.update("teams/t1/members/bob", { sheet: { ...sheetOk, notes: "secret" } }), false, "nothing beyond the summary");
-  eq(bob.update("teams/t1/members/bob", { sheet: { ...sheetOk, hp: -5 } }), false, "numbers in range");
-  eq(bob.update("teams/t1/members/bob", { role: "admin" }), false, "no promoting yourself");
-  eq(bob.update("teams/t1/members/bob", { charId: "", charName: "", sheet: DELETE }), true, "playing without a character");
+  eq(bob.update("parties/t1/members/bob", { sheet: sheetOk, charName: "Grok" }), true);
+  eq(alice.update("parties/t1/members/bob", { sheet: { ...sheetOk, hp: 0 } }), false, "an admin cannot change your HP");
+  eq(bob.update("parties/t1/members/bob", { sheet: { ...sheetOk, notes: "secret" } }), false, "nothing beyond the summary");
+  eq(bob.update("parties/t1/members/bob", { sheet: { ...sheetOk, hp: -5 } }), false, "numbers in range");
+  eq(bob.update("parties/t1/members/bob", { role: "admin" }), false, "no promoting yourself");
+  eq(bob.update("parties/t1/members/bob", { charId: "", charName: "", sheet: DELETE }), true, "playing without a character");
 });
 test("rules: roles; nobody removes or demotes the founder; leaving", () => {
   const { alice, bob, carol } = world();
-  eq(bob.delete("teams/t1/members/alice"), false);
-  eq(alice.update("teams/t1/members/bob", { role: "admin" }), true, "promote");
-  eq([bob.update("teams/t1/members/alice", { role: "player" }), bob.delete("teams/t1/members/alice")], [false, false], "another admin vs the founder");
-  eq(alice.delete("teams/t1/members/alice"), false, "the founder deletes the team instead of leaving");
-  eq(alice.update("teams/t1/members/bob", { role: "player" }), true, "demote");
-  eq(carol.delete("teams/t1/members/bob"), false);
-  eq(bob.delete("teams/t1/members/bob"), true, "leaving");
+  eq(bob.delete("parties/t1/members/alice"), false);
+  eq(alice.update("parties/t1/members/bob", { role: "admin" }), true, "promote");
+  eq([bob.update("parties/t1/members/alice", { role: "player" }), bob.delete("parties/t1/members/alice")], [false, false], "another admin vs the founder");
+  eq(alice.delete("parties/t1/members/alice"), false, "the founder deletes the party instead of leaving");
+  eq(alice.update("parties/t1/members/bob", { role: "player" }), true, "demote");
+  eq(carol.delete("parties/t1/members/bob"), false);
+  eq(bob.delete("parties/t1/members/bob"), true, "leaving");
 });
-test("rules: team notes are edited by their author; admins may remove any", () => {
+test("rules: party notes are edited by their author; admins may remove any", () => {
   const { alice, bob, carol } = world();
-  eq(bob.set("teams/t1/notes/n1", { author: "alice", name: "Alice", text: "fake", at: 1 }), false, "pretending to be someone else");
-  eq(bob.set("teams/t1/notes/n1", { author: "bob", name: "Bob", text: "Smok w jaskini", at: 1 }), true);
-  eq([alice.list("teams/t1/notes"), alice.update("teams/t1/notes/n1", { text: "edited", at: 2 })], [true, false]);
-  eq(bob.update("teams/t1/notes/n1", { author: "alice" }), false, "author cannot change");
-  eq(bob.set("teams/t1/notes/n2", { author: "bob", name: "Bob", text: "", at: 1 }), false, "empty note");
-  eq(bob.set("teams/t1/notes/n2", { author: "bob", name: "Bob", text: "x".repeat(4001), at: 1 }), false, "too long");
-  eq(carol.delete("teams/t1/notes/n1"), false);
-  eq(alice.delete("teams/t1/notes/n1"), true, "admin");
+  eq(bob.set("parties/t1/notes/n1", { author: "alice", name: "Alice", text: "fake", at: 1 }), false, "pretending to be someone else");
+  eq(bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", text: "Smok w jaskini", at: 1 }), true);
+  eq([alice.list("parties/t1/notes"), alice.update("parties/t1/notes/n1", { text: "edited", at: 2 })], [true, false]);
+  eq(bob.update("parties/t1/notes/n1", { author: "alice" }), false, "author cannot change");
+  eq(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", text: "", at: 1 }), false, "empty note");
+  eq(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", text: "x".repeat(4001), at: 1 }), false, "too long");
+  eq(carol.delete("parties/t1/notes/n1"), false);
+  eq(alice.delete("parties/t1/notes/n1"), true, "admin");
 });
 test("rules: private notes are read only by their author, admins included", () => {
   const { alice, bob } = world();
-  eq(bob.set("users/bob/teams/t1/notes/p1", { text: "Alice is a vampire", at: 1 }), true);
-  eq([alice.get("users/bob/teams/t1/notes/p1"), alice.list("users/bob/teams/t1/notes"), alice.list("users/bob/teams")], [false, false, false]);
-  eq(alice.set("users/bob/teams/t1/notes/p2", { text: "x", at: 1 }), false);
-  eq(bob.list("users/bob/teams/t1/notes"), true);
+  eq(bob.set("users/bob/parties/t1/notes/p1", { text: "Alice is a vampire", at: 1 }), true);
+  eq([alice.get("users/bob/parties/t1/notes/p1"), alice.list("users/bob/parties/t1/notes"), alice.list("users/bob/parties")], [false, false, false]);
+  eq(alice.set("users/bob/parties/t1/notes/p2", { text: "x", at: 1 }), false);
+  eq(bob.list("users/bob/parties/t1/notes"), true);
 });
-test("rules: the founder deletes the whole team in one go; others cannot", () => {
+test("rules: the founder deletes the whole party in one go; others cannot", () => {
   const { db, alice, bob } = world();
-  bob.set("teams/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
-  eq(bob.delete("teams/t1"), false);
+  bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
+  bob.set("parties/t1/gm/bob", { v: gmOk(), at: 1 });
+  eq(bob.delete("parties/t1"), false);
   eq(alice.batch([
-    ["delete", "teams/t1/notes/n1"], ["delete", "teams/t1/members/bob"], ["delete", `invites/${CODE}`],
-    ["delete", "teams/t1"], ["delete", "teams/t1/members/alice"], ["delete", "users/alice/teams/t1"],
+    ["delete", "parties/t1/notes/n1"], ["delete", "parties/t1/gm/bob"], ["delete", "parties/t1/gm/alice"], ["delete", "parties/t1/members/bob"], ["delete", `invites/${CODE}`],
+    ["delete", "parties/t1"], ["delete", "parties/t1/members/alice"], ["delete", "users/alice/parties/t1"],
   ]), true);
-  eq([...db.docs.keys()].filter((k) => k.startsWith("teams/")), [], "nothing of the team is left");
+  eq([...db.docs.keys()].filter((k) => k.startsWith("parties/")), [], "nothing of the party is left");
 });
 test("rules: deleting an account can remove everything the user has in the cloud", () => {
   const { db, alice, bob, carol } = world();
-  // bob: a character, a team note, a private note, a pending request in carol's team
+  // bob: a character, a party note, a private note, a pending request in carol's party
   bob.set("users/bob/characters/b1", chDoc());
-  bob.set("teams/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
-  alice.set("teams/t1/notes/n2", { author: "alice", name: "Alice", text: "b", at: 1 });
-  bob.set("users/bob/teams/t1/notes/p1", { text: "c", at: 1 });
+  bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", text: "a", at: 1 });
+  alice.set("parties/t1/notes/n2", { author: "alice", name: "Alice", text: "b", at: 1 });
+  bob.set("users/bob/parties/t1/notes/p1", { text: "c", at: 1 });
+  bob.set("parties/t1/gm/bob", { v: gmOk(), at: 1 });
   carol.batch([
-    ["set", "teams/t2", { name: "Druga", owner: "carol", invite: CODE2, created: 1 }],
-    ["set", "teams/t2/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
-    ["set", `invites/${CODE2}`, { team: "t2", name: "Druga" }],
+    ["set", "parties/t2", { name: "Druga", owner: "carol", invite: CODE2, created: 1 }],
+    ["set", "parties/t2/members/carol", { role: "admin", name: "C", charId: "", charName: "", at: 1 }],
+    ["set", `invites/${CODE2}`, { party: "t2", name: "Druga" }],
   ]);
   eq(bob.batch([
-    ["set", "teams/t2/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE2, at: 2 }],
-    ["set", "users/bob/teams/t2", { name: "Druga", state: "asked", at: 2 }],
+    ["set", "parties/t2/requests/bob", { name: "Bob", charId: "b1", charName: "Grok", code: CODE2, at: 2 }],
+    ["set", "users/bob/parties/t2", { name: "Druga", state: "asked", at: 2 }],
   ]), true);
-  eq(bob.list("teams/t1/notes"), true, "finding my team notes");
-  eq(bob.batch([["delete", "teams/t1/notes/n1"], ["delete", "users/bob/teams/t1/notes/p1"], ["delete", "teams/t1/members/bob"], ["delete", "users/bob/teams/t1"]]), true, "leaving with my notes");
-  eq(bob.delete("teams/t1/notes/n2"), false, "other people's notes stay");
-  eq(bob.batch([["delete", "teams/t2/requests/bob"], ["delete", "users/bob/teams/t2"]]), true, "taking back a request");
+  eq(bob.list("parties/t1/notes"), true, "finding my party notes");
+  eq(bob.batch([["delete", "parties/t1/notes/n1"], ["delete", "users/bob/parties/t1/notes/p1"], ["delete", "parties/t1/gm/bob"], ["delete", "parties/t1/members/bob"], ["delete", "users/bob/parties/t1"]]), true, "leaving with my notes");
+  eq(bob.delete("parties/t1/notes/n2"), false, "other people's notes stay");
+  eq(bob.batch([["delete", "parties/t2/requests/bob"], ["delete", "users/bob/parties/t2"]]), true, "taking back a request");
   eq(bob.delete("users/bob/characters/b1"), true);
   eq([...db.docs.keys()].filter((k) => k.includes("bob") || db.docs.get(k).author === "bob"), [], "nothing of bob is left");
 });
-test("rules: the team summary fields in firestore.rules match what the app sends", () => {
-  const listed = /s\.keys\(\)\.hasOnly\(\[([^\]]*)\]\)/.exec(RULES)[1].match(/'(\w+)'/g).map((x) => x.slice(1, -1));
+// The field list after "function <fn>(s)" in firestore.rules.
+const rulesKeys = (fn) => new RegExp(`function ${fn}\\(s\\)[^]*?s\\.keys\\(\\)\\.hasOnly\\(\\[([^\\]]*)\\]\\)`).exec(RULES)[1].match(/'(\w+)'/g).map((x) => x.slice(1, -1));
+test("rules: the party summary and GM view fields in firestore.rules match what the app sends", () => {
   const ch = make({ classId: "fighter" });
-  eq(listed, Object.keys(TEAM.sheetSummary(ch, run(ch))));
+  eq(rulesKeys("sheet"), Object.keys(PARTY.sheetSummary(ch, run(ch))));
+  eq(rulesKeys("gmSheet"), Object.keys(PARTY.gmSummary(ch, run(ch))));
+  eq(RULES.match(/gmNum\(s\.get\('(\w+)', 0\)\)/g).length, PARTY.GM_KEYS.length, "every GM value is range-checked");
+});
+
+// --- Game Master (0.17): the GM role and the GM view ---
+const gmOk = () => PARTY.gmSummary(make({ classId: "fighter" }), run(make({ classId: "fighter" })));
+test("rules: admins give the GM role (also to themselves and the founder); players cannot", () => {
+  const { alice, bob } = world();
+  eq(bob.update("parties/t1/members/bob", { gm: true }), false, "a player cannot make themselves the GM");
+  eq(bob.update("parties/t1/members/alice", { gm: true }), false);
+  eq(alice.update("parties/t1/members/alice", { gm: true }), true, "the founder as the GM");
+  eq(alice.update("parties/t1/members/bob", { gm: "yes" }), false, "true or false only");
+  eq(alice.update("parties/t1/members/bob", { gm: true, role: "admin" }), false, "one change at a time (the app sends them separately)");
+  eq(alice.update("parties/t1/members/bob", { role: "admin" }), true);
+  eq(bob.update("parties/t1/members/alice", { gm: false }), true, "another admin may take the GM role from the founder");
+});
+test("rules: the GM view is written only by its player and read only by the party's GMs", () => {
+  const { alice, bob, carol } = world();
+  eq(bob.set("parties/t1/gm/bob", { v: gmOk(), at: 1 }), true);
+  eq(alice.set("parties/t1/gm/bob", { v: gmOk(), at: 1 }), false, "nobody writes someone else's");
+  eq(carol.set("parties/t1/gm/carol", { v: gmOk(), at: 1 }), false, "strangers cannot write into the party");
+  eq(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), notes: 1 }, at: 1 }), false, "nothing beyond the GM view");
+  eq(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), per: 5000 }, at: 1 }), false, "numbers in range");
+  eq(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), per: "x".repeat(50) }, at: 1 }), false, "no text");
+  eq([alice.get("parties/t1/gm/bob"), alice.list("parties/t1/gm"), carol.get("parties/t1/gm/bob")], [false, false, false], "admins without the GM role do not see it");
+  eq(bob.get("parties/t1/gm/bob"), true, "my own");
+  alice.update("parties/t1/members/alice", { gm: true });
+  eq([alice.get("parties/t1/gm/bob"), alice.list("parties/t1/gm")], [true, true], "the GM sees it");
+  eq(alice.delete("parties/t1/gm/bob"), true, "an admin removing a player removes it too");
+});
+test("rules: my list of parties remembers the character playing there", () => {
+  const { bob } = world();
+  eq(bob.update("users/bob/parties/t1", { charId: "b2" }), true);
+  eq(bob.update("users/bob/parties/t1", { charId: 7 }), false);
+  eq(bob.update("users/bob/parties/t1", { secret: 1 }), false);
+});
+test("party: the GM view holds what a GM needs for rolls; the GM's choice of groups is tidied", () => {
+  const ch = make({ classId: "cleric", speciesId: "dwarf", abilities: { str: 14, dex: 10, con: 15, int: 8, wis: 15, cha: 12 } });
+  ch.death = { ok: 2, fail: 9 };
+  const c = run(ch), v = PARTY.gmSummary(ch, c);
+  eq(Object.keys(v), PARTY.GM_KEYS);
+  eq([v.per, v.init, v.speed, v.dv, v.dc, v.wis, v.stealth], [c.passivePerception, c.initiative, c.speed, c.darkvision, c.spells.dc, c.saves.wis.value, c.skills.find((s) => s.id === "stealth").value]);
+  eq([v.dOk, v.dFail], [2, 3], "death saves stop at 3");
+  eq(PARTY.gmSummary(make({ classId: "fighter" }), run(make({ classId: "fighter" }))).dc, 0, "no spells: no DC");
+  eq([PARTY.gmGroups(["skills", "bogus", "skills"]), PARTY.gmGroups(null)], [["skills"], PARTY.GM_GROUPS_DEFAULT]);
+});
+test("party: one character = one party; a refused request frees the character", () => {
+  const rows = [{ id: "p1", charId: "a", status: "in" }, { id: "p2", charId: "b", status: "asked" }, { id: "p3", charId: "c", status: "rejected" }, { id: "p4", charId: "", status: "in" }];
+  eq([...PARTY.busyChars(rows)], ["a", "b"]);
+  eq([...PARTY.busyChars(rows, "p1")], ["b"], "the party being changed does not count");
 });
 
 let failed = 0;

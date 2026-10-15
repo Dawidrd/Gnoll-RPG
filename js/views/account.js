@@ -54,7 +54,7 @@ export function accountBox() {
       del.error ? h("p", { cls: "small", role: "alert", text: t("acc.del.err." + del.error) }) : null,
       h("div", { cls: "row" }, [
         h("button", { type: "button", cls: "btn blood", id: "acc-del-go", disabled: busy, text: t("acc.del.go"), onclick: start }),
-        h("button", { type: "button", cls: "btn ghost", disabled: busy, text: t("team.cancel"), onclick: () => { del = null; draw(account()); } }),
+        h("button", { type: "button", cls: "btn ghost", disabled: busy, text: t("party.cancel"), onclick: () => { del = null; draw(account()); } }),
       ]),
     ]);
   }
@@ -67,7 +67,7 @@ export function accountBox() {
         s.guests ? h("div", { cls: "stack", id: "acc-guests" }, [h("p", { cls: "small", text: t("acc.guests", { n: s.guests }) }),
           h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn", id: "acc-move", text: t("acc.move"),
             onclick: () => toast(t("acc.moved", { n: moveGuests() })) })])]) : null,
-        h("div", { cls: "row" }, [h("a", { cls: "btn", id: "acc-team", href: "#/team", text: t("team.title") }),
+        h("div", { cls: "row" }, [h("a", { cls: "btn", id: "acc-party", href: "#/party", text: t("party.toList") }),
           h("button", { type: "button", cls: "btn ghost", id: "acc-out", text: t("acc.signOut"), onclick: () => signOut() })]),
         h("p", { cls: "hint", text: t("acc.signOutHint") }),
         del ? deletePanel() : h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn small ghost", id: "acc-del-open", text: t("acc.del.open"),

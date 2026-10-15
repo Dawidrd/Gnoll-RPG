@@ -1,22 +1,25 @@
 // Firestore security rules for Gnoll RPG (project gnoll-rpg).
 // Paste into: Firebase console -> Firestore Database -> Rules -> Publish.
 // D1: every user reads and writes only their own characters.
-// D2: teams. Only members read a team; only admins accept, reject and remove; nobody removes the founder.
-// D3: team info and marching order (admins), each member's character summary (only its owner writes it),
-//     team notes (members read; authors edit; admins may remove) and private notes (only their author, under users/).
+// D2: parties. Only members read a party; only admins accept, reject and remove; nobody removes the founder.
+// D3: party info and marching order (admins), each member's character summary (only its owner writes it),
+//     party notes (members read; authors edit; admins may remove) and private notes (only their author, under users/).
+// 0.17: the Game Master role (gm, given by admins) and each member's GM view (gm/{uid}), read only by the party's GMs.
+//     My list of parties remembers which character plays in each (charId): one character = one party.
 // Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function me() { return request.auth.uid; }
-    function teamPath(t) { return /databases/$(database)/documents/teams/$(t); }
-    function memberPath(t, u) { return /databases/$(database)/documents/teams/$(t)/members/$(u); }
+    function partyPath(t) { return /databases/$(database)/documents/parties/$(t); }
+    function memberPath(t, u) { return /databases/$(database)/documents/parties/$(t)/members/$(u); }
     function isMember(t) { return signedIn() && exists(memberPath(t, me())); }
     function isAdmin(t) { return isMember(t) && get(memberPath(t, me())).data.role == 'admin'; }
-    // After this write (or batch): am I an admin of team t? Used when a team and its invite are made together.
+    function isGm(t) { return isMember(t) && get(memberPath(t, me())).data.get('gm', false) == true; }
+    // After this write (or batch): am I an admin of party t? Used when a party and its invite are made together.
     function adminAfter(t) { return signedIn() && existsAfter(memberPath(t, me())) && getAfter(memberPath(t, me())).data.role == 'admin'; }
-    function ownerOf(t) { return get(teamPath(t)).data.owner; }
+    function ownerOf(t) { return get(partyPath(t)).data.owner; }
     function text(v, max) { return v is string && v.size() <= max; }
     function name(v, max) { return text(v, max) && v.size() > 0; }
     function code(v) { return v is string && v.matches('[A-Za-z0-9]{16,40}'); }
@@ -24,11 +27,22 @@ service cloud.firestore {
     function changes(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
     function when(v) { return v is string && (v == '' || v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}')); }
     function num(v) { return v is int && v >= 0 && v <= 10000; }
-    // What the team sees of a character (teamlogic.js sheetSummary).
+    // What the party sees of a character (partylogic.js sheetSummary).
     function sheet(s) {
       return s is map && s.keys().hasOnly(['species', 'cls', 'sub', 'level', 'hp', 'hpMax', 'temp', 'ac'])
         && text(s.get('species', ''), 40) && text(s.get('cls', ''), 40) && text(s.get('sub', ''), 60)
         && num(s.get('level', 0)) && num(s.get('hp', 0)) && num(s.get('hpMax', 0)) && num(s.get('temp', 0)) && num(s.get('ac', 0));
+    }
+    function gmNum(v) { return v is int && v >= -30 && v <= 1000; }
+    // What a GM sees of a character beyond the summary (partylogic.js gmSummary).
+    function gmSheet(s) {
+      return s is map && s.keys().hasOnly(['per', 'ins', 'inv', 'init', 'speed', 'dv', 'dc', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'acrobatics', 'animal', 'arcana', 'athletics', 'deception', 'history', 'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception', 'performance', 'persuasion', 'religion', 'sleight', 'stealth', 'survival', 'dOk', 'dFail'])
+        && gmNum(s.get('per', 0)) && gmNum(s.get('ins', 0)) && gmNum(s.get('inv', 0)) && gmNum(s.get('init', 0)) && gmNum(s.get('speed', 0)) && gmNum(s.get('dv', 0))
+        && gmNum(s.get('dc', 0)) && gmNum(s.get('str', 0)) && gmNum(s.get('dex', 0)) && gmNum(s.get('con', 0)) && gmNum(s.get('int', 0)) && gmNum(s.get('wis', 0))
+        && gmNum(s.get('cha', 0)) && gmNum(s.get('acrobatics', 0)) && gmNum(s.get('animal', 0)) && gmNum(s.get('arcana', 0)) && gmNum(s.get('athletics', 0)) && gmNum(s.get('deception', 0))
+        && gmNum(s.get('history', 0)) && gmNum(s.get('insight', 0)) && gmNum(s.get('intimidation', 0)) && gmNum(s.get('investigation', 0)) && gmNum(s.get('medicine', 0)) && gmNum(s.get('nature', 0))
+        && gmNum(s.get('perception', 0)) && gmNum(s.get('performance', 0)) && gmNum(s.get('persuasion', 0)) && gmNum(s.get('religion', 0)) && gmNum(s.get('sleight', 0)) && gmNum(s.get('stealth', 0))
+        && gmNum(s.get('survival', 0)) && gmNum(s.get('dOk', 0)) && gmNum(s.get('dFail', 0));
     }
     function march(m) {
       return m is map && m.keys().hasOnly(['mode', 'order']) && m.mode in ['5', '10'] && m.order is list && m.order.size() <= 50;
@@ -44,14 +58,15 @@ service cloud.firestore {
         && request.resource.data.deleted is bool;
     }
 
-    // My own list of teams (the ones I founded, joined or asked to join).
-    match /users/{uid}/teams/{t} {
+    // My own list of parties (the ones I founded, joined or asked to join).
+    match /users/{uid}/parties/{t} {
       allow read, delete: if signedIn() && me() == uid;
-      allow create, update: if signedIn() && me() == uid && only(['name', 'state', 'at'])
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['name', 'state', 'at', 'charId']) && request.resource.data.keys().hasAll(['name', 'state', 'at'])
         && text(request.resource.data.name, 60) && request.resource.data.state in ['asked', 'in']
-        && request.resource.data.at is int;
+        && request.resource.data.at is int && text(request.resource.data.get('charId', ''), 128);
 
-      // My private notes for this team: nobody else reads them, admins included.
+      // My private notes for this party: nobody else reads them, admins included.
       match /notes/{n} {
         allow read, delete: if signedIn() && me() == uid;
         allow create, update: if signedIn() && me() == uid && only(['text', 'at'])
@@ -62,17 +77,17 @@ service cloud.firestore {
     // An invite can be opened only by its exact code; nobody can list them.
     match /invites/{c} {
       allow get: if signedIn();
-      allow create: if signedIn() && code(c) && only(['team', 'name'])
-        && request.resource.data.team is string && name(request.resource.data.name, 60)
-        && adminAfter(request.resource.data.team);
-      allow delete: if signedIn() && isAdmin(resource.data.team);
-      // renaming the team renames its invite
-      allow update: if signedIn() && isAdmin(resource.data.team) && changes(['name']) && name(request.resource.data.name, 60);
+      allow create: if signedIn() && code(c) && only(['party', 'name'])
+        && request.resource.data.party is string && name(request.resource.data.name, 60)
+        && adminAfter(request.resource.data.party);
+      allow delete: if signedIn() && isAdmin(resource.data.party);
+      // renaming the party renames its invite
+      allow update: if signedIn() && isAdmin(resource.data.party) && changes(['name']) && name(request.resource.data.name, 60);
     }
 
-    match /teams/{t} {
+    match /parties/{t} {
       allow read: if isMember(t);
-      // The founder creates the team together with their own admin membership and the invite.
+      // The founder creates the party together with their own admin membership and the invite.
       allow create: if signedIn() && only(['name', 'owner', 'invite', 'created'])
         && request.resource.data.owner == me() && name(request.resource.data.name, 60)
         && code(request.resource.data.invite) && request.resource.data.created is int
@@ -90,16 +105,18 @@ service cloud.firestore {
           && text(request.resource.data.name, 100) && text(request.resource.data.charId, 128)
           && text(request.resource.data.charName, 100) && request.resource.data.at is int
           && (
-            // the founder, while creating the team
-            (u == me() && request.resource.data.role == 'admin' && !exists(teamPath(t))
-              && getAfter(teamPath(t)).data.owner == me())
+            // the founder, while creating the party
+            (u == me() && request.resource.data.role == 'admin' && !exists(partyPath(t))
+              && getAfter(partyPath(t)).data.owner == me())
             // an admin accepting a request
             || (request.resource.data.role == 'player' && isAdmin(t)
-              && exists(/databases/$(database)/documents/teams/$(t)/requests/$(u)))
+              && exists(/databases/$(database)/documents/parties/$(t)/requests/$(u)))
           );
         allow update: if
           // an admin changing someone's role (not the founder's)
           (isAdmin(t) && u != ownerOf(t) && changes(['role']) && request.resource.data.role in ['admin', 'player'])
+          // an admin giving or taking the Game Master role (anyone's, the founder's and their own too)
+          || (isAdmin(t) && changes(['gm']) && request.resource.data.gm is bool)
           // a member changing their own character or its summary
           || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet'])
             && text(request.resource.data.charId, 128) && text(request.resource.data.charName, 100)
@@ -107,8 +124,8 @@ service cloud.firestore {
         allow delete: if signedIn() && (
           // leaving, or an admin removing someone; the founder stays
           (u != ownerOf(t) && (u == me() || isAdmin(t)))
-          // the founder deleting the whole team in one go
-          || (u == me() && ownerOf(t) == me() && !existsAfter(teamPath(t)))
+          // the founder deleting the whole party in one go
+          || (u == me() && ownerOf(t) == me() && !existsAfter(partyPath(t)))
         );
       }
 
@@ -119,12 +136,22 @@ service cloud.firestore {
           && text(request.resource.data.name, 100) && name(request.resource.data.charId, 128)
           && text(request.resource.data.charName, 100) && request.resource.data.at is int
           && code(request.resource.data.code)
-          && get(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.team == t
+          && get(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.party == t
           && !exists(memberPath(t, u));
         allow delete: if signedIn() && (u == me() || isAdmin(t));
       }
 
-      // Team notes: the whole team reads them; each is edited only by its author; admins may remove any.
+      // GM view of each member's character: written only by that member, read only by the party's GMs.
+      match /gm/{u} {
+        allow get: if signedIn() && (u == me() || isGm(t));
+        allow list: if isGm(t);
+        allow create, update: if signedIn() && u == me() && isMember(t) && only(['v', 'at'])
+          && gmSheet(request.resource.data.v) && request.resource.data.at is int;
+        // leaving, or an admin removing someone (or deleting the party)
+        allow delete: if signedIn() && (u == me() || isAdmin(t));
+      }
+
+      // Party notes: the whole party reads them; each is edited only by its author; admins may remove any.
       match /notes/{n} {
         allow read: if isMember(t);
         allow create: if isMember(t) && only(['author', 'name', 'text', 'at']) && request.resource.data.author == me()

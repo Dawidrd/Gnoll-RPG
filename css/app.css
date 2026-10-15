@@ -383,10 +383,10 @@ details summary { cursor: pointer; }
 .famcard input { width: 100%; }
 .famcard input[type=number] { width: 6em; }
 
-/* Team (D3): tabs, info, characters, marching order, notes */
-.team-tabs { justify-self: start; flex-wrap: wrap; }
-.team-head .team-name { margin: 0; }
-.team-next { font-family: var(--f-ui); color: var(--gold); }
+/* Party (D3): tabs, info, characters, marching order, notes */
+.party-tabs { justify-self: start; flex-wrap: wrap; }
+.party-head .party-name { margin: 0; }
+.party-next { font-family: var(--f-ui); color: var(--gold); }
 .member-vit { display: grid; grid-template-columns: auto auto 1fr; gap: 6px 16px; align-items: center; }
 .member-vit .bar { min-width: 60px; }
 ol.march { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -401,3 +401,8 @@ ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .note .hint { margin: 0; }
 .note-private { border-style: dashed; }
+/* GM view: one row per character, columns chosen by the GM */
+.gm-table { border-collapse: collapse; font-family: var(--f-ui); font-size: .85rem; }
+.gm-table th, .gm-table td { padding: 5px 8px; border-bottom: 1px solid var(--seam); white-space: nowrap; text-align: center; }
+.gm-table thead th { color: var(--bone-dim); font-weight: 500; font-size: .76rem; }
+.gm-table tbody th { text-align: left; color: var(--gold); position: sticky; left: 0; background: var(--slab); }

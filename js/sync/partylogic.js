@@ -1,5 +1,6 @@
-// Team logic without Firebase: invite codes, links, statuses and who may do what. Tested in tests/run.mjs.
+// Party logic without Firebase: invite codes, links, statuses and who may do what. Tested in tests/run.mjs.
 // The same limits are enforced on the server by firestore.rules; these only keep the app from trying.
+import { ABILITIES, SKILLS } from "../rules/core.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 export const CODE_LENGTH = 20;
@@ -21,16 +22,16 @@ export function codeFrom(text) {
   return validCode(code) ? code : "";
 }
 
-/** Team and character names: trimmed, single spaces, length-limited. */
+/** Party and character names: trimmed, single spaces, length-limited. */
 export const cleanName = (s, max = NAME_MAX) => String(s || "").replace(/\s+/g, " ").trim().slice(0, max);
 
 /**
- * Where I stand in a team on my list.
+ * Where I stand in a party on my list.
  * state: what my list remembers ("asked" = I sent a request, "in" = I was a member).
  * member / request: does my member / request document exist (null = not known yet, e.g. offline).
  * Returns: in | asked | rejected | removed | checking.
  */
-export function teamStatus({ state, member, request }) {
+export function partyStatus({ state, member, request }) {
   if (member === true) return "in";
   if (member == null) return "checking";
   if (request === true) return "asked";
@@ -39,22 +40,23 @@ export function teamStatus({ state, member, request }) {
 }
 
 /**
- * What I may do with another member. me / them: { uid, role }; owner: uid of the team's founder.
+ * What I may do with another member. me / them: { uid, role }; owner: uid of the party's founder.
  * Admins accept and remove players and give or take the admin role; nobody can remove or demote the founder.
  */
 export function canManage(me, them, owner) {
   const admin = me?.role === "admin";
   const other = !!them && them.uid !== me?.uid && them.uid !== owner;
-  return { remove: admin && other, promote: admin && other && them.role !== "admin", demote: admin && other && them.role === "admin" };
+  // The Game Master role (extra view of the characters) is given by admins to anyone, themselves and the founder included.
+  return { remove: admin && other, promote: admin && other && them.role !== "admin", demote: admin && other && them.role === "admin", gm: admin && !!them };
 }
-/** The founder cannot leave (they delete the team instead). */
+/** The founder cannot leave (they delete the party instead). */
 export const canLeave = (uid, owner) => !!uid && uid !== owner;
 
 /** Members for display: admins first, then by name. */
 export const sortMembers = (list) => [...list].sort((a, b) =>
   (a.role === "admin" ? 0 : 1) - (b.role === "admin" ? 0 : 1) || (a.name || "").localeCompare(b.name || ""));
 
-// --- D3: team info, marching order, notes, what the team sees of a character ---
+// --- D3: party info, marching order, notes, what the party sees of a character ---
 export const CAMPAIGN_MAX = 100;
 export const NOTE_MAX = 4000;
 
@@ -71,7 +73,7 @@ export function sessionWhen(s, now = Date.now()) {
 export const cleanNote = (s) => String(s || "").replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, NOTE_MAX);
 /** Notes for display: newest first. */
 export const sortNotes = (list) => [...list].sort((a, b) => (b.at || 0) - (a.at || 0));
-/** Admins remove any team note; everyone edits and removes their own. */
+/** Admins remove any party note; everyone edits and removes their own. */
 export const canEditNote = (note, uid) => !!uid && note?.author === uid;
 export const canDeleteNote = (note, me) => !!me && (note?.author === me.uid || me.role === "admin");
 
@@ -105,7 +107,7 @@ export const MARCH_MAX = 50;
 export const validMarch = (m) => !!m && (m.mode === "5" || m.mode === "10") && Array.isArray(m.order) && m.order.length <= MARCH_MAX && m.order.every((u) => typeof u === "string" && u.length <= 128);
 
 /**
- * What the team sees of a character: species, class, subclass, level, HP, temporary HP and AC. Nothing else leaves the device.
+ * What the party sees of a character: species, class, subclass, level, HP, temporary HP and AC. Nothing else leaves the device.
  * `c` is compute(ch) (passed in, so this file needs no rules).
  */
 export function sheetSummary(ch, c) {
@@ -117,3 +119,36 @@ export function sheetSummary(ch, c) {
   };
 }
 export const sameSheet = (a, b) => !!a && !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((k) => a[k] === b[k]);
+
+// --- The Game Master's view: what a GM needs for decisions and secret rolls, beyond HP and AC ---
+// Every member sends it next to the short summary, in a separate document that only GMs of the party read (firestore.rules).
+/** Groups of the GM view; the GM picks which to show. Keys are short, the rules list them one by one. */
+export const GM_GROUPS = {
+  passive: ["per", "ins", "inv"],
+  basics: ["init", "speed", "dv", "dc"],
+  saves: [...ABILITIES],
+  skills: SKILLS.map((s) => s.id),
+  death: ["dOk", "dFail"],
+};
+export const GM_KEYS = Object.values(GM_GROUPS).flat();
+export const GM_GROUPS_DEFAULT = ["passive", "basics", "saves"];
+export const GM_MIN = -30, GM_MAX = 1000;
+
+/** The GM view of a character, as whole numbers. `c` is compute(ch). dc = 0 when the character casts no spells. */
+export function gmSummary(ch, c) {
+  const n = (v) => (Number.isFinite(v) ? Math.min(GM_MAX, Math.max(GM_MIN, Math.round(v))) : 0);
+  const skill = Object.fromEntries((c.skills || []).map((s) => [s.id, s.value]));
+  const out = {
+    per: n(10 + (skill.perception ?? 0)), ins: n(10 + (skill.insight ?? 0)), inv: n(10 + (skill.investigation ?? 0)),
+    init: n(c.initiative), speed: n(c.speed), dv: n(c.darkvision), dc: n(c.spells?.dc ?? 0),
+  };
+  for (const a of ABILITIES) out[a] = n(c.saves?.[a]?.value);
+  for (const s of SKILLS) out[s.id] = n(skill[s.id]);
+  out.dOk = n(Math.min(3, ch.death?.ok || 0)); out.dFail = n(Math.min(3, ch.death?.fail || 0));
+  return out;
+}
+/** The GM's choice of groups (saved on the device), cleaned of unknown names. */
+export const gmGroups = (list) => (Array.isArray(list) ? list.filter((g, i) => g in GM_GROUPS && list.indexOf(g) === i) : [...GM_GROUPS_DEFAULT]);
+
+/** One character = one party: characters already in a party (or waiting for an answer) from my list of parties. */
+export const busyChars = (rows, except = "") => new Set((rows || []).filter((r) => r.charId && r.id !== except && ["in", "asked", "checking"].includes(r.status)).map((r) => r.charId));
