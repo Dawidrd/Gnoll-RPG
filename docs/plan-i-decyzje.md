@@ -44,6 +44,20 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 3. ~~`localhost` w Authorized domains.~~ Zrobione.
 4. Test na localhost: zalogować się na komputerze i telefonie, zmienić HP na jednym, sprawdzić drugi; to samo w trybie samolotowym.
 
+## D2 · Drużyna
+**Jak działa (0.14.0):**
+- W chmurze: `teams/{id}` = `{ name, owner, invite, created }`; `teams/{id}/members/{uid}` = `{ role, name, charId, charName, at }`; `teams/{id}/requests/{uid}` = prośby; `invites/{kod}` = `{ team, name }`; `users/{uid}/teams/{id}` = moja lista drużyn (`state`: asked/in).
+- Link zaproszenia: `…#/join/<kod>` (20 losowych znaków). Zaproszenie da się odczytać tylko znając kod; nie da się wylistować. „Nowy link” unieważnia stary.
+- Prośba zawiera imię z konta Google i wybraną postać (postać obowiązkowa). Admin przyjmuje albo odrzuca. Założyciel może nie mieć postaci (np. MG).
+- Role: admin (przyjmuje, odrzuca, usuwa, nadaje/odbiera admina) i gracz. Założyciela nie można usunąć ani zdegradować; on nie opuszcza drużyny, tylko ją usuwa (dla wszystkich).
+- Status na liście „Moje drużyny”: w drużynie / prośba czeka / odrzucona / usunięty (albo drużyna usunięta).
+- Uprawnień pilnują reguły w `firestore.rules` (serwer). Ekrany: `js/views/team.js`, operacje: `js/sync/team.js`, czyste funkcje i testy: `js/sync/teamlogic.js`.
+- Dane o postaci w drużynie to na razie tylko nazwa; HP/AC/gatunek/klasa i szyk dochodzą w D3.
+
+**Do zrobienia przez użytkownika:**
+1. Wkleić nowe `firestore.rules` w Firestore Database → Rules → Publish (zastępują reguły z D1, zawierają je).
+2. Test: założyć drużynę na jednym koncie, otworzyć link na drugim koncie (np. telefon), poprosić, przyjąć; sprawdzić odrzucenie, usunięcie, nadanie admina, nowy link, opuszczenie i usunięcie drużyny.
+
 ## Gdzie co jest w kodzie
 - `js/rules/index.js` — `compute(ch)` liczy całą kartę, `normalize` migruje stare zapisy.
 - `js/rules/checks.js` — `review()` zwraca todo/errors/notices.

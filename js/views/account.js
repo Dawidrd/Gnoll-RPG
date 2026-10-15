@@ -14,7 +14,8 @@ export function accountBox() {
         s.guests ? h("div", { cls: "stack", id: "acc-guests" }, [h("p", { cls: "small", text: t("acc.guests", { n: s.guests }) }),
           h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn", id: "acc-move", text: t("acc.move"),
             onclick: () => toast(t("acc.moved", { n: moveGuests() })) })])]) : null,
-        h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn ghost", id: "acc-out", text: t("acc.signOut"), onclick: () => signOut() })]),
+        h("div", { cls: "row" }, [h("a", { cls: "btn", id: "acc-team", href: "#/team", text: t("team.title") }),
+          h("button", { type: "button", cls: "btn ghost", id: "acc-out", text: t("acc.signOut"), onclick: () => signOut() })]),
         h("p", { cls: "hint", text: t("acc.signOutHint") }));
     } else if (s.status === "loading") {
       kids.push(h("p", { cls: "small", text: t("acc.loading") }));

@@ -1,10 +1,25 @@
 // Firestore security rules for Gnoll RPG (project gnoll-rpg).
 // Paste into: Firebase console -> Firestore Database -> Rules -> Publish.
-// D1: every user reads and writes only their own characters. Everything else is closed.
-// Teams (D2/D3) will add their own rules here.
+// D1: every user reads and writes only their own characters.
+// D2: teams. Only members read a team; only admins accept, reject and remove; nobody removes the founder.
+// Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function teamPath(t) { return /databases/$(database)/documents/teams/$(t); }
+    function memberPath(t, u) { return /databases/$(database)/documents/teams/$(t)/members/$(u); }
+    function isMember(t) { return signedIn() && exists(memberPath(t, me())); }
+    function isAdmin(t) { return isMember(t) && get(memberPath(t, me())).data.role == 'admin'; }
+    // After this write (or batch): am I an admin of team t? Used when a team and its invite are made together.
+    function adminAfter(t) { return signedIn() && existsAfter(memberPath(t, me())) && getAfter(memberPath(t, me())).data.role == 'admin'; }
+    function ownerOf(t) { return get(teamPath(t)).data.owner; }
+    function text(v, max) { return v is string && v.size() <= max; }
+    function name(v, max) { return text(v, max) && v.size() > 0; }
+    function code(v) { return v is string && v.matches('[A-Za-z0-9]{16,40}'); }
+    function only(fields) { return request.resource.data.keys().hasOnly(fields) && request.resource.data.keys().hasAll(fields); }
+
     match /users/{uid}/characters/{charId} {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
@@ -13,6 +28,73 @@ service cloud.firestore {
         && request.resource.data.json.size() < 900000
         && request.resource.data.updated is int
         && request.resource.data.deleted is bool;
+    }
+
+    // My own list of teams (the ones I founded, joined or asked to join).
+    match /users/{uid}/teams/{t} {
+      allow read, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid && only(['name', 'state', 'at'])
+        && text(request.resource.data.name, 60) && request.resource.data.state in ['asked', 'in']
+        && request.resource.data.at is int;
+    }
+
+    // An invite can be opened only by its exact code; nobody can list them.
+    match /invites/{c} {
+      allow get: if signedIn();
+      allow create: if signedIn() && code(c) && only(['team', 'name'])
+        && request.resource.data.team is string && name(request.resource.data.name, 60)
+        && adminAfter(request.resource.data.team);
+      allow delete: if signedIn() && isAdmin(resource.data.team);
+    }
+
+    match /teams/{t} {
+      allow read: if isMember(t);
+      // The founder creates the team together with their own admin membership and the invite.
+      allow create: if signedIn() && only(['name', 'owner', 'invite', 'created'])
+        && request.resource.data.owner == me() && name(request.resource.data.name, 60)
+        && code(request.resource.data.invite) && request.resource.data.created is int
+        && adminAfter(t);
+      allow update: if isAdmin(t)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'invite'])
+        && name(request.resource.data.name, 60) && code(request.resource.data.invite);
+      allow delete: if signedIn() && resource.data.owner == me();
+
+      match /members/{u} {
+        allow get: if signedIn() && (u == me() || isMember(t));
+        allow list: if isMember(t);
+        allow create: if signedIn() && only(['role', 'name', 'charId', 'charName', 'at'])
+          && text(request.resource.data.name, 100) && text(request.resource.data.charId, 128)
+          && text(request.resource.data.charName, 100) && request.resource.data.at is int
+          && (
+            // the founder, while creating the team
+            (u == me() && request.resource.data.role == 'admin' && !exists(teamPath(t))
+              && getAfter(teamPath(t)).data.owner == me())
+            // an admin accepting a request
+            || (request.resource.data.role == 'player' && isAdmin(t)
+              && exists(/databases/$(database)/documents/teams/$(t)/requests/$(u)))
+          );
+        allow update: if isAdmin(t) && u != ownerOf(t)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+          && request.resource.data.role in ['admin', 'player'];
+        allow delete: if signedIn() && (
+          // leaving, or an admin removing someone; the founder stays
+          (u != ownerOf(t) && (u == me() || isAdmin(t)))
+          // the founder deleting the whole team in one go
+          || (u == me() && ownerOf(t) == me() && !existsAfter(teamPath(t)))
+        );
+      }
+
+      match /requests/{u} {
+        allow get: if signedIn() && (u == me() || isAdmin(t));
+        allow list: if isAdmin(t);
+        allow create, update: if signedIn() && u == me() && only(['name', 'charId', 'charName', 'code', 'at'])
+          && text(request.resource.data.name, 100) && name(request.resource.data.charId, 128)
+          && text(request.resource.data.charName, 100) && request.resource.data.at is int
+          && code(request.resource.data.code)
+          && get(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.team == t
+          && !exists(memberPath(t, u));
+        allow delete: if signedIn() && (u == me() || isAdmin(t));
+      }
     }
   }
 }

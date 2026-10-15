@@ -8,6 +8,7 @@ import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as MERGE from "../js/sync/merge.js";
+import * as TEAM from "../js/sync/teamlogic.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -747,6 +748,38 @@ test("store: every account has its own characters on the device", () => {
   eq([STORE.loadAll().map((c) => c.id), Object.keys(STORE.gone())], [["a-2"], ["guest-1"]], "back to A as it was");
   eq(STORE.currentOwner(), "uidAAAA"); eq(mem.get("gnoll.account"), "uidAAAA", "remembered for the next start");
   STORE.setOwner(""); mem.clear();
+});
+
+// --- Teams (D2): invite links, statuses, who may do what ---
+test("team: invite codes are long, random-looking and survive a link round-trip", () => {
+  const code = TEAM.makeCode(new Uint8Array(20).map((_, i) => i * 13));
+  eq([code.length, TEAM.validCode(code), TEAM.validCode(TEAM.makeCode())], [20, true, true]);
+  eq(TEAM.makeCode() === TEAM.makeCode(), false, "two codes differ");
+  const link = TEAM.inviteLink("https://dawidrd.github.io/Gnoll-RPG/#/team/abc", code);
+  eq(link, `https://dawidrd.github.io/Gnoll-RPG/#/join/${code}`);
+  eq([TEAM.codeFrom(link), TEAM.codeFrom("  " + code + " "), TEAM.codeFrom("hello"), TEAM.codeFrom("#/join/a/b")], [code, code, "", ""]);
+  eq([TEAM.validCode("short"), TEAM.validCode("a".repeat(16) + "/x"), TEAM.validCode(null)], [false, false, false]);
+});
+test("team: my status follows my request and membership", () => {
+  const s = TEAM.teamStatus;
+  eq(s({ state: "asked", member: false, request: true }), "asked");
+  eq(s({ state: "asked", member: true, request: false }), "in", "accepted");
+  eq(s({ state: "asked", member: false, request: false }), "rejected");
+  eq(s({ state: "in", member: false, request: false }), "removed", "removed or team deleted");
+  eq([s({ state: "in", member: null, request: null }), s({ state: "asked", member: false, request: null })], ["checking", "checking"], "offline: unknown");
+});
+test("team: admins manage others, nobody removes or demotes the founder", () => {
+  const owner = { uid: "o", role: "admin" }, adm = { uid: "a", role: "admin" }, pl = { uid: "p", role: "player" };
+  eq(TEAM.canManage(owner, pl, "o"), { remove: true, promote: true, demote: false });
+  eq(TEAM.canManage(owner, adm, "o"), { remove: true, promote: false, demote: true });
+  eq(TEAM.canManage(adm, owner, "o"), { remove: false, promote: false, demote: false }, "founder protected");
+  eq(TEAM.canManage(pl, adm, "o"), { remove: false, promote: false, demote: false }, "players manage nobody");
+  eq(TEAM.canManage(adm, adm, "o").remove, false, "not yourself (use Leave)");
+  eq([TEAM.canLeave("p", "o"), TEAM.canLeave("o", "o")], [true, false]);
+});
+test("team: names are tidied and members listed admins first", () => {
+  eq([TEAM.cleanName("  Kompania   Szarej\nMgły "), TEAM.cleanName("x".repeat(80)).length, TEAM.cleanName(null)], ["Kompania Szarej Mgły", 60, ""]);
+  eq(TEAM.sortMembers([{ name: "Zoe", role: "player" }, { name: "Bob", role: "player" }, { name: "Ann", role: "admin" }]).map((m) => m.name), ["Ann", "Bob", "Zoe"]);
 });
 
 let failed = 0;

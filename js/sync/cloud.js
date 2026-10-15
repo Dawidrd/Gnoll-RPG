@@ -75,6 +75,8 @@ const changed = () => dispatchEvent(new CustomEvent("gnoll:remote"));
 
 let stop = null; // ends the cloud listener and the local listener
 let uid = null;
+/** For other cloud features (teams): Firebase and the signed-in account, or null when signed out. */
+export const cloud = () => (state.status === "in" && fb && uid ? { F: fb.F, db: fb.db, uid, name: state.user?.name || state.user?.email || "" } : null);
 
 function signedIn(user) {
   storage.set(REDIRECT, "0");

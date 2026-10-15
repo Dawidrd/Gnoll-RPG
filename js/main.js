@@ -5,7 +5,9 @@ import { CONFIG } from "./config.js";
 import { renderHome } from "./views/home.js";
 import { renderForm } from "./views/form.js";
 import { renderSheet } from "./views/sheet.js";
+import { renderTeams, renderTeam, renderJoin } from "./views/team.js";
 import { startAccount, accountAvailable } from "./sync/cloud.js";
+import { stopWatching } from "./sync/team.js";
 
 const view = h("div", { id: "view" });
 
@@ -33,10 +35,14 @@ const go = (hash) => { if (location.hash === hash) route(); else location.hash =
 function route() {
   const parts = (location.hash.replace(/^#\/?/, "") || "").split("/").filter(Boolean);
   const app = document.getElementById("app");
+  stopWatching(); // live team listeners belong to the screen being left
   app.replaceChildren(topbar(), h("div", { cls: "wrap" }, [view]), footer());
   if (parts[0] === "new") renderForm(view, go, null);
   else if (parts[0] === "edit" && parts[1]) renderForm(view, go, parts[1]);
   else if (parts[0] === "c" && parts[1]) renderSheet(view, go, parts[1], parts[2]);
+  else if (parts[0] === "team" && parts[1]) renderTeam(view, go, parts[1]);
+  else if (parts[0] === "team") renderTeams(view, go);
+  else if (parts[0] === "join" && parts[1]) renderJoin(view, go, parts[1]);
   else renderHome(view, go);
   document.title = CONFIG.name;
 }
@@ -47,7 +53,7 @@ addEventListener("hashchange", () => { route(); scrollTo(0, 0); });
 // Characters changed on another device: redraw, unless the user is in the middle of typing or editing.
 addEventListener("gnoll:remote", () => {
   const typing = document.activeElement?.matches?.("input, textarea, select");
-  if (!typing && !/^#\/(new|edit)\b/.test(location.hash)) route();
+  if (!typing && !/^#\/(new|edit|team|join)\b/.test(location.hash)) route();
 });
 layout();
 route();
