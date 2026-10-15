@@ -4,6 +4,8 @@ import { compute, blankCharacter, normalize } from "../js/rules/index.js";
 import { fitSkills, trimSkills } from "../js/rules/skills.js";
 import { pointsSpent } from "../js/rules/identity.js";
 import { SPELLS, spellsOf } from "../js/rules/spells.js";
+import { turnOptions, turnTips } from "../js/rules/turn.js";
+import * as PAGE from "../js/rules/pageimport.js";
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -380,6 +382,72 @@ test("Sorcerer: Sorcery Points, Metamagic, Innate Sorcery, subclasses", () => {
   const sh = so({ setting: "ravenloft", level: 3, subclass: "shadow", speciesId: "human" });
   eq([sh.darkvision, sh.blindsight], [120, 10]);
   eq(so({ level: 5 }).resources.find((r) => r.id === "restoration").max, 1);
+});
+
+// --- 0.10: equipment, journal, turn planner, switched-on effects ---
+test("older saves get empty equipment, coins, journal and turn", () => {
+  const ch = normalize({ ...make(), items: undefined, gold: undefined, journal: undefined, turn: undefined, active: undefined });
+  eq([ch.items, ch.gold, ch.journal, ch.turn.round, ch.active], [[], { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }, [], 1, {}]);
+});
+test("Mage Armor and armor taken off change AC; Rage adds resistances", () => {
+  const sat = (active, armor = "leather") => run(wl({ armor, active, classOptions: { invocations: ["armor-of-shadows"] } }));
+  eq(sat({}).ac.value, 11 + 2, "leather 11 + DEX");
+  eq(sat({ mageArmor: true }).ac.value, 13, "Mage Armor does nothing over armor");
+  eq(sat({ mageArmor: true, armorOff: true }).ac.value, 13 + 2, "armor off: 13 + DEX");
+  eq(run(wl({ active: { mageArmor: true } })).ac.value, 12, "without the spell the toggle is ignored");
+  const b = (active) => run(make({ classId: "barbarian", speciesId: "goliath", speciesChoice: { giant: "cloud" }, active }));
+  eq([b({}).resistances.length, b({ rage: true }).resistances], [0, ["bludgeoning", "piercing", "slashing"]]);
+  eq(run(make({ classId: "monk", active: { rage: true } })).active.rage, false, "only Barbarians rage");
+});
+test("turn planner: options by class, level, species and spells", () => {
+  const ids = (list) => list.map((o) => o.id);
+  const monk2 = run(make({ classId: "monk", level: 2, speciesId: "dragonborn", speciesChoice: { ancestry: "gold" } }));
+  const m = turnOptions(monk2, make({ classId: "monk", level: 2 }));
+  eq(ids(m.bonus).slice(0, 6), ["martial-arts", "flurry", "patient", "patient-fp", "step", "step-fp"]);
+  eq(m.bonus.find((o) => o.id === "flurry").cost, { res: "focus", n: 1 });
+  eq(ids(m.action).includes("breath"), true, "Breath Weapon replaces an attack");
+  eq(ids(m.reaction).includes("deflect"), false, "Deflect Attacks from level 3");
+  eq(turnOptions(run(make({ classId: "monk", level: 5 })), make({ classId: "monk", level: 5 })).attacks, 2);
+  const lar = make({ classId: "barbarian", speciesId: "goliath", speciesChoice: { giant: "cloud" } });
+  const lb = turnOptions(run(lar), lar);
+  eq(ids(lb.bonus).slice(0, 2), ["rage", "cloud-jaunt"]);
+  eq(lb.bonus[0].set, { rage: true });
+  const raging = { ...lar, active: { rage: true } };
+  eq(ids(turnOptions(run(raging), raging).bonus)[0], "rage-extend");
+  const sat = wl({ level: 2, classOptions: { invocations: ["armor-of-shadows", "agonizing-blast@eldritch-blast", "pact-of-the-chain"] }, spellPicks: { cantrips: ["eldritch-blast", "prestidigitation"], prepared: ["hex", "hellish-rebuke", "charm-person"] } });
+  const so = turnOptions(run(sat), sat);
+  eq([ids(so.bonus).includes("spell:hex"), ids(so.reaction).includes("spell:hellish-rebuke"), ids(so.action).includes("spell:eldritch-blast")], [true, true, true]);
+  eq(so.bonus.find((o) => o.id === "spell:hex").cost, { spell: { circle: 1, free: null } });
+  eq(so.action.find((o) => o.id === "spell:mage-armor").cost, null, "Armor of Shadows: no slot");
+  eq(ids(so.action).includes("spell:find-familiar"), false, "1-hour ritual casting isn't a combat action");
+  const tips = turnTips(run(raging), raging, { round: 1, action: null, bonus: null, reaction: null, moved: 2 }, turnOptions(run(raging), raging));
+  eq([tips.movement.total, tips.movement.left, tips.tips.some((x) => x.kind === "warn" && x.text.en.includes("raging"))], [7, 25, false], "no warning before acting");
+  const t2 = turnTips(run(raging), raging, { round: 1, action: { id: "dash", fx: ["dash"] }, bonus: null, reaction: null, moved: 0 }, turnOptions(run(raging), raging));
+  eq([t2.movement.total, t2.tips.some((x) => x.kind === "warn" && x.text.en.includes("raging"))], [14, true], "Dash doubles movement; raging without attacking");
+});
+
+test("import from an old character page: state, picks, equipment, journal, questions, differences", () => {
+  const build = wl({ id: "page-x", name: "Test", level: 1, armor: "leather", classOptions: { invocations: ["armor-of-shadows"] }, spellPicks: { cantrips: ["eldritch-blast", "prestidigitation"], prepared: ["hex", "charm-person"] } });
+  const data = { app: "gnoll-rpg-page", version: 1, page: "Test", build, shown: { hpMax: 20, ac: 13 },
+    state: { level: 2, hp: { cur: 7, max: 20, temp: 2 }, death: { ok: 1, fail: 0 }, gold: { gp: "23", sp: 4 }, armor: "mage", conc: "Hex",
+      levels: { 2: { hp: 5, cant: ["Eldritch Blast", "Prestidigitation"], prep: ["Hex", "Charm Person", "Hellish Rebuke"], inv: ["armor", "agonizing:Eldritch Blast", "chain"] } },
+      res: { pact: { cur: 1, max: 2 }, cunning: { cur: 0, max: 1 }, hd: { cur: 1, max: 2 }, nonsense: { cur: 0, max: 3 } } },
+    items: [{ id: "b", name: "Lina", qty: 1, order: 2 }, { id: "a", name: "Sztylet", qty: 2, note: "1d4", order: 1 }],
+    sessions: [{ id: "s1", title: "Sesja 1", body: "Loch", created: 1790795092149, date: "" }],
+    questions: [{ text: "Kto?", group: "gm", order: 1, done: true, answer: "Jeleń" }, { text: "Gdzie?", group: "gra", order: 1 }] };
+  const { isPageExport, fromPage } = PAGE;
+  eq(isPageExport(data), true);
+  const { ch, report } = fromPage(data);
+  const c = run(ch);
+  eq([ch.level, ch.hpRolls, c.hpMax, ch.hp.cur, ch.hp.temp], [2, { 2: 5 }, 8 + 1 + 5 + 1, 7, 2]);
+  eq([ch.classOptions.invocations, ch.spellPicks.prepared], [["armor-of-shadows", "agonizing-blast@eldritch-blast", "pact-of-the-chain"], ["hex", "charm-person", "hellish-rebuke"]]);
+  eq([c.review.errors.length, c.review.todo.filter((x) => ["todo.classOption", "todo.spellPick"].includes(x.key)).length], [0, 0], "the level 2 picks are complete");
+  eq(ch.used, { slot1: 1, cunning: 1 }, "page resources mapped, unknown ones skipped");
+  eq([ch.gold.gp, ch.gold.sp, ch.concentration, c.active.mageArmor, c.ac.value], [23, 4, "hex", true, 15]);
+  eq(ch.items.map((x) => x.name), ["Sztylet", "Lina"]);
+  eq([ch.journal[0].title, ch.journal[0].date], ["Sesja 1", "2026-09-30"]);
+  eq(ch.notes.includes("- [x] Kto?\n  Odpowiedź: Jeleń") && ch.notes.includes("- [ ] Gdzie?"), true);
+  eq(report.notes.map((n) => [n.key, n.vars]), [["imp.levelChanged", { from: 1, to: 2 }], ["imp.hpDiff", { page: 20, app: 15 }], ["imp.acDiff", { page: 13, app: 15 }]]);
 });
 
 let failed = 0;

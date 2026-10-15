@@ -10,6 +10,7 @@ export const DAMAGE_NAMES = {
   acid: L("kwas", "acid"), cold: L("zimno", "cold"), fire: L("ogień", "fire"), lightning: L("błyskawice", "lightning"),
   poison: L("trucizna", "poison"), necrotic: L("nekrotyczne", "necrotic"), radiant: L("promieniste", "radiant"),
   thunder: L("grzmot", "thunder"), psychic: L("psychiczne", "psychic"), force: L("moc", "force"),
+  bludgeoning: L("obuchowe", "bludgeoning"), piercing: L("kłute", "piercing"), slashing: L("cięte", "slashing"),
 };
 
 export const ANCESTRIES = {

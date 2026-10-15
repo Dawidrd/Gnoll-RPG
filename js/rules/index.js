@@ -170,6 +170,13 @@ export function normalize(ch) {
   if (!ch.spells) ch.spells = { cantrips: "", prepared: "" };
   if (!ch.expertise) ch.expertise = [];
   if (!ch.levelChoices) ch.levelChoices = {};
+  // 0.10: equipment, coins, session journal, the turn planner and what's switched on (rage, Mage Armor, armor off, familiar).
+  if (!Array.isArray(ch.items)) ch.items = [];
+  ch.gold = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(ch.gold || {}) };
+  if (!Array.isArray(ch.journal)) ch.journal = [];
+  if (!ch.turn) ch.turn = newTurn();
+  if (!ch.active) ch.active = {};
+  if (!ch.familiar) ch.familiar = { name: "", kind: "", hp: { cur: null, max: null }, present: true };
   if ((ch.schema || 1) < 3) {
     ch.setting = ch.setting || "standard";
     ch.languages = ch.languages || [];
@@ -188,6 +195,9 @@ export function normalize(ch) {
   }
   return ch;
 }
+
+/** An empty turn: nothing used yet, no movement spent. */
+export const newTurn = (round = 1) => ({ round, action: null, bonus: null, reaction: null, item: null, moved: 0 });
 
 /** Can this feat fill this slot? Listed options, or the slot's category, or (in Ravenloft) a Dark Gift. */
 export function featAllowed(slot, id, ravenloft) {
@@ -218,7 +228,9 @@ export function compute(raw) {
 
   const subclass = level >= (cls.subclassLevel || 99) && cls.subclasses?.[ch.subclass] ? cls.subclasses[ch.subclass] : null;
   const unarmored = cls.unarmored ? cls.unarmored(ctx) : subclass?.unarmored ? subclass.unarmored(ctx) : null;
-  const worn = armorClass({ armorId: ch.armor, shield: !!ch.shield, mods, unarmored, training, strScore: abilities.str });
+  // Armor taken off for now (e.g. to use Mage Armor) counts as no armor until put back on.
+  const armorId = ch.active?.armorOff ? "none" : ch.armor;
+  let worn = armorClass({ armorId, shield: !!ch.shield, mods, unarmored, training, strScore: abilities.str });
   // Class option lists (Eldritch Invocations, Metamagic). Cantrip prerequisites look at the cantrips picked for the class and the Book of Shadows.
   const tomeOn = (ch.classOptions?.invocations || []).includes("pact-of-the-tome");
   const knownClassCantrips = [...(ch.spellPicks?.cantrips || []), ...(tomeOn ? ch.spellPicks?.tomeCantrips || [] : [])];
@@ -271,7 +283,6 @@ export function compute(raw) {
   const hpComputed = cls.hitDie + mods.con + perLevel.reduce((s, p) => s + p.gain, 0) + hpExtra * level + (subclass?.hpBonus ? subclass.hpBonus(ctx) : 0);
   const hpMax = ch.hp.maxOverride || Math.max(1, hpComputed);
 
-  const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
   // Species options (lineage, legacy, ancestry, spellcasting ability) shape speed, darkvision, resistances and species spells.
   const spt = speciesTraits(sp, ctx);
   ctx.unarmed = spt.unarmed; // e.g. Lupin claws: slashing Unarmed Strikes
@@ -280,7 +291,7 @@ export function compute(raw) {
 
   const initiative = mods.dex + feats.reduce((s, f) => s + (f.initiativeBonus ? f.initiativeBonus(ctx) : 0), 0);
   const baseSpeed = sp.custom ? ch.customSpecies?.speed || 30 : spt.speed;
-  const armorDef = ARMOR[ch.armor];
+  const armorDef = ARMOR[armorId];
   const slowArmor = armorDef?.str && abilities.str < armorDef.str ? 10 : 0;
   const featSpeed = levelFeats.reduce((n, lf) => n + (FEATS[lf.id].speed || 0), 0);
   const speed = baseSpeed + (cls.speedBonus ? cls.speedBonus(ctx) : 0) - slowArmor + featSpeed;
@@ -359,6 +370,19 @@ export function compute(raw) {
     ] });
   const spellSrc = spellSources({ ch, ctx, cls, subclass, casting: spellcasting, sp, spt, originFeats, levelFeats, extra: extraSources });
   ctx.knownSpells = spellSrc.flatMap((s) => s.spells.map((x) => x.id));
+  // Switched on during play: Mage Armor (13 + DEX without armor; the better formula wins) and Rage (Barbarian).
+  const active = {
+    mageArmor: !!ch.active?.mageArmor && ctx.knownSpells.includes("mage-armor"),
+    rage: !!ch.active?.rage && cls.id === "barbarian",
+    armorOff: !!ch.active?.armorOff && ch.armor !== "none",
+  };
+  if (active.mageArmor && !worn.wearing) {
+    const ma = 13 + mods.dex;
+    const base = unarmored && (unarmored.shieldOk || !ch.shield) ? unarmored.value : 10 + mods.dex;
+    if (ma > base) worn = { ...worn, value: ma + (ch.shield ? 2 : 0),
+      note: { pl: "Mage Armor 13 + ZRĘ" + (ch.shield ? " + tarcza 2" : ""), en: "Mage Armor 13 + DEX" + (ch.shield ? " + shield 2" : "") } };
+  }
+  const ac = ch.acOverride ? { value: ch.acOverride, note: { pl: "Wpisane ręcznie", en: "Set by hand" }, warnings: [] } : worn;
   const slotRes = spells ? spells.slots.map((n, i) => ({ id: "slot" + (i + 1), max: n, recharge: spells.pact ? "short" : "long", slot: i + 1, pact: !!spells.pact,
     name: spells.pact ? { pl: `Sloty paktu (${i + 1}. krąg)`, en: `Pact slots (level ${i + 1})` } : { pl: `Sloty ${i + 1}. kręgu`, en: `Level ${i + 1} slots` } })) : [];
 
@@ -404,7 +428,8 @@ export function compute(raw) {
     cls, sp, bg, subclass, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
     featMagic, spellSources: spellSrc, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
-    speciesSpeed: spt.speed, creatureType: sp.type || "humanoid", resistances: spt.resist, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
+    speciesSpeed: spt.speed, creatureType: sp.type || "humanoid",
+    resistances: active.rage ? [...new Set([...spt.resist, "bludgeoning", "piercing", "slashing"])] : spt.resist, active, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(subclass?.summary ? subclass.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
     classOptions: opts.groups, knownClassCantrips,

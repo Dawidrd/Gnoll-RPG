@@ -1,5 +1,6 @@
 // Characters live only in this browser (localStorage). No account, no server.
 // Moving between devices: export to a file, import on the other device.
+import { isPageExport, fromPage } from "./rules/pageimport.js";
 
 export const storage = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -37,10 +38,14 @@ export function exportFile(ch) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-/** Validate an imported file. Returns the character or throws. */
+/**
+ * Validate an imported file: this app's own export, or an export from one of the old character pages.
+ * Returns { ch, report } (report only for page exports) or throws.
+ */
 export function parseImport(text) {
   const data = JSON.parse(text);
+  if (isPageExport(data)) return fromPage(data);
   const ch = data && data.app === "gnoll-rpg" ? data.character : null;
   if (!ch || typeof ch !== "object" || !ch.abilities || !ch.classId) throw new Error("bad-file");
-  return ch;
+  return { ch, report: null };
 }

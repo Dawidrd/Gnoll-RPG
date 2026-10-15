@@ -13,8 +13,10 @@ import { SPELLS } from "../rules/spells.js";
 import { writePick } from "../rules/magic.js";
 import { spellPickUI, spellTags, spellBody } from "./spellpicker.js";
 import { classOptionUI, classOptionList } from "./classoptions.js";
+import { combatTab, activeCard } from "./combat.js";
+import { inventoryTab, journalTab } from "./gear.js";
 
-const TABS = ["start", "character", "spells", "levelup", "notes"];
+const TABS = ["start", "combat", "character", "spells", "inventory", "levelup", "journal", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
@@ -28,7 +30,7 @@ export function renderSheet(root, go, id, tab) {
   if (!tabsFor(c).includes(tab)) tab = "start";
   if (ch.hp.cur == null) { ch.hp.cur = c.hpMax; upsert(ch); }
 
-  const save = () => { if (!upsert(ch)) toast(t("app.saveError")); draw(); };
+  const save = (redraw = true) => { if (!upsert(ch)) toast(t("app.saveError")); if (redraw) draw(); };
   let editing = null; // which spell pick is open for changes on the Spells tab
 
   function draw() {
@@ -36,7 +38,7 @@ export function renderSheet(root, go, id, tab) {
     ch.hp.cur = clamp(ch.hp.cur, 0, c.hpMax);
     const hpPct = c.hpMax ? (ch.hp.cur / c.hpMax) * 100 : 0;
     const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(c.sp.name) : tr(c.sp.name);
-    const subName = c.cls.subclasses?.[ch.subclass] ? tr(c.cls.subclasses[ch.subclass].name) : ch.subclass === "custom" ? ch.subclassCustom : "";
+    const subName = c.subclass ? tr(c.subclass.name) : c.customSubclass || "";
 
     const header = h("header", { cls: "mast" }, [
       h("div", { cls: "who" }, [
@@ -70,7 +72,8 @@ export function renderSheet(root, go, id, tab) {
       h("a", { href: `#/c/${ch.id}/${k}`, "aria-current": k === tab ? "page" : false, text: t("tab." + k) })));
 
     if (!tabsFor(c).includes(tab)) tab = "start";
-    const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes }[tab]();
+    const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes,
+      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save }), journal: () => journalTab({ ch, save }) }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
 
@@ -131,7 +134,16 @@ export function renderSheet(root, go, id, tab) {
       // The price of Dark Gifts: what happens on a natural 1 (or other trigger), with the DC worked out.
       const flawBlk = c.flaws.length ? h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.flaws") }), h("dl", { cls: "qa gl" },
         c.flaws.flatMap((f) => [h("dt", { text: tr(f.name) }), h("dd", {}, [h("p", { text: tr(f.text) })])]))]) : null;
-      return [banner, concBanner(), h("div", { cls: "cols" }, [hpCard, resCard]), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), flawBlk];
+      // After moving a character over from its old page: what came along and which numbers differ from the page.
+      const im = ch.imported && !ch.imported.dismissed ? ch.imported : null;
+      const impCard = im ? h("section", { cls: "card key", id: "import-card" }, [
+        h("h4", { text: t("imp.title", { page: im.page }) }),
+        h("p", { text: t("imp.counts", { items: im.counts?.items || 0, journal: im.counts?.journal || 0, questions: im.counts?.questions || 0 }) }),
+        im.notes?.length ? h("ul", {}, im.notes.map((n) => h("li", { text: t(n.key, n.vars) }))) : h("p", { cls: "hint", text: t("imp.same") }),
+        im.notes?.some((n) => n.key !== "imp.levelChanged") ? h("p", { cls: "hint", text: t("imp.diffHint") }) : null,
+        h("button", { type: "button", cls: "btn", id: "import-ok", text: t("imp.ok"), onclick: () => { ch.imported = { ...ch.imported, dismissed: true }; save(); } }),
+      ]) : null;
+      return [impCard, banner, concBanner(), h("div", { cls: "cols" }, [hpCard, resCard]), activeCard({ ch, c, save }), h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("sum.title") }), table]), flawBlk];
     }
 
     function tabCharacter() {
@@ -492,6 +504,7 @@ export function renderSheet(root, go, id, tab) {
       if (hp.cur === 0) ch.death = { ok: 0, fail: 0 };
       hp.cur = Math.min(max, hp.cur + delta);
     }
+    if (hp.cur === 0 && ch.active?.rage) ch.active = { ...ch.active, rage: false };
     if (massive) { ch.death = { ok: 0, fail: 3, massive: true }; toast(t("death.massive")); }
     else if (delta < 0 && ch.concentration && SPELLS[ch.concentration]) {
       if (hp.cur === 0) { toast(t("conc.lostZero", { name: tr(SPELLS[ch.concentration].name).split(" (")[0] })); ch.concentration = null; }
@@ -508,7 +521,7 @@ export function renderSheet(root, go, id, tab) {
       else if (r.shortRegain) used[r.id] = Math.max(0, (used[r.id] || 0) - r.shortRegain);
     }
     ch.used = used;
-    if (kind === "long") { ch.hp.cur = compute(ch).hpMax; ch.hp.temp = 0; ch.death = { ok: 0, fail: 0 }; ch.concentration = null; }
+    if (kind === "long") { ch.hp.cur = compute(ch).hpMax; ch.hp.temp = 0; ch.death = { ok: 0, fail: 0 }; ch.concentration = null; ch.active = { ...ch.active, rage: false }; }
     save(); toast(t(kind === "long" ? "res.longDone" : "res.shortDone"));
   }
 

@@ -18,15 +18,22 @@ export function renderHome(root, go) {
   };
   const list = loadAll().sort((a, b) => (b.updated || 0) - (a.updated || 0));
 
-  const fileInput = h("input", { type: "file", accept: ".json,application/json", hidden: true, onchange: async (e) => {
-    const f = e.target.files[0]; e.target.value = "";
-    if (!f) return;
+  const importText = (text) => {
     try {
-      const ch = parseImport(await f.text());
-      const done = () => { upsert(ch); toast(t("home.imported", { name: ch.name })); go("#/"); };
+      const { ch, report } = parseImport(text);
+      const done = () => { upsert(ch); toast(t("home.imported", { name: ch.name })); go(report ? `#/c/${ch.id}/start` : "#/"); };
       if (getById(ch.id)) ask(t("home.importReplace", { name: ch.name }), done); else done();
     } catch { toast(t("home.importError")); }
+  };
+  const fileInput = h("input", { type: "file", accept: ".json,application/json,text/plain", hidden: true, onchange: async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (f) importText(await f.text());
   } });
+  // Pasting the text works where saving a file doesn't (e.g. the export shown as text on an old character page).
+  const pasteArea = h("textarea", { id: "paste-text", rows: 5, placeholder: t("home.pastePh") });
+  const pasteBox = h("div", { cls: "stack", id: "paste-box", hidden: true }, [pasteArea,
+    h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "paste-go", text: t("home.import"), onclick: () => importText(pasteArea.value.trim()) }),
+      h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => { pasteBox.hidden = true; } })])]);
 
   const cards = list.map((ch) => {
     const cls = CLASSES[ch.classId], sp = SPECIES[ch.speciesId];
@@ -57,8 +64,11 @@ export function renderHome(root, go) {
       h("div", { cls: "row" }, [
         h("a", { cls: "btn gold", href: "#/new", text: t("home.new") }),
         h("button", { type: "button", cls: "btn", text: t("home.import"), onclick: () => fileInput.click() }),
+        h("button", { type: "button", cls: "btn ghost", id: "paste-open", text: t("home.paste"), onclick: () => { pasteBox.hidden = false; pasteArea.focus(); } }),
         fileInput,
       ]),
+      pasteBox,
+      h("p", { cls: "hint", text: t("home.pageHint") }),
       h("p", { cls: "hint", text: t("home.privacy") }),
     ])
   );

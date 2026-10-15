@@ -11,6 +11,10 @@
 - Barbarzyńca, Czarnoksiężnik, Kleryk, Mnich, Łotr, Zaklinacz (poziomy 1–5) z podklasami; 16 teł; wszystkie 10 gatunków z PHB z liniami elfów i gnomów, dziedzictwami tieflingów i przodkami goliatów; czary z gatunku z DC, użyciami i odpornościami na karcie
 - Czary: wszystkie czary z PHB 2024 od sztuczek do 3. kręgu (213), z listami klas sprawdzonymi z podręcznikiem; wybór z listy z limitami (Kleryk, Czarnoksiężnik, Zaklinacz, Arcane Trickster, Magic Initiate, Fey-Touched, Shadow-Touched, Ritual Caster); zakładka Czary z rzucaniem ze slotów, darmowymi użyciami i koncentracją
 - Czarnoksiężnik: Pact Magic (sloty wracają po krótkim odpoczynku), 28 inwokacji z wymaganiami (poziom, pakt, sztuczka, inna inwokacja), Pakty Łańcucha, Ostrza i Księgi; Zaklinacz: Punkty Czarów, Metamagia, Innate Sorcery
+- Walka: planer tury (akcja, akcja bonusowa, reakcja, ruch w kratkach, użycie przedmiotu) z opcjami z klasy, podklasy, gatunku, featów i czarów; zasoby i sloty odejmują się same, × je oddaje; podpowiedzi „co jeszcze możesz”
+- W użyciu: szał, Mage Armor, zdjęta zbroja, tarcza w ręku (AC i odporności liczą się od razu), chowaniec z imieniem i HP
+- Ekwipunek (przedmioty z ilością i notatką, monety PP/GP/EP/SP/CP) i Dziennik sesji
+- Import ze starych stron postaci: przycisk „Zapisz plik” na stronie, potem Importuj (albo Wklej tekst); przechodzą postać, HP, zasoby, złoto, ekwipunek, dziennik i pytania do GM-a, a różnice względem strony pokazują się na Starcie
 - Tryb Ravenloft (The Horrors Within): gatunki Dhampir, Hexblood, Lupin, Reborn; tła Haunted One, Investigator, Mist Wanderer, Spirit Medium; featy Sharp Eye i Survivor; 9 Dark Gifts z ceną liczoną na karcie; podklasy Grave Domain, Phantom, Undead Patron i Shadow Sorcery. W grze standardowej te opcje są niedostępne
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
