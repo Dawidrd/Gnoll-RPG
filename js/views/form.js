@@ -11,6 +11,7 @@ import {
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
 import { POINT_BUY, pointsSpent } from "../rules/identity.js";
 import { backgroundBonus } from "../rules/backgrounds.js";
+import { stepBlockers } from "../rules/checks.js";
 import { fitSkills, trimSkills } from "../rules/skills.js";
 import { randomName } from "../rules/names.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
@@ -21,6 +22,19 @@ import { classOptionUI } from "./classoptions.js";
 import { weaponEditor } from "./weapons.js";
 
 const STEPS = [1, 2, 3, 4, 5];
+// Where to scroll when "Next" is blocked by a checks item (anything else: the step's checklist).
+const FIELD_OF = {
+  "todo.subclass": "#f-subclass", "todo.legacySubclass": "#f-subclass",
+  "todo.background": "#f-bg", "todo.legacyBackground": "#f-bg",
+  "todo.legacySpecies": "#f-species", "todo.size": "#f-species", "todo.speciesChoice": "select[id^='f-sp-']",
+  "todo.languages": "#f-languages", "err.languages": "#f-languages",
+  "todo.roll": "#f-rollall", "todo.pointbuy": "#f-pb-left", "err.pointbuy": "#f-pb-left",
+  "todo.increase": "#f-inc-p2", "err.increase": "#f-inc-p2",
+  "todo.alignment": ".aligngrid", "todo.name": "#f-name",
+  "todo.skills": "#f-skills", "err.skills": "#f-skills", "todo.expertise": "#f-skills", "err.expertise": "#f-skills", "err.expertiseFrom": "#f-skills",
+  "todo.feat": "#f-feats", "todo.featAbility": "#f-feats", "todo.featExpertisePick": "#f-feats", "todo.catalyst": "#f-feats",
+  "todo.spellPick": "#f-spells", "err.spellInvalid": "#f-spells", "err.spellTooMany": "#f-spells",
+};
 
 export { msg } from "./msg.js";
 import { msg } from "./msg.js";
@@ -98,7 +112,20 @@ export function renderForm(root, go, id) {
     root.replaceChildren(build());
     scrollTo(0, scroll);
   }
-  const goStep = (n) => { step = n; tidy(); root.replaceChildren(build()); root.querySelector(".stepper")?.scrollIntoView({ block: "start" }); };
+  // The stepper is sticky, so scrolling it into view does nothing: a new step always opens at the top of the page.
+  const goStep = (n) => { step = n; tidy(); root.replaceChildren(build()); scrollTo(0, 0); };
+  // "Next" moves on only when the current step is complete; otherwise it says what's missing and shows where.
+  const goNext = () => {
+    const first = stepBlockers(compute(structuredClone(ch)).review, step)[0];
+    if (!first) return goStep(step + 1);
+    toast(t("form.nextBlocked", { what: msg(first) }));
+    const el = root.querySelector(FIELD_OF[first.key] || ".checkcard") || root.querySelector(".checkcard");
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (el.matches("input, select")) el.focus({ preventScroll: true });
+    const box = el.closest(".card");
+    if (box) { box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash"); }
+  };
 
   function build() {
     const c = compute(structuredClone(ch));
@@ -121,7 +148,7 @@ export function renderForm(root, go, id) {
 
     const nav = h("div", { cls: "row formnav" }, [
       step > 1 ? h("button", { type: "button", cls: "btn ghost", id: "f-prev", text: "← " + t("form.prev"), onclick: () => goStep(step - 1) }) : null,
-      step < 5 ? h("button", { type: "button", cls: "btn", id: "f-next", text: t("form.next") + " →", onclick: () => goStep(step + 1) }) : null,
+      step < 5 ? h("button", { type: "button", cls: "btn", id: "f-next", text: t("form.next") + " →", onclick: goNext }) : null,
       h("button", { type: "submit", cls: "btn gold", id: "f-save", text: t("form.save") }),
     ]);
     const totalTodo = todo.length;

@@ -261,6 +261,9 @@ details summary { cursor: pointer; }
 .formstatus.bad { color: #f0a0a6; }
 .formnav { position: sticky; bottom: env(safe-area-inset-bottom, 0px); background: rgba(13,10,15,.94); padding: 10px 0; z-index: 4; border-top: 1px solid var(--seam); }
 .checkcard { border-color: var(--gold-dim); }
+.card.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 2px var(--gold); } 100% { box-shadow: 0 0 0 2px transparent; } }
+@media (prefers-reduced-motion: reduce) { .card.flash { animation: none; outline: 2px solid var(--gold); } }
 .checklist { display: grid; gap: 4px; font-family: var(--f-ui); font-size: .92rem; }
 .checklist li.err { color: #f0a0a6; }
 .checklist li.note { color: var(--bone-dim); list-style: "· "; }

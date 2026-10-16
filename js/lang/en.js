@@ -222,6 +222,7 @@ export default {
   "form.checklist": "Still to do in this step",
   "form.prev": "Back",
   "form.next": "Next",
+  "form.nextBlocked": "Finish this step first: {what}",
   "form.statusErrors": "Errors to fix: {n}. Saving is blocked.",
   "form.statusTodo": "Still to do: {n}. You can save a draft and come back later.",
   "form.statusDone": "The character is complete.",

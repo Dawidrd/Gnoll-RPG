@@ -222,6 +222,7 @@ export default {
   "form.checklist": "Do uzupełnienia w tym kroku",
   "form.prev": "Wstecz",
   "form.next": "Dalej",
+  "form.nextBlocked": "Najpierw uzupełnij ten krok: {what}",
   "form.statusErrors": "Błędy do poprawienia: {n}. Zapis jest zablokowany.",
   "form.statusTodo": "Do uzupełnienia: {n}. Możesz zapisać szkic i wrócić później.",
   "form.statusDone": "Postać jest kompletna.",

@@ -118,4 +118,9 @@ export function review(ch, c) {
   return { todo, errors, notices };
 }
 
-export const skillName = (id, lang) => SKILLS.find((s) => s.id === id)?.[lang] || id;
+/** What keeps the creator from moving past `step`: the step's errors first, then its to-dos. Empty = the step is complete. */
+export function stepBlockers(rev, step) {
+  return [...rev.errors, ...rev.todo].filter((x) => x.step === step);
+}
+
+export const skillName =(id, lang) => SKILLS.find((s) => s.id === id)?.[lang] || id;

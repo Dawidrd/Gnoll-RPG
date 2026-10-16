@@ -9,6 +9,7 @@ import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as MERGE from "../js/sync/merge.js";
 import * as PARTY from "../js/sync/partylogic.js";
+import { stepBlockers } from "../js/rules/checks.js";
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
@@ -33,6 +34,18 @@ test("point buy costs follow the table", () => {
 test("point buy above 27 is an error", () => {
   const c = run(make({ abilityMethod: "pointbuy", abilityBase: { str: 15, dex: 15, con: 15, int: 9, wis: 8, cha: 8 } }));
   eq(keys(c.review.errors).includes("err.pointbuy"), true);
+});
+// --- Creator "Next" gate ---
+test("Next is blocked by the current step's to-dos and errors, errors first", () => {
+  const c = run(make({ abilityMethod: "pointbuy", abilityBase: { str: 15, dex: 15, con: 15, int: 9, wis: 8, cha: 8 } }));
+  const b = stepBlockers(c.review, 3);
+  eq(b.length > 0, true, "step 3 blocked");
+  eq(b[0].key, "err.pointbuy", "error comes first");
+  eq(b.every((x) => x.step === 3), true, "only step 3 items");
+});
+test("Next on step 4 needs a name and an alignment", () => {
+  eq(keys(stepBlockers(run(make({ name: "", alignment: "" })).review, 4)).sort(), ["todo.alignment", "todo.name"]);
+  eq(stepBlockers(run(make({ name: "Grokk", alignment: "CG" })).review, 4).length, 0);
 });
 test("point buy with points left is only a to-do", () => {
   const c = run(make({ abilityMethod: "pointbuy", abilityBase: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 } }));

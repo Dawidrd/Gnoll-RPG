@@ -9,12 +9,11 @@ _(brak)_
 
 ## Pomysły
 
-1. **Kreator postaci na telefonie: „Dalej” (priorytet: wysoki)** — (a) po kliknięciu „Dalej” strona zawsze przewija się na górę (dziś zostaje na dole i gubią się informacje); (b) nie da się przejść dalej bez uzupełnienia wymaganych informacji w bieżącym kroku.
-2. **Partia 9 · Ekwipunek startowy** — opcje A/B klasy i tła, złoto, cennik rozdz. 6, błyskotka; noszona zbroja i broń zasilają AC i ataki.
-3. Test z drużyną (eksport ze starych stron → import w aplikacji).
-4. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
-5. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
-6. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
+1. **Partia 9 · Ekwipunek startowy** — opcje A/B klasy i tła, złoto, cennik rozdz. 6, błyskotka; noszona zbroja i broń zasilają AC i ataki.
+2. Test z drużyną (eksport ze starych stron → import w aplikacji).
+3. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
+4. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
+5. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
 
 ## W trakcie
 
@@ -22,6 +21,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.17.1** — Kreator postaci: „Dalej” otwiera nowy krok od góry strony; nie przechodzi dalej, dopóki krok nie jest uzupełniony (komunikat + przewinięcie do brakującego pola).
 - **0.17.0** — Drużyna w karcie postaci: zakładka „Drużyna”, rola MG z Widokiem MG, „Party” zamiast „Team” w kodzie i w bazie, jedna postać = jedna drużyna. Test na dwóch kontach zaliczony.
 - **0.16.0** — Partia D4: testy reguł bezpieczeństwa (symulator), ekran Prywatność, „Usuń konto i dane”. Test z drużyną zaliczony.
 - **0.15.0** — Partia D3: wspólne dane drużyny — informacje, szyk 5/10 ft, notatki drużyny i prywatne, podgląd postaci. Test na dwóch kontach zaliczony.

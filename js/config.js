@@ -1,7 +1,7 @@
 // Project settings you can change without touching the rest of the code.
 export const CONFIG = {
   name: "Gnoll RPG",
-  version: "0.17.0",
+  version: "0.17.1",
   // Paste your buycoffee.to (or other) link here once the profile exists. Empty = the link is hidden.
   supportUrl: "",
   // Firebase project "gnoll-rpg" (optional account + sync). Copy the values from the Firebase console:
