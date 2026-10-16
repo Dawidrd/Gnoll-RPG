@@ -9,6 +9,7 @@ import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as DMG from "../js/rules/damage.js";
 import { fill } from "../js/dom.js";
+import { fold, textMatch } from "../js/search.js";
 import { DAMAGE_NAMES } from "../js/rules/species.js";
 import { DAMAGE_TYPES as FEAT_DAMAGE } from "../js/rules/feats-general.js";
 import * as MERGE from "../js/sync/merge.js";
@@ -1117,6 +1118,31 @@ test("fill() skips empty parts instead of printing \"null\" (account box, journa
   eq(el.kids, ["a", "b", 0]);
   fill(el, null);
   eq(el.kids, []);
+});
+
+test("list search: case, accents and Polish letters don't matter; both languages are searchable", () => {
+  eq(fold("Łuk Długi ŻĄĆ"), "luk dlugi zac");
+  eq(textMatch("luk", "Longbow (Łuk długi)"), true);
+  eq(textMatch("ŁUK", "longbow (luk dlugi)"), true);
+  eq(textMatch("long dlug", "Longbow (Łuk długi)"), true, "every word, any order");
+  eq(textMatch("dlug miecz", "Longbow (Łuk długi)"), false);
+  eq(textMatch("", "anything"), true, "empty query");
+  eq(textMatch("  ", "anything"), true, "spaces only");
+  // Options carry both names, so English search works in the Polish version and the other way round.
+  const w = WEAPONS.longbow;
+  eq(textMatch("longbow", w.name.pl + " " + w.name.en), true);
+  eq(textMatch("łuk", w.name.pl + " " + w.name.en), true);
+  for (const k of ["search.placeholder", "search.none"]) eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  for (const f of ["./js/search.js", "./js/views/selectsearch.js"]) eq(sw.includes(`"${f}"`), true, f + " in SHELL");
+});
+
+test("a character made for a party invite goes back to that invite once saved", () => {
+  const code = "AbCdEf0123456789xyz";
+  eq(PARTY.afterCreate("c1", code), `#/join/${code}/c1`);
+  eq(PARTY.afterCreate("c1", null), "#/c/c1/start", "no invite");
+  eq(PARTY.afterCreate("c1", "bad/../code"), "#/c/c1/start", "broken code is ignored");
+  for (const k of ["party.join.orNew", "form.forInvite"]) eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
 });
 
 let failed = 0;

@@ -441,3 +441,8 @@ ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .opt .dic { margin-left: 2px; }
 .resline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--bone-dim); margin: 0; }
 summary .dmgs { margin-left: 4px; }
+/* Long drop-down list with a search box above it */
+.selbox { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row > .selbox { flex: 1 1 220px; }
+.selbox select { width: 100%; }
+.selsearch { font-size: .95rem; min-height: 36px; padding: 6px 10px; }

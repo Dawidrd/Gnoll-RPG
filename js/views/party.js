@@ -488,8 +488,7 @@ export function renderJoin(root, go, code, charId = "") {
     const chars = loadAll();
     if (!chars.length) {
       return body.replaceChildren(h("p", { cls: "lead", text: t("party.join.invited", { name: invite.name }) }),
-        h("p", { cls: "small", text: t("party.join.noChars") }),
-        h("div", { cls: "row" }, [h("a", { cls: "btn gold", href: "#/new", text: t("home.new") })]));
+        h("p", { cls: "small", text: t("party.join.noChars") }), newCharButtons(code));
     }
     const charIn = charSelect("join-char", null, busy);
     if (charId && !busy.has(charId) && getById(charId)) charIn.value = charId;
@@ -505,9 +504,16 @@ export function renderJoin(root, go, code, charId = "") {
       h("p", { cls: "small", text: t("party.join.hint") }),
       h("div", { cls: "row" }, [h("label", { cls: "wide" }, [t("party.join.char"), charIn])]),
       h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "join-send", text: t("party.join.send"), onclick: send })]),
+      h("p", { cls: "small", text: t("party.join.orNew") }), newCharButtons(code),
     );
   });
 }
+
+/** Make a character for this invite: once saved, the creator comes back here with it picked. */
+const newCharButtons = (code) => h("div", { cls: "row" }, [
+  h("a", { cls: "btn gold", id: "join-new", href: `#/new/join/${code}`, text: t("home.new") }),
+  h("a", { cls: "btn ghost", id: "join-paper", href: `#/paper/join/${code}`, text: t("home.paperNew") }),
+]);
 
 // --- The Party tab on a character sheet: the party this character plays in, or founding / joining one ---
 // The sheet redraws often (every HP click); the tab's element and its listeners survive that and end when the screen changes.

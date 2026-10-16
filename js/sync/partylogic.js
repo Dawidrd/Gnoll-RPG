@@ -13,6 +13,9 @@ export function makeCode(bytes = crypto.getRandomValues(new Uint8Array(CODE_LENG
 }
 export const validCode = (code) => typeof code === "string" && /^[A-Za-z0-9]{16,40}$/.test(code);
 
+/** Where a newly saved character goes: back to the party invite it was made for (picked there), or to its sheet. */
+export const afterCreate = (id, join) => (validCode(join) ? `#/join/${join}/${id}` : `#/c/${id}/start`);
+
 /** Link to send to players. `base` is the app address without the #part. */
 export const inviteLink = (base, code) => `${base.replace(/#.*$/, "")}#/join/${code}`;
 /** The invite code from a pasted link or a bare code; "" if there is none. */

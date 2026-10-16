@@ -18,6 +18,8 @@ import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
 import { writePick, readPick } from "../rules/magic.js";
 import { spellPickUI } from "./spellpicker.js";
+import { searchSelects } from "./selectsearch.js";
+import { afterCreate, validCode } from "../sync/partylogic.js";
 import { classOptionUI } from "./classoptions.js";
 import { weaponEditor } from "./weapons.js";
 import { CATALOG, SHOP_SECTIONS, TRINKETS, priceText, wearStart, applyStartGear } from "../rules/equipment.js";
@@ -50,6 +52,7 @@ export function renderForm(root, go, id, opts = {}) {
   if (id && !stored) return go("#/");
   const ch = stored ? normalize(structuredClone(stored)) : blankCharacter({ paper: !!opts.paper });
   const isNew = !id;
+  if (!validCode(opts.join)) opts = { ...opts, join: null };
   const paper = ch.entry === "paper";
   let step = 1;
   const short = (a) => ABILITY_NAMES[a].short[lang()];
@@ -116,10 +119,11 @@ export function renderForm(root, go, id, opts = {}) {
     tidy();
     const scroll = scrollY;
     root.replaceChildren(build());
+    searchSelects(root);
     scrollTo(0, scroll);
   }
   // The stepper is sticky, so scrolling it into view does nothing: a new step always opens at the top of the page.
-  const goStep = (n) => { step = n; tidy(); root.replaceChildren(build()); scrollTo(0, 0); };
+  const goStep = (n) => { step = n; tidy(); root.replaceChildren(build()); searchSelects(root); scrollTo(0, 0); };
   // "Next" moves on only when the current step is complete; otherwise it says what's missing and shows where.
   // A character from paper moves on freely: what's missing stays on the "To do" list.
   const goNext = () => {
@@ -165,7 +169,8 @@ export function renderForm(root, go, id, opts = {}) {
 
     return h("form", { cls: "panel cform", novalidate: true, onsubmit: (e) => { e.preventDefault(); save(); } }, [
       h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? (paper ? "form.titlePaper" : "form.titleNew") : "form.titleEdit") }),
-        h("a", { cls: "btn ghost", href: isNew ? "#/" : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status,
+        h("a", { cls: "btn ghost", href: isNew ? (opts.join ? `#/join/${opts.join}` : "#/") : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status,
+        isNew && opts.join ? h("p", { cls: "hint", id: "f-join-note", text: t("form.forInvite") }) : null,
         paper ? h("p", { cls: "hint", id: "f-paper-intro", text: t("form.paperIntro") }) : null]),
       stepper,
       h("h3", { cls: "steptitle", text: `${step}. ${t("step." + step + ".title")}` }),
@@ -236,7 +241,7 @@ export function renderForm(root, go, id, opts = {}) {
     } }, [
       h("option", { value: "", text: t("form.bgNone") }),
       ...Object.entries(BACKGROUNDS).filter(([k, b]) => !b.legacy && offered(b, k === ch.background))
-        .map(([k, b]) => h("option", { value: k, text: tr(b.name) + (b.source === "ravenloft" ? " · Ravenloft" : ""), selected: k === ch.background })),
+        .map(([k, b]) => h("option", { value: k, text: tr(b.name) + (b.source === "ravenloft" ? " · Ravenloft" : ""), "data-q": b.name.pl + " " + b.name.en, selected: k === ch.background })),
       bg?.legacy ? h("option", { value: ch.background, text: tr(bg.name), selected: true, disabled: true }) : null,
     ]);
     const bgParts = [field(t("form.background"), bgSel, "wide")];
@@ -253,7 +258,7 @@ export function renderForm(root, go, id, opts = {}) {
     const sp = SPECIES[ch.speciesId];
     const spSel = h("select", { id: "f-species", onchange: (e) => { ch.speciesId = e.target.value; ch.size = ""; ch.speciesChoice = {}; draw(); } }, [
       ...Object.entries(SPECIES).filter(([k, s]) => !s.legacy && offered(s, k === ch.speciesId))
-        .map(([k, s]) => h("option", { value: k, text: tr(s.name) + (s.source === "ravenloft" ? " · Ravenloft" : ""), selected: k === ch.speciesId })),
+        .map(([k, s]) => h("option", { value: k, text: tr(s.name) + (s.source === "ravenloft" ? " · Ravenloft" : ""), "data-q": s.name.pl + " " + s.name.en, selected: k === ch.speciesId })),
       sp.legacy ? h("option", { value: ch.speciesId, text: `${ch.customSpecies?.name || "?"} (${t("form.oldVersion")})`, selected: true, disabled: true }) : null,
     ]);
     const spParts = [h("div", { cls: "row" }, [field(t("form.species"), spSel)])];
@@ -486,7 +491,7 @@ export function renderForm(root, go, id, opts = {}) {
     const cur = (ch.featPicks || {})[sl.id] || "";
     const taken = c.featInstances.filter((f) => f.source !== sl.id).map((f) => f.id);
     const ravenloft = ch.setting === "ravenloft";
-    const opt = (k, f, suffix = "") => h("option", { value: k, text: tr(f.name) + suffix + (k === sl.recommended ? ` (${t("form.recommended")})` : ""),
+    const opt = (k, f, suffix = "") => h("option", { value: k, text: tr(f.name) + suffix + (k === sl.recommended ? ` (${t("form.recommended")})` : ""), "data-q": f.name.pl + " " + f.name.en,
       selected: k === cur, disabled: taken.includes(k) && !f.repeatable });
     const base = Object.entries(FEATS).filter(([k, f]) => (sl.options ? sl.options.includes(k) : f.category === sl.category) && (f.source !== "ravenloft" || ravenloft));
     const gifts = sl.darkGift ? Object.entries(FEATS).filter(([, f]) => f.category === "dark-gift") : [];
@@ -558,7 +563,7 @@ export function renderForm(root, go, id, opts = {}) {
     let input;
     if (sl.count === 1) {
       input = field(t("form.tool"), h("select", { id: "f-tool-" + sl.id, onchange: (e) => set(e.target.value ? [e.target.value] : []) }, [
-        h("option", { value: "", text: "—" }), ...opts.map((k) => h("option", { value: k, text: tr(TOOLS[k]), selected: picked.includes(k) })),
+        h("option", { value: "", text: "—" }), ...opts.map((k) => h("option", { value: k, text: tr(TOOLS[k]), "data-q": TOOLS[k].pl + " " + TOOLS[k].en, selected: picked.includes(k) })),
       ]), "wide");
     } else {
       input = h("div", { cls: "checks" }, opts.map((k) => {
@@ -623,7 +628,7 @@ export function renderForm(root, go, id, opts = {}) {
     // Shopping with the coins from the kits.
     const sel = h("select", { id: "f-shop-sel", "aria-label": t("form.shopPick") }, [h("option", { value: "", text: t("form.shopPick") }),
       ...SHOP_SECTIONS.map((sec) => h("optgroup", { label: t("shop." + sec) }, Object.values(CATALOG).filter((x) => x.cat === sec)
-        .map((x) => h("option", { value: x.key, text: `${tr(x.name)}${x.bundle > 1 ? ` ×${x.bundle}` : ""} — ${priceText(x.cost)}` }))))]);
+        .map((x) => h("option", { value: x.key, text: `${tr(x.name)}${x.bundle > 1 ? ` ×${x.bundle}` : ""} — ${priceText(x.cost)}`, "data-q": x.name.pl + " " + x.name.en }))))]);
     const qty = h("input", { type: "number", min: 1, value: 1, id: "f-shop-qty", "aria-label": t("inv.qty") });
     const bought = sg.buys.map((b, i) => CATALOG[b.key] ? h("div", { cls: "li" }, [
       h("div", {}, [h("div", { cls: "t", text: `${b.qty}× ${tr(CATALOG[b.key].name)}` }), h("div", { cls: "n", text: priceText(CATALOG[b.key].cost * b.qty) })]),
@@ -647,7 +652,7 @@ export function renderForm(root, go, id, opts = {}) {
       h("div", { cls: "row" }, [
         h("select", { id: "f-trinket", "aria-label": t("form.trinket"), onchange: (e) => change((g) => { g.trinket = e.target.value === "" ? null : +e.target.value; }) }, [
           h("option", { value: "", text: "—", selected: typeof sg.trinket !== "number" }),
-          ...TRINKETS.map((x, i) => h("option", { value: i, text: `${i + 1}. ${tr(x)}`, selected: sg.trinket === i }))]),
+          ...TRINKETS.map((x, i) => h("option", { value: i, text: `${i + 1}. ${tr(x)}`, "data-q": x.pl + " " + x.en, selected: sg.trinket === i }))]),
         h("button", { type: "button", cls: "btn ghost", id: "f-trinket-roll", text: t("form.trinketRoll"), onclick: () => change((g) => { g.trinket = rollDie(TRINKETS.length) - 1; }) }),
       ]),
       field(t("form.trinketOwn"), h("input", { type: "text", maxlength: 120, id: "f-trinket-own", value: own,
@@ -778,7 +783,8 @@ export function renderForm(root, go, id, opts = {}) {
     const after = c.hpMax;
     if (ch.hp.cur != null && before != null) ch.hp.cur = Math.max(0, Math.min(after, ch.hp.cur + (after - before)));
     if (!upsert(ch)) { toast(t("app.saveError")); return; }
-    go(`#/c/${ch.id}/start`);
+    // Made for a party invite: back to the invite, with this character picked.
+    go(isNew ? afterCreate(ch.id, opts.join) : `#/c/${ch.id}/start`);
   }
 
   /** Put the highest values where the class's recommended array puts its highest scores. */

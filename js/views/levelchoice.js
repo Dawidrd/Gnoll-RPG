@@ -24,7 +24,7 @@ export function levelChoiceUI({ draft, L, onChange, profSkills = [] }) {
     h("button", { type: "button", "aria-pressed": k === current ? "true" : "false", text: label, onclick: () => onpick(k) })));
   const sel = (id, label, options, value, onpick, placeholder = "—") => h("label", { cls: "wide" }, [label,
     h("select", { id, onchange: (e) => onpick(e.target.value) }, [h("option", { value: "", text: placeholder }),
-      ...options.map(([k, text, disabled]) => h("option", { value: k, text, selected: k === value, disabled: !!disabled }))])]);
+      ...options.map(([k, text, disabled, q]) => h("option", { value: k, text, "data-q": q, selected: k === value, disabled: !!disabled }))])]);
 
   const parts = [
     h("p", { cls: "hint", text: t("lvl.asiRule") }),
@@ -48,7 +48,7 @@ export function levelChoiceUI({ draft, L, onChange, profSkills = [] }) {
       .sort(([, a], [, b]) => tr(a.name).localeCompare(tr(b.name), lang()));
     const featOpts = general.map(([k, f]) => {
       const block = featBlocked(draft, L, k);
-      return [k, block ? `${tr(f.name)} — ${t("lvl.requires")}: ${tr(block)}` : tr(f.name), !!block];
+      return [k, block ? `${tr(f.name)} — ${t("lvl.requires")}: ${tr(block)}` : tr(f.name), !!block, f.name.pl + " " + f.name.en];
     });
     parts.push(sel(`f-lvfeat-${L}`, t("lvl.featPick"), featOpts, lc.feat, (v) => onChange({ kind: "feat", feat: v })));
     const f = FEATS[lc.feat];

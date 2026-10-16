@@ -40,8 +40,10 @@ function route() {
   const app = document.getElementById("app");
   stopWatching(); // live party listeners belong to the screen being left
   app.replaceChildren(topbar(), h("div", { cls: "wrap" }, [view]), footer());
-  if (parts[0] === "new") renderForm(view, go, null);
-  else if (parts[0] === "paper") renderForm(view, go, null, { paper: true });
+  // #/new/join/<code>: a character made for an invite goes back to that invite once saved.
+  const join = parts[1] === "join" && parts[2] ? parts[2] : null;
+  if (parts[0] === "new") renderForm(view, go, null, { join });
+  else if (parts[0] === "paper") renderForm(view, go, null, { paper: true, join });
   else if (parts[0] === "edit" && parts[1]) renderForm(view, go, parts[1]);
   else if (parts[0] === "c" && parts[1]) renderSheet(view, go, parts[1], parts[2]);
   else if (parts[0] === "party" && parts[1]) renderParty(view, go, parts[1]);

@@ -10,11 +10,10 @@ _(brak)_
 ## Pomysły
 
 1. Test z drużyną (eksport ze starych stron → import w aplikacji).
-2. **Wyszukiwanie w listach rozwijanych w kreatorze.** Co: długie listy (broń, featy, czary, języki, narzędzia, zakupy) dostają pole „szukaj”, które zawęża listę w trakcie pisania. Po co: przewijanie długiej listy na telefonie jest uciążliwe. Jak: jeden wspólny element „lista z wyszukiwaniem” zamiast zwykłego `<select>` tam, gdzie pozycji jest dużo (np. ponad 12); szuka po nazwie polskiej i angielskiej, bez znaczenia wielkość liter i polskie znaki.
-3. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
-4. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
-5. **Tryb „Tryhard ;)”** (niepilne). Co: po wyborze klasy przycisk „Tryhard ;)” wypełnia wszystkie wybory według najmocniejszej strategii dla klasy; graczowi zostaje imię. Po co: szybka, mocna postać dla kogoś, kto nie chce analizować opcji. Jak: dla każdej klasy tabela „najlepszych wyborów” (gatunek, tło, rozkład tablicy standardowej, umiejętności, feat, czary, podklasa, wybory na poziomach); cechy wyłącznie z tablicy standardowej; wynik przechodzi te same sprawdzenia co zwykła postać i można go potem zmienić. Ravenloft tylko w trybie Ravenloft.
-6. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
+2. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
+3. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
+4. **Tryb „Tryhard ;)”** (niepilne). Co: po wyborze klasy przycisk „Tryhard ;)” wypełnia wszystkie wybory według najmocniejszej strategii dla klasy; graczowi zostaje imię. Po co: szybka, mocna postać dla kogoś, kto nie chce analizować opcji. Jak: dla każdej klasy tabela „najlepszych wyborów” (gatunek, tło, rozkład tablicy standardowej, umiejętności, feat, czary, podklasa, wybory na poziomach); cechy wyłącznie z tablicy standardowej; wynik przechodzi te same sprawdzenia co zwykła postać i można go potem zmienić. Ravenloft tylko w trybie Ravenloft.
+5. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
 
 ## W trakcie
 
@@ -22,6 +21,8 @@ _(brak)_
 
 ## Zrobione
 
+- **0.21.1** — Błąd: osoba bez postaci, która dostała zaproszenie do drużyny, po stworzeniu postaci musiała jeszcze raz wkleić link. Teraz przyciski „Nowa postać” i „Wprowadź postać z karty” na ekranie zaproszenia pamiętają zaproszenie; po zapisaniu postaci aplikacja wraca do zaproszenia z tą postacią już wybraną — wystarczy „Wyślij prośbę”. Te same przyciski są też dla kogoś, kto ma już postacie, ale chce zagrać nową.
+- **0.21.0** — Wyszukiwanie w długich listach rozwijanych: każda lista z ponad 12 pozycjami (broń, featy, narzędzia, zakupy, błyskotki, tła, featy przy awansie…) ma nad sobą pole „Szukaj na liście…”, które zawęża listę w trakcie pisania. Szuka po nazwie polskiej i angielskiej, bez znaczenia wielkość liter i polskie znaki (np. „luk” znajdzie „Łuk”). Enter otwiera zawężoną listę zamiast zapisywać postać. Wyszukiwarka czarów też ignoruje polskie znaki.
 - **0.20.2** — Błąd: w sekcji „Konto” między „Postacie są zsynchronizowane.” a przyciskami wyświetlał się napis „null” (gdy nie ma postaci do przeniesienia). Ten sam błąd groził w Dzienniku podczas edycji wpisu i w zakładkach drużyny. Poprawka: wspólna funkcja `fill()` w `dom.js` pomija puste elementy.
 - **0.20.1** — Nowy branding: logo z gnollem w górnym pasku (zamiast napisu), favicon `favicon.png?v=2`, ikony aplikacji na telefon `logo192.png` i `logo512.png` (manifest i apple-touch-icon). Stare ikony z folderu `icons/` usunięte z repo.
 - **0.20.0** — Rodzaj obrażeń w walce i przy czarach (projekt §2, oba etapy): jedna lista 13 rodzajów (`js/rules/damage.js`), kolorowa etykieta ze znakiem i słowem (np. „3k6 🔥 ogień”, „wybierz” przy czarach do wyboru). Widać ją przy broni (lista ataków, Ekwipunek, akcja Attack w planerze), przy wszystkich czarach zadających obrażenia (planer, zakładka Czary, wybór czarów) i przy zdolnościach po trafieniu (Sneak Attack, Rage, Divine Fury, Hand of Harm, Psionic Strike, Eldritch Smite — nowa opcja w planerze, Breath Weapon z kolorem przodka…). W Walce linijka „Twoje odporności”.

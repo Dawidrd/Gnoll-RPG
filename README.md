@@ -23,6 +23,7 @@
 - Tryb Ravenloft (The Horrors Within): gatunki Dhampir, Hexblood, Lupin, Reborn; tła Haunted One, Investigator, Mist Wanderer, Spirit Medium; featy Sharp Eye i Survivor; 9 Dark Gifts z ceną liczoną na karcie; podklasy Grave Domain, Phantom, Undead Patron, Shadow Sorcery, College of Spirits i Hollow Warden. W grze standardowej te opcje są niedostępne
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
+- Długie listy rozwijane (ponad 12 pozycji) z polem „Szukaj na liście…” — po polsku i angielsku, bez znaczenia polskie znaki
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
 - Konto (nieobowiązkowe): logowanie przez Google; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci
 - Drużyna (z kontem, po angielsku „Party”) w zakładce „Drużyna” na karcie postaci: jedna postać = jedna drużyna; MG bez postaci wchodzi z listy „Moje drużyny”. Zakładanie drużyny, link zaproszenia (kopiuj/udostępnij, nowy link unieważnia stary), prośba o dołączenie z wybraną postacią, akceptacja/odrzucenie, usuwanie graczy, role admin/gracz i MG (założyciela nie da się usunąć), opuszczanie i usuwanie drużyny

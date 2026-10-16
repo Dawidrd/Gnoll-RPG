@@ -32,7 +32,7 @@ export function weaponEditor({ ch, c, onChange }) {
   const sel = h("select", { id: "wpn-add-sel", "aria-label": t("wpn.pick") }, [
     h("option", { value: "", text: t("wpn.pick") }),
     ...["simple", "martial"].map((cat) => h("optgroup", { label: t("wpn.cat." + cat) },
-      Object.values(WEAPONS).filter((w) => w.cat === cat).map((w) => h("option", { value: w.id, text: `${tr(w.name)} — ${tr({ pl: w.dice.replace("d", "k"), en: w.dice })}` })))),
+      Object.values(WEAPONS).filter((w) => w.cat === cat).map((w) => h("option", { value: w.id, text: `${tr(w.name)} — ${tr({ pl: w.dice.replace("d", "k"), en: w.dice })}`, "data-q": w.name.pl + " " + w.name.en })))),
   ]);
   const rows = (ch.weapons || []).map((it) => {
     const a = c.attacks.find((x) => x.uid === it.uid);

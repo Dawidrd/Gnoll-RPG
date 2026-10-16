@@ -21,6 +21,7 @@ import { attacksBlock } from "./weapons.js";
 import { inventoryTab, journalTab } from "./gear.js";
 import { partyTab } from "./party.js";
 import { accountAvailable } from "../sync/cloud.js";
+import { searchSelects } from "./selectsearch.js";
 
 const TABS = ["start", "combat", "character", "spells", "inventory", "party", "levelup", "journal", "notes"];
 let lastHp = null; // undo snapshot for the open character
@@ -85,6 +86,7 @@ export function renderSheet(root, go, id, tab) {
       combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save }), journal: () => journalTab({ ch, save }), party: () => partyTab({ ch, go }) }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
+    searchSelects(root);
 
     // --- tabs -------------------------------------------------------------
     function tabStart() {

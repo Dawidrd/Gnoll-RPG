@@ -4,6 +4,7 @@ import { t, tr, lang } from "../i18n.js";
 import { SPELLS, spellFacts } from "../rules/spells.js";
 import { spellDamage } from "../rules/damage.js";
 import { dmgTags } from "./dmgtag.js";
+import { textMatch } from "../search.js";
 
 // Filter text and level filter survive redraws (the creator rebuilds the page on every change).
 const filters = {};
@@ -43,12 +44,11 @@ export function spellPickUI({ pick, c, onChange, title }) {
 
   const list = h("div", { cls: "spellpick" });
   const render = () => {
-    const q = st.q.trim().toLowerCase();
     const ids = pick.options.filter((id) => {
       const s = SPELLS[id];
       if (st.mine && !chosen.includes(id)) return false;
       if (st.circle !== "all" && s.circle !== +st.circle) return false;
-      return !q || s.name.pl.toLowerCase().includes(q) || s.name.en.toLowerCase().includes(q);
+      return textMatch(st.q, s.name.pl + " " + s.name.en);
     });
     list.replaceChildren(...ids.map((id) => {
       const s = SPELLS[id];
