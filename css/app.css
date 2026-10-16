@@ -5,7 +5,7 @@
   --bone: #e4d8c2; --bone-dim: #a99b8b; --ash: #8a7d77;
   --gold: #caa24f; --gold-dim: #86692f;
   --blood: #9e1f2a; --blood-hi: #d0404a; --moss: #8fa77f;
-  --f-black: "Cormorant Unicase", Georgia, serif; /* the app name and character names */
+  --f-black: "Cormorant Unicase", Georgia, serif; /* character names */
   --f-head: "IM Fell English SC", Georgia, serif;
   --f-body: "Alegreya", Georgia, "Times New Roman", serif;
   --f-ui: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
@@ -42,7 +42,7 @@ li::marker { color: var(--gold-dim); }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px;
   border-bottom: 1px solid var(--seam); background: rgba(13,10,15,.9); }
 .brand { display: grid; text-decoration: none; min-width: 0; }
-.brand-name { font-family: var(--f-black); font-weight: 700; font-size: 1.7rem; line-height: 1; color: var(--gold); text-shadow: 0 0 14px rgba(202,162,79,.25); }
+.brand-logo { display: block; height: 64px; width: auto; border-radius: var(--r); }
 .brand-tag { font-family: var(--f-ui); font-size: .75rem; color: var(--bone-dim); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .seg { display: inline-flex; border: 1px solid var(--seam); border-radius: var(--r); overflow: hidden; background: var(--crypt); flex: none; }
 .seg button { font: 600 .82rem var(--f-ui); letter-spacing: .08em; background: none; border: 0; color: var(--bone-dim); padding: 7px 11px; cursor: pointer; min-height: 36px; }

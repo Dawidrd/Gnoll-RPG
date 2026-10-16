@@ -22,6 +22,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.20.1** — Nowy branding: logo z gnollem w górnym pasku (zamiast napisu), favicon `favicon.png?v=2`, ikony aplikacji na telefon `logo192.png` i `logo512.png` (manifest i apple-touch-icon). Stare ikony z folderu `icons/` usunięte z repo.
 - **0.20.0** — Rodzaj obrażeń w walce i przy czarach (projekt §2, oba etapy): jedna lista 13 rodzajów (`js/rules/damage.js`), kolorowa etykieta ze znakiem i słowem (np. „3k6 🔥 ogień”, „wybierz” przy czarach do wyboru). Widać ją przy broni (lista ataków, Ekwipunek, akcja Attack w planerze), przy wszystkich czarach zadających obrażenia (planer, zakładka Czary, wybór czarów) i przy zdolnościach po trafieniu (Sneak Attack, Rage, Divine Fury, Hand of Harm, Psionic Strike, Eldritch Smite — nowa opcja w planerze, Breath Weapon z kolorem przodka…). W Walce linijka „Twoje odporności”.
 - **0.19.1** — Font: gotycki font (UnifrakturMaguntia) zamieniony na Cormorant Unicase — logo „Gnoll RPG” w górnym pasku i nazwa postaci na karcie.
 - **0.19.0** — „Wprowadź postać z karty”: kreator do przepisania gotowej postaci z papierowej karty — kroki bez blokady, cechy z kartki (tablica/point buy rozpoznane i sprawdzane, rzut na papierze 3–18 ze znaczkiem „Cechy z papieru”), potwierdzanie cech przez MG w Widoku MG (po potwierdzeniu zablokowane, MG może cofnąć), obecne monety i przedmioty zamiast ekwipunku startowego. Nowe zasady w `firestore.rules` + testy na emulatorze (wymaga wklejenia zasad w konsoli Firebase).

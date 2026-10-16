@@ -18,7 +18,7 @@ function topbar() {
     h("button", { type: "button", "aria-pressed": code === lang() ? "true" : "false", text: code.toUpperCase(),
       onclick: () => { setLang(code); route(); } })));
   return h("div", { cls: "topbar" }, [
-    h("a", { cls: "brand", href: "#/" }, [h("span", { cls: "brand-name", text: CONFIG.name }), h("span", { cls: "brand-tag", text: t("app.tagline") })]),
+    h("a", { cls: "brand", href: "#/" }, [h("img", { cls: "brand-logo", src: "logo.png", alt: CONFIG.name, width: 420, height: 241 }), h("span", { cls: "brand-tag", text: t("app.tagline") })]),
     sw,
   ]);
 }
