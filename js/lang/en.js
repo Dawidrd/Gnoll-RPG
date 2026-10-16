@@ -732,7 +732,7 @@ export default {
   "party.newLinkConfirm": "Make a new link? The old one stops working (members stay in the party).",
   "party.newLinkDone": "New link ready.",
   "party.leave": "Leave the party",
-  "party.leaveConfirm": "Leave {name}? To come back you will need a link and the admin's approval.",
+  "party.leaveConfirm": "Are you sure you want to leave {name}? To come back you will need a link and the admin's approval.",
   "party.delete": "Delete the party",
   "party.deleteConfirm": "Delete {name} for everyone? This can't be undone. Players keep their characters.",
   "party.err.save": "The server didn't accept the change (no permission or no connection). Reload the page and try again.",

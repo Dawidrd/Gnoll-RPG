@@ -909,6 +909,12 @@ test("party: admins manage others, nobody removes or demotes the founder", () =>
   eq(PARTY.canManage(adm, adm, "o").remove, false, "not yourself (use Leave)");
   eq([PARTY.canLeave("p", "o"), PARTY.canLeave("o", "o")], [true, false]);
 });
+test("party: only admins and GMs may switch to no character; players leave instead", () => {
+  eq(PARTY.mayDropChar({ role: "player", charId: "c1" }), false, "a player with a character");
+  eq(PARTY.mayDropChar({ role: "player", gm: true, charId: "c1" }), true, "the GM");
+  eq(PARTY.mayDropChar({ role: "admin", charId: "c1" }), true, "an admin");
+  eq(PARTY.mayDropChar({ role: "player", charId: "" }), true, "already without one: the choice stays visible");
+});
 test("party: names are tidied and members listed admins first", () => {
   eq([PARTY.cleanName("  Kompania   Szarej\nMgły "), PARTY.cleanName("x".repeat(80)).length, PARTY.cleanName(null)], ["Kompania Szarej Mgły", 60, ""]);
   eq(PARTY.sortMembers([{ name: "Zoe", role: "player" }, { name: "Bob", role: "player" }, { name: "Ann", role: "admin" }]).map((m) => m.name), ["Ann", "Bob", "Zoe"]);

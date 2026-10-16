@@ -10,7 +10,7 @@ import { account, onAccount, accountAvailable } from "../sync/cloud.js";
 import { accountBox } from "./account.js";
 import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX, NOTE_MAX,
   sessionWhen, cleanNote, sortNotes, canEditNote, canDeleteNote, marchOrder, marchRows, moveIn,
-  GM_GROUPS, gmGroups, busyChars, paperState, paperValues } from "../sync/partylogic.js";
+  GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar } from "../sync/partylogic.js";
 import * as PARTY from "../sync/party.js";
 import { countEvent } from "../stats.js";
 
@@ -187,7 +187,7 @@ export function renderParty(root, go, id) {
  * One party inside `panel`: overview (info, characters, GM view, marching order), notes, managing.
  * home: where to go after leaving or deleting it. Returns a function that stops its listeners.
  */
-function partyBody(panel, go, id, home) {
+function partyBody(panel, go, id, home, onSheet = false) {
   const { box, ask } = confirmer();
   const paint = painter();
   // What the user is doing here; kept across redraws.
@@ -201,6 +201,8 @@ function partyBody(panel, go, id, home) {
   panel.append(body, box);
 
   const btn = (text, onclick, cls = "btn small", attrs = {}) => h("button", { type: "button", cls, text, onclick, ...attrs });
+  const leaveBtn = (idAttr) => btn(t("party.leave"), () => ask(t("party.leaveConfirm", { name: v.party.name }),
+    () => { PARTY.leave(id, { member: true }).catch(fail); go(home); }), "btn ghost", idAttr ? { id: idAttr } : {});
 
   // --- info: name, campaign, next session ---
   const drawInfo = () => {
@@ -267,15 +269,22 @@ function partyBody(panel, go, id, home) {
         buttons.length ? h("div", { cls: "row" }, buttons) : null,
       ]);
     };
-    // My character in this party: switch to another one (or none, e.g. as the GM).
-    const sel = charSelect("party-mychar", t("party.noChar"), busy);
-    sel.value = loadAll().some((c) => c.id === v.me.charId) ? v.me.charId : "";
-    sel.addEventListener("change", () => PARTY.setMyChar(id, pickedChar(sel)).then(() => toast(t("party.mychar.done"))).catch(fail));
+    // My character in this party: switch to another one, or none (e.g. as the GM) — only for admins and GMs.
+    // A player on their character's sheet gets "Leave the party" instead (switching there would drop them out of the tab).
+    let mine = null;
+    if (onSheet && !mayDropChar(v.me)) {
+      mine = canLeave(v.uid, v.party.owner) ? h("div", { cls: "row" }, [leaveBtn()]) : null;
+    } else {
+      const sel = charSelect("party-mychar", mayDropChar(v.me) ? t("party.noChar") : null, busy);
+      sel.value = loadAll().some((c) => c.id === v.me.charId) ? v.me.charId : "";
+      sel.addEventListener("change", () => PARTY.setMyChar(id, pickedChar(sel)).then(() => toast(t("party.mychar.done"))).catch(fail));
+      mine = h("label", { cls: "wide" }, [t("party.mychar"), sel]);
+    }
     return [h("section", { cls: "card" }, [
       h("h3", { text: t("party.members", { n: v.members.length }) }),
       h("p", { cls: "hint", text: t("party.sheet.hint") }),
       h("div", { cls: "ccards", id: "party-members" }, sortMembers(v.members).map(card)),
-      h("label", { cls: "wide" }, [t("party.mychar"), sel]),
+      mine,
     ])];
   };
 
@@ -436,7 +445,7 @@ function partyBody(panel, go, id, home) {
         ])]));
     }
     parts.push(h("div", { cls: "row" }, [canLeave(v.uid, owner)
-      ? btn(t("party.leave"), () => ask(t("party.leaveConfirm", { name: v.party.name }), () => { PARTY.leave(id, { member: true }).catch(fail); go(home); }), "btn ghost", { id: "party-leave" })
+      ? leaveBtn("party-leave")
       : btn(t("party.delete"), () => ask(t("party.deleteConfirm", { name: v.party.name }), () => { PARTY.deleteParty(v).catch(fail); go(home); }), "btn blood", { id: "party-delete" })]));
     return parts;
   };
@@ -546,7 +555,7 @@ function mountTab(panel, ch, go) {
     const order = ["in", "asked", "checking", "rejected", "removed"];
     const row = mine.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))[0] || null;
     if (row?.status === "in") {
-      if (shown !== row.id) { stop?.(); shown = row.id; box.replaceChildren(); stop = partyBody(box, go, row.id, home); }
+      if (shown !== row.id) { stop?.(); shown = row.id; box.replaceChildren(); stop = partyBody(box, go, row.id, home, true); }
       return;
     }
     if (shown) { stop?.(); stop = null; shown = null; }

@@ -55,6 +55,8 @@ export function canManage(me, them, owner) {
 }
 /** The founder cannot leave (they delete the party instead). */
 export const canLeave = (uid, owner) => !!uid && uid !== owner;
+/** Playing without a character (e.g. as the GM) is for admins and GMs; a player who has one leaves the party instead. */
+export const mayDropChar = (me) => me?.role === "admin" || !!me?.gm || !me?.charId;
 
 /** Members for display: admins first, then by name. */
 export const sortMembers = (list) => [...list].sort((a, b) =>
