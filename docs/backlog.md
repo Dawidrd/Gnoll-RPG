@@ -23,6 +23,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.19.1** — Font: gotycki font (UnifrakturMaguntia) zamieniony na Cormorant Unicase — logo „Gnoll RPG” w górnym pasku i nazwa postaci na karcie.
 - **0.19.0** — „Wprowadź postać z karty”: kreator do przepisania gotowej postaci z papierowej karty — kroki bez blokady, cechy z kartki (tablica/point buy rozpoznane i sprawdzane, rzut na papierze 3–18 ze znaczkiem „Cechy z papieru”), potwierdzanie cech przez MG w Widoku MG (po potwierdzeniu zablokowane, MG może cofnąć), obecne monety i przedmioty zamiast ekwipunku startowego. Nowe zasady w `firestore.rules` + testy na emulatorze (wymaga wklejenia zasad w konsoli Firebase).
 - **0.18.2** — Błąd: zakładanie drużyny z postacią kończyło się komunikatem „Serwer nie przyjął zmiany”. Zasady bazy nie pozwalały zapisać Widoku MG założyciela w tej samej paczce, w której powstaje drużyna. Poprawka w `firestore.rules` + test na emulatorze (wymaga wklejenia nowych zasad w konsoli Firebase).
 - **0.18.1** — Awans: własny wynik rzutu na HP z kości przy stole (liczba od 1 do kości klasy); wpisany wynik i stałą wartość można zmienić przed awansem, rzutu w aplikacji — nie.
