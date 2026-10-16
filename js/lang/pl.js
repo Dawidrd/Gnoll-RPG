@@ -542,6 +542,8 @@ export default {
   "turn.onHit": "Przy trafieniu i bez akcji",
   "turn.onHitHint": "Zdolności, które nie zajmują akcji, np. po trafieniu. Kliknięcie odejmuje użycie, × je oddaje.",
   "turn.tips": "Co jeszcze możesz",
+  "turn.resist": "Twoje odporności",
+  "dmg.choose": "wybierz",
   "turn.cantPay": "Brak użyć albo slotów.",
   "turn.none": "brak",
   "turn.freeUse": "darmowo",

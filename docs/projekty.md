@@ -50,7 +50,7 @@ Część graczy ma tylko papierową kartę. Nie mają pliku eksportu, więc impo
 
 ## 2. Rodzaj obrażeń w walce i przy czarach
 
-**Status:** zatwierdzony 2026-10-16. Backlog: Pomysły nr 3.
+**Status:** zrobione w 0.20.0 (zatwierdzony 2026-10-16).
 
 **Decyzje użytkownika:** P4 — etykieta ze znakiem i słowem (np. 🔥 ogień). P5 — własne odporności także w zakładce Walka. P6 — oba etapy po kolei, bez czekania na test; użytkownik testuje później, niezależnie od prac.
 

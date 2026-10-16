@@ -6,6 +6,8 @@
 //           { fightingStyle: true }      a Fighting Style class feature
 // increase: abilities the feat raises by 1 (max 20); "any" = any ability; "nonSave" = one without save proficiency
 // effects:  training, save (Resilient), speed, tools, skill picks, damage type, spells (noted as text until spells arrive)
+import { DAMAGE_NAMES } from "./damage.js";
+
 
 const STR_DEX = ["str", "dex"];
 const MENTAL = ["int", "wis", "cha"];
@@ -128,6 +130,5 @@ export const STYLE_ALTS = {
     spellPicks: [{ key: "cantrips", count: 2, circles: [0], lists: ["druid"] }] },
 };
 
-export const DAMAGE_TYPES = {
-  acid: D("kwas", "acid"), cold: D("zimno", "cold"), fire: D("ogień", "fire"), lightning: D("błyskawice", "lightning"), thunder: D("grzmot", "thunder"),
-};
+/** Damage types a feat can choose from (Elemental Adept). */
+export const DAMAGE_TYPES = Object.fromEntries(["acid", "cold", "fire", "lightning", "thunder"].map((k) => [k, DAMAGE_NAMES[k]]));

@@ -19,7 +19,7 @@ export const SCHOOLS = {
 };
 
 const kDice = (s) => s.replace(/(\d)d(\d)/g, "$1k$2");
-const cantripCount = (lv) => (lv < 5 ? 1 : lv < 11 ? 2 : lv < 17 ? 3 : 4);
+export const cantripCount = (lv) => (lv < 5 ? 1 : lv < 11 ? 2 : lv < 17 ? 3 : 4);
 /** Fill the level-dependent bits of a description: {cd:d8} dice, {beams}, {sh}, {std}, {ts}. */
 function fill(text, c, lang) {
   const lv = c?.level || 1;

@@ -5,7 +5,8 @@ import { newTurn } from "../rules/index.js";
 import { turnOptions, turnTips } from "../rules/turn.js";
 import { SPELLS } from "../rules/spells.js";
 import { ARMOR } from "../rules/armor.js";
-import { clamp } from "../rules/core.js";
+import { clamp, signed } from "../rules/core.js";
+import { dmgTag, dmgTags, dmgIcons, typeChip } from "./dmgtag.js";
 import { BEASTS, speedText } from "../rules/beasts.js";
 
 const left = (r) => (r ? r.max - r.used : 0);
@@ -40,7 +41,7 @@ export function combatTab({ ch, c, save }) {
     const pay = payment(c, o.cost);
     if (!pay) return toast(t("turn.cantPay"));
     spendAll(pay.spend, -1);
-    const p = { id: o.id, label: o.label, desc: o.desc, fx: o.fx || null, attack: !!o.attack, spent: pay.spend, prev: {} };
+    const p = { id: o.id, label: o.label, desc: o.desc, fx: o.fx || null, attack: !!o.attack, dmg: o.dmg || null, weapons: o.weapons?.length ? o.weapons : null, spent: pay.spend, prev: {} };
     if (o.set) { p.prev.active = { ...ch.active }; ch.active = { ...ch.active, ...o.set }; if (o.set.rage) toast(t("active.rageOn")); } // Rage, Wild Shape
     if (o.tempHp) { p.prev.temp = ch.hp.temp || 0; ch.hp.temp = Math.max(ch.hp.temp || 0, o.tempHp); }
     if (o.spell && SPELLS[o.spell].conc) {
@@ -74,10 +75,15 @@ export function combatTab({ ch, c, save }) {
     const costTag = !o.cost ? null : !pay ? t("turn.none") : o.cost.res ? `${left(c.resources.find((x) => x.id === o.cost.res))}×`
       : pay.how === "free" ? t("turn.freeUse") : t("turn.slotTag", { n: pay.slot });
     return h("button", { type: "button", cls: "opt", title: tr(o.desc) || "", disabled: !pay, onclick: () => pick(slot, o) },
-      [short(o.label), costTag ? h("small", { text: costTag }) : null]);
+      [short(o.label), o.dmg?.length ? h("span", { cls: "dic", "aria-hidden": "true", text: " " + dmgIcons(o.dmg) }) : null, costTag ? h("small", { text: costTag }) : null]);
   };
+  /** Weapon lines for the Attack action: name, to hit and a damage tag. */
+  const weaponRows = (list) => h("div", { cls: "wrows" }, list.map((w) => h("div", { cls: "wrow" }, [h("span", { text: `${short(w.name)} ${signed(w.hit)}` }), " ", dmgTag(w.tag)])));
   const picked = (p, onx) => h("div", { cls: "pick" }, [
-    h("div", {}, [h("div", { cls: "pl", text: short(p.label) }), p.desc ? h("div", { cls: "pd", text: tr(p.desc) + (p.note ? " · " + p.note : "") }) : null]),
+    h("div", {}, [h("div", { cls: "pl", text: short(p.label) }),
+      p.weapons ? weaponRows(p.weapons) : p.desc ? h("div", { cls: "pd", text: tr(p.desc) + (p.note ? " · " + p.note : "") }) : null,
+      p.weapons && p.note ? h("div", { cls: "pd", text: p.note }) : null,
+      p.dmg?.length ? h("div", { cls: "pd" }, [dmgTags(p.dmg)]) : null]),
     h("button", { type: "button", cls: "btn ghost sq", "aria-label": t("turn.undo") + ": " + short(p.label), text: "×", onclick: onx })]);
   const group = (label, list, slot) => list.length ? [h("span", { cls: "ogrp", text: label }), ...list.map((o) => optBtn(slot, o))] : [];
   const tile = (cls, name, key, freeText, kids, hint) => {
@@ -92,6 +98,7 @@ export function combatTab({ ch, c, save }) {
   const A = opts.action;
   const actionKids = [
     ...group(opts.attacks > 1 ? t("turn.attackN", { n: opts.attacks }) : t("turn.attackGroup"), A.filter((o) => o.attack), "action"),
+    A.find((o) => o.id === "attack")?.weapons?.length ? weaponRows(A.find((o) => o.id === "attack").weapons) : null,
     ...group(t("turn.features"), A.filter((o) => o.group === "feature" && !o.attack), "action"),
     ...group(t("turn.spells"), A.filter((o) => o.group === "spell"), "action"),
     ...group(t("turn.otherActions"), A.filter((o) => o.group === "other" && !o.attack), "action"),
@@ -115,7 +122,8 @@ export function combatTab({ ch, c, save }) {
   ]);
   const move = h("section", { cls: "tmove", id: "turn-move" }, [
     h("div", { cls: "hd row" }, [h("span", { cls: "nm", text: t("turn.move") }), h("span", { cls: "hint", text: t("turn.moveLeft", { done: turn.moved * 5, left: movement.left }) })]),
-    sq, flags]);
+    sq, flags,
+    c.resistances.length ? h("p", { cls: "small resline", id: "turn-resist" }, [t("turn.resist") + ": ", ...c.resistances.map(typeChip)]) : null]);
 
   const freeRow = opts.free.length ? h("section", { cls: "card", id: "turn-free" }, [
     h("h4", { text: t("turn.onHit") }),

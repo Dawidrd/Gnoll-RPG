@@ -542,6 +542,8 @@ export default {
   "turn.onHit": "On a hit and without an action",
   "turn.onHitHint": "Features that take no action, e.g. after a hit. A click spends a use, × gives it back.",
   "turn.tips": "What else you can do",
+  "turn.resist": "Your resistances",
+  "dmg.choose": "your pick",
   "turn.cantPay": "No uses or slots left.",
   "turn.none": "none",
   "turn.freeUse": "free",

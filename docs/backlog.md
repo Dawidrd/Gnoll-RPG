@@ -10,12 +10,11 @@ _(brak)_
 ## Pomysły
 
 1. Test z drużyną (eksport ze starych stron → import w aplikacji).
-2. **Rodzaj obrażeń w walce i przy czarach** — projekt zatwierdzony: `docs/projekty.md` §2. Co: przy każdym ataku, czarze i zdolności zadającej obrażenia widoczny rodzaj (np. „1k8+3 cięte”, „3k6 ogień”) jako kolorowa etykieta. Po co: zgłoszenie graczy — w walce trzeba podać rodzaj obrażeń (odporności i podatności potworów), a dziś przy czarach jest tylko w opisie. Jak: rodzaj zapisany w danych czarów (dziś jest tylko w opisie), wyświetlany w planerze tury, liście ataków i zakładce Czary.
-3. **Wyszukiwanie w listach rozwijanych w kreatorze.** Co: długie listy (broń, featy, czary, języki, narzędzia, zakupy) dostają pole „szukaj”, które zawęża listę w trakcie pisania. Po co: przewijanie długiej listy na telefonie jest uciążliwe. Jak: jeden wspólny element „lista z wyszukiwaniem” zamiast zwykłego `<select>` tam, gdzie pozycji jest dużo (np. ponad 12); szuka po nazwie polskiej i angielskiej, bez znaczenia wielkość liter i polskie znaki.
-4. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
-5. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
-6. **Tryb „Tryhard ;)”** (niepilne). Co: po wyborze klasy przycisk „Tryhard ;)” wypełnia wszystkie wybory według najmocniejszej strategii dla klasy; graczowi zostaje imię. Po co: szybka, mocna postać dla kogoś, kto nie chce analizować opcji. Jak: dla każdej klasy tabela „najlepszych wyborów” (gatunek, tło, rozkład tablicy standardowej, umiejętności, feat, czary, podklasa, wybory na poziomach); cechy wyłącznie z tablicy standardowej; wynik przechodzi te same sprawdzenia co zwykła postać i można go potem zmienić. Ravenloft tylko w trybie Ravenloft.
-7. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
+2. **Wyszukiwanie w listach rozwijanych w kreatorze.** Co: długie listy (broń, featy, czary, języki, narzędzia, zakupy) dostają pole „szukaj”, które zawęża listę w trakcie pisania. Po co: przewijanie długiej listy na telefonie jest uciążliwe. Jak: jeden wspólny element „lista z wyszukiwaniem” zamiast zwykłego `<select>` tam, gdzie pozycji jest dużo (np. ponad 12); szuka po nazwie polskiej i angielskiej, bez znaczenia wielkość liter i polskie znaki.
+3. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
+4. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
+5. **Tryb „Tryhard ;)”** (niepilne). Co: po wyborze klasy przycisk „Tryhard ;)” wypełnia wszystkie wybory według najmocniejszej strategii dla klasy; graczowi zostaje imię. Po co: szybka, mocna postać dla kogoś, kto nie chce analizować opcji. Jak: dla każdej klasy tabela „najlepszych wyborów” (gatunek, tło, rozkład tablicy standardowej, umiejętności, feat, czary, podklasa, wybory na poziomach); cechy wyłącznie z tablicy standardowej; wynik przechodzi te same sprawdzenia co zwykła postać i można go potem zmienić. Ravenloft tylko w trybie Ravenloft.
+6. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
 
 ## W trakcie
 
@@ -23,6 +22,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.20.0** — Rodzaj obrażeń w walce i przy czarach (projekt §2, oba etapy): jedna lista 13 rodzajów (`js/rules/damage.js`), kolorowa etykieta ze znakiem i słowem (np. „3k6 🔥 ogień”, „wybierz” przy czarach do wyboru). Widać ją przy broni (lista ataków, Ekwipunek, akcja Attack w planerze), przy wszystkich czarach zadających obrażenia (planer, zakładka Czary, wybór czarów) i przy zdolnościach po trafieniu (Sneak Attack, Rage, Divine Fury, Hand of Harm, Psionic Strike, Eldritch Smite — nowa opcja w planerze, Breath Weapon z kolorem przodka…). W Walce linijka „Twoje odporności”.
 - **0.19.1** — Font: gotycki font (UnifrakturMaguntia) zamieniony na Cormorant Unicase — logo „Gnoll RPG” w górnym pasku i nazwa postaci na karcie.
 - **0.19.0** — „Wprowadź postać z karty”: kreator do przepisania gotowej postaci z papierowej karty — kroki bez blokady, cechy z kartki (tablica/point buy rozpoznane i sprawdzane, rzut na papierze 3–18 ze znaczkiem „Cechy z papieru”), potwierdzanie cech przez MG w Widoku MG (po potwierdzeniu zablokowane, MG może cofnąć), obecne monety i przedmioty zamiast ekwipunku startowego. Nowe zasady w `firestore.rules` + testy na emulatorze (wymaga wklejenia zasad w konsoli Firebase).
 - **0.18.2** — Błąd: zakładanie drużyny z postacią kończyło się komunikatem „Serwer nie przyjął zmiany”. Zasady bazy nie pozwalały zapisać Widoku MG założyciela w tej samej paczce, w której powstaje drużyna. Poprawka w `firestore.rules` + test na emulatorze (wymaga wklejenia nowych zasad w konsoli Firebase).

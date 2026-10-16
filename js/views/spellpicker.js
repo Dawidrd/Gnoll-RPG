@@ -2,6 +2,8 @@
 import { h } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { SPELLS, spellFacts } from "../rules/spells.js";
+import { spellDamage } from "../rules/damage.js";
+import { dmgTags } from "./dmgtag.js";
 
 // Filter text and level filter survive redraws (the creator rebuilds the page on every change).
 const filters = {};
@@ -54,7 +56,7 @@ export function spellPickUI({ pick, c, onChange, title }) {
       const box = h("input", { type: "checkbox", id: `sp-${pick.id}-${id}`.replace(/[^\w-]/g, "_"), checked: on, disabled: !on && full,
         "aria-label": tr(s.name), onchange: (e) => onChange(e.target.checked ? [...chosen, id] : chosen.filter((x) => x !== id)) });
       return h("div", { cls: "spellrow" + (on ? " on" : "") }, [box,
-        h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s)]), ...spellBody(s, c)])]);
+        h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), dmgTags(spellDamage(s.id, c))]), ...spellBody(s, c)])]);
     }));
     if (!ids.length) list.append(h("p", { cls: "hint", text: t("spell.none") }));
   };

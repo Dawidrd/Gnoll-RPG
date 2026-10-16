@@ -1,5 +1,7 @@
 // Weapons from chapter 6 of the 2024 Player's Handbook: damage, properties, mastery property, weight and cost.
 // Mastery descriptions are our own paraphrase.
+import { WEAPON_DAMAGE, dmg } from "./damage.js";
+
 const L = (pl, en) => ({ pl, en });
 
 export const DAMAGE = { b: L("obuchowe", "Bludgeoning"), p: L("kłute", "Piercing"), s: L("cięte", "Slashing") };
@@ -140,7 +142,7 @@ export function weaponAttacks({ list, mods, abilities, pb, proficient, styles = 
     if (monkWeapon) notes.push(L("Broń mnicha: ZRĘ lub SIŁ i kość Martial Arts", "Monk weapon: DEX or STR and the Martial Arts die"));
     const range = p.ammo || p.thrown || "";
     const mastery = mastered.includes(w.id) ? { id: w.mastery, ...MASTERY[w.mastery], text: MASTERY[w.mastery].desc(8 + mods[ab] + pb) } : null;
-    return { uid: it.uid, id: w.id, name: w.name, ab, prof, hit, dice, bonus, type: DAMAGE[w.type], props: propsText(w),
+    return { uid: it.uid, id: w.id, name: w.name, ab, prof, hit, dice, bonus, type: DAMAGE[w.type], dtype: WEAPON_DAMAGE[w.type], tag: dmg(dmgText(dice, bonus).en, WEAPON_DAMAGE[w.type]), props: propsText(w),
       versatile: p.versatile ? dmgText(p.versatile, bonus - duel) : null, damage: dmgText(dice, bonus), range, reach: p.reach ? 10 : melee ? 5 : 0, mastery, notes };
   }).filter(Boolean);
 }

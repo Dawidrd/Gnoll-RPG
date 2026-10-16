@@ -13,6 +13,8 @@ import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
 import { writePick } from "../rules/magic.js";
 import { spellPickUI, spellTags, spellBody } from "./spellpicker.js";
+import { dmgTags } from "./dmgtag.js";
+import { spellDamage } from "../rules/damage.js";
 import { classOptionUI, classOptionList } from "./classoptions.js";
 import { combatTab, activeCard } from "./combat.js";
 import { attacksBlock } from "./weapons.js";
@@ -266,7 +268,8 @@ export function renderSheet(root, go, id, tab) {
           const why = [x.kind === "always" ? t("spell.always") : x.kind === "book" ? t("spell.bookRitual") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "slotsOrRitual" ? t("spell.slotsOrRitual")
             : x.uses === "atwill" ? (s.circle ? t("spell.noSlot") : t("spell.atWill")) : "", x.self ? t("spell.selfOnly") : ""].filter(Boolean).join(" ");
           rows.push(h("div", { cls: "spellrow sheet" + (ch.concentration === x.id ? " on" : "") }, [
-            h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null]), ...spellBody(s, c), why ? h("p", { cls: "hint", text: why }) : null]),
+            h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null,
+              dmgTags(spellDamage(x.id, c, src.ability ? c.mods[src.ability] : null))]), ...spellBody(s, c), why ? h("p", { cls: "hint", text: why }) : null]),
             acts.length ? h("div", { cls: "row acts" }, acts) : null,
           ]));
         }

@@ -2,16 +2,12 @@
 // Descriptions are written in our own words. `other` only keeps pre-0.4 custom species loadable.
 import { ABILITY_NAMES } from "./core.js";
 import { SPELLS } from "./spells.js";
+import { DAMAGE_NAMES } from "./damage.js";
 
 const L = (pl, en) => ({ pl, en });
 const breathDice = (lv) => (lv < 5 ? 1 : lv < 11 ? 2 : lv < 17 ? 3 : 4) + "d10";
 
-export const DAMAGE_NAMES = {
-  acid: L("kwas", "acid"), cold: L("zimno", "cold"), fire: L("ogień", "fire"), lightning: L("błyskawice", "lightning"),
-  poison: L("trucizna", "poison"), necrotic: L("nekrotyczne", "necrotic"), radiant: L("promieniste", "radiant"),
-  thunder: L("grzmot", "thunder"), psychic: L("psychiczne", "psychic"), force: L("moc", "force"),
-  bludgeoning: L("obuchowe", "bludgeoning"), piercing: L("kłute", "piercing"), slashing: L("cięte", "slashing"),
-};
+export { DAMAGE_NAMES };
 
 export const ANCESTRIES = {
   black: { pl: "Czarny (kwas)", en: "Black (acid)", dmg: "acid" },

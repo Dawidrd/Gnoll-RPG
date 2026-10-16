@@ -3,6 +3,7 @@ import { h } from "../dom.js";
 import { t, tr } from "../i18n.js";
 import { WEAPONS } from "../rules/weapons.js";
 import { signed } from "../rules/core.js";
+import { dmgTag } from "./dmgtag.js";
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 const short = (x) => tr(x).split(" (")[0];
@@ -12,7 +13,7 @@ export function attacksBlock(c, ch) {
   if (!c.attacks.length) return h("section", { cls: "blk", id: "attacks" }, [h("div", { cls: "orn", text: t("wpn.attacks") }),
     h("p", { cls: "hint" }, [t("wpn.none") + " ", h("a", { href: `#/c/${ch.id}/inventory`, text: t("wpn.addLink") })])]);
   return h("section", { cls: "blk", id: "attacks" }, [h("div", { cls: "orn", text: t("wpn.attacks") }), h("dl", { cls: "qa gl" }, c.attacks.flatMap((a) => [
-    h("dt", {}, [tr(a.name), " ", h("small", { cls: "lvtag", text: `${signed(a.hit)} · ${tr(a.damage)} ${tr(a.type)}` })]),
+    h("dt", {}, [tr(a.name), " ", h("small", { cls: "lvtag", text: signed(a.hit) }), " ", dmgTag(a.tag)]),
     h("dd", {}, [
       h("p", { cls: "small", text: [
         t("wpn.hitLine", { hit: signed(a.hit), dmg: tr(a.damage), type: tr(a.type) }),
@@ -37,7 +38,7 @@ export function weaponEditor({ ch, c, onChange }) {
     const a = c.attacks.find((x) => x.uid === it.uid);
     return h("div", { cls: "li" }, [
       h("div", {}, [h("div", { cls: "t", text: (it.qty > 1 ? `${it.qty}× ` : "") + tr(WEAPONS[it.id]?.name || { pl: it.id, en: it.id }) }),
-        a ? h("div", { cls: "n", text: `${signed(a.hit)} · ${tr(a.damage)} ${tr(a.type)}${a.mastery ? " · " + short(a.mastery.name) : ""}` }) : null]),
+        a ? h("div", { cls: "n" }, [`${signed(a.hit)} · `, dmgTag(a.tag), a.mastery ? " · " + short(a.mastery.name) : null]) : null]),
       h("button", { type: "button", cls: "btn small ghost", text: t("inv.remove"), onclick: () => { ch.weapons = ch.weapons.filter((x) => x.uid !== it.uid); onChange(); } }),
     ]);
   });

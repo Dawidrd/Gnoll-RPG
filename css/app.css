@@ -424,3 +424,20 @@ ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* 0.19: scores copied from a paper sheet */
 .paperbadge { display: inline-block; align-self: flex-start; font-family: var(--f-ui); font-size: .78rem; color: var(--gold); border: 1px solid var(--gold-dim); border-radius: 99px; padding: 1px 8px; margin: 2px 0; }
 .paperbadge.ok { color: var(--moss); border-color: var(--moss); }
+
+/* 0.20: damage tags — dice + a coloured type label with a sign and a word (readable without colour) */
+.dmgs { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; vertical-align: middle; }
+.dmg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; font: 600 .8rem var(--f-ui); color: var(--bone); white-space: nowrap; }
+.dmg b { font-weight: 700; }
+.dmg .or { color: var(--ash); }
+.dmg .pickone { color: var(--ash); font-weight: 500; font-style: italic; }
+.dt { --c: var(--bone-dim); color: var(--c); border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border-radius: 99px; padding: 0 7px; font: 600 .74rem var(--f-ui); line-height: 1.5; white-space: nowrap; }
+.dt-acid { --c: #a6d65a; } .dt-cold { --c: #8fd3f4; } .dt-fire { --c: #ff8f52; } .dt-lightning { --c: #f2d649; }
+.dt-poison { --c: #74c98a; } .dt-necrotic { --c: #b9a3e0; } .dt-radiant { --c: #ffe6a0; } .dt-thunder { --c: #8eaeff; }
+.dt-psychic { --c: #f392dc; } .dt-force { --c: #d09bff; }
+.dt-bludgeoning, .dt-piercing, .dt-slashing { --c: #cdbfa8; } .dt-weapon { --c: var(--gold); }
+.wrows { display: grid; gap: 4px; width: 100%; font-size: .86rem; color: var(--bone-dim); }
+.wrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.opt .dic { margin-left: 2px; }
+.resline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--bone-dim); margin: 0; }
+summary .dmgs { margin-left: 4px; }

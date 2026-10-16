@@ -7,6 +7,9 @@ import { SPELLS, spellsOf } from "../js/rules/spells.js";
 import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
+import * as DMG from "../js/rules/damage.js";
+import { DAMAGE_NAMES } from "../js/rules/species.js";
+import { DAMAGE_TYPES as FEAT_DAMAGE } from "../js/rules/feats-general.js";
 import * as MERGE from "../js/sync/merge.js";
 import * as PARTY from "../js/sync/partylogic.js";
 import { stepBlockers } from "../js/rules/checks.js";
@@ -1052,6 +1055,59 @@ test("import: a GM's confirmation never comes from a file", () => {
   ch.paperConfirm = { sig: paperSig(ch), by: "gm", name: "Ola", at: 1 };
   const { ch: back } = STORE.parseImport(JSON.stringify({ app: "gnoll-rpg", character: ch }));
   eq([back.paperConfirm, back.entry, back.abilityMethod], [undefined, "paper", "paper"]);
+});
+
+// --- Damage types (0.20) ---
+test("damage types: one list of 13, used by species and feats", () => {
+  eq(Object.keys(DMG.DAMAGE_TYPES).length, 13);
+  eq(Object.values(DMG.DAMAGE_TYPES).every((x) => x.icon && x.name.pl && x.name.en), true, "sign and both names");
+  eq(DAMAGE_NAMES.fire, DMG.DAMAGE_TYPES.fire.name, "species use the same names");
+  eq(Object.keys(FEAT_DAMAGE), ["acid", "cold", "fire", "lightning", "thunder"], "Elemental Adept keeps its five");
+});
+test("damage types: every spell that mentions damage has a damage entry", () => {
+  const re = /damage|\b(acid|cold|fire|lightning|poison|necrotic|radiant|thunder|psychic|force|bludgeoning|piercing|slashing)\b|element/i;
+  const missing = Object.values(SPELLS).filter((s) => re.test(s.desc({ level: 1 }).en) && !DMG.SPELL_DAMAGE[s.id] && !DMG.NO_DAMAGE_SPELLS.includes(s.id)).map((s) => s.id);
+  eq(missing, [], "spells without a damage entry");
+  for (const [id, parts] of Object.entries(DMG.SPELL_DAMAGE)) {
+    eq(!!SPELLS[id], true, "known spell " + id);
+    eq(parts.every((p) => p.t.length && p.t.every((x) => DMG.typeInfo(x))), true, "valid types for " + id);
+  }
+});
+test("damage types: spell dice for the character's level and modifier", () => {
+  const tag = (id, level, mod) => DMG.spellDamage(id, { level }, mod).map((p) => [p.dice.en, p.types]);
+  eq(tag("fire-bolt", 1), [["1d10", ["fire"]]]);
+  eq(tag("fire-bolt", 5), [["2d10", ["fire"]]], "cantrips grow at level 5");
+  eq(DMG.spellDamage("fire-bolt", { level: 5 })[0].dice.pl, "2k10", "Polish dice");
+  eq(tag("eldritch-blast", 5), [["2 × 1d10", ["force"]]], "two beams");
+  eq(tag("toll-the-dead", 1), [["1d8/1d12", ["necrotic"]]]);
+  eq(tag("ice-knife", 1), [["1d10", ["piercing"]], ["2d6", ["cold"]]]);
+  eq(tag("spiritual-weapon", 3, 3), [["1d8+3", ["force"]]]);
+  eq(DMG.spellDamage("flame-blade", { level: 3 })[0].dice.pl, "3k6 + mod.", "modifier unknown");
+  eq(tag("divine-smite", 2), [["+2d8", ["radiant"]]], "added to a hit");
+  eq(tag("true-strike", 1).length, 1, "True Strike extra radiant from level 5");
+  eq(tag("true-strike", 5)[1], ["+2d6", ["radiant"]]);
+  const orb = DMG.spellDamage("chromatic-orb", { level: 1 })[0];
+  eq([orb.choose, orb.types.length], [true, 6]);
+  eq(DMG.spellDamage("shield", { level: 1 }), null, "no damage, no tag");
+});
+test("damage types: weapons, the turn planner and on-hit features", () => {
+  const f = run(make({ classId: "fighter", abilityBase: { str: 15, dex: 14, con: 13, int: 8, wis: 12, cha: 10 }, weapons: [{ uid: "x", id: "longsword" }] }));
+  eq([f.attacks[0].tag.dice.pl, f.attacks[0].tag.types], ["1k8+2", ["slashing"]]);
+  const fch = make({ classId: "fighter", abilityBase: { str: 15, dex: 14, con: 13, int: 8, wis: 12, cha: 10 }, weapons: [{ uid: "x", id: "longsword" }] });
+  eq(turnOptions(f, fch).action.find((o) => o.id === "attack").weapons.map((w) => w.tag.types[0]), ["slashing"], "Attack lists weapons with their type");
+  const sat = wl({ level: 5, spellPicks: { cantrips: ["eldritch-blast", "prestidigitation"], prepared: ["hex", "hellish-rebuke", "charm-person"] } });
+  const so = turnOptions(run(sat), sat);
+  eq(so.action.find((o) => o.id === "spell:eldritch-blast").dmg[0].dice.en, "2 × 1d10");
+  eq(so.bonus.find((o) => o.id === "spell:hex").dmg[0].types, ["necrotic"]);
+  eq(so.action.find((o) => o.id === "spell:charm-person").dmg, null);
+  const rg = make({ classId: "rogue", level: 3 });
+  eq(turnOptions(run(rg), rg).free.find((o) => o.id === "sneak").dmg[0].dice.en, "+2d6");
+  eq(turnOptions(run(rg), rg).free.find((o) => o.id === "sneak").dmg[0].types, ["weapon"], "Sneak Attack: the weapon's type");
+  const db = make({ classId: "monk", speciesId: "dragonborn", speciesChoice: { ancestry: "silver" } });
+  eq(turnOptions(run(db), db).action.find((o) => o.id === "breath").dmg[0].types, ["cold"], "Breath Weapon from the ancestry");
+  const bb = make({ classId: "barbarian", level: 3, subclass: "zealot", active: { rage: true } });
+  const fury = turnOptions(run(bb), bb).free.find((o) => o.id === "divine-fury").dmg[0];
+  eq([fury.dice.en, fury.choose], ["+1d6+1", true]);
 });
 
 let failed = 0;
