@@ -18,6 +18,9 @@ export function h(tag, attrs, kids) {
   return e;
 }
 
+/** Replace an element's children, skipping null/false like h() does (plain replaceChildren would print "null"). */
+export const fill = (el, kids) => el.replaceChildren(...[].concat(kids ?? []).filter((k) => k != null && k !== false));
+
 export const $ = (s, el) => (el || document).querySelector(s);
 
 let toastTimer;

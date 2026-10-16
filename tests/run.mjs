@@ -8,6 +8,7 @@ import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
 import { WEAPONS } from "../js/rules/weapons.js";
 import * as DMG from "../js/rules/damage.js";
+import { fill } from "../js/dom.js";
 import { DAMAGE_NAMES } from "../js/rules/species.js";
 import { DAMAGE_TYPES as FEAT_DAMAGE } from "../js/rules/feats-general.js";
 import * as MERGE from "../js/sync/merge.js";
@@ -1108,6 +1109,14 @@ test("damage types: weapons, the turn planner and on-hit features", () => {
   const bb = make({ classId: "barbarian", level: 3, subclass: "zealot", active: { rage: true } });
   const fury = turnOptions(run(bb), bb).free.find((o) => o.id === "divine-fury").dmg[0];
   eq([fury.dice.en, fury.choose], ["+1d6+1", true]);
+});
+
+test("fill() skips empty parts instead of printing \"null\" (account box, journal, party)", () => {
+  const el = { replaceChildren(...k) { this.kids = k; } };
+  fill(el, ["a", null, false, undefined, "b", 0]);
+  eq(el.kids, ["a", "b", 0]);
+  fill(el, null);
+  eq(el.kids, []);
 });
 
 let failed = 0;

@@ -1,7 +1,7 @@
 // Party screens: the Party tab on a character sheet (partyTab), my parties and founding one (#/party),
 // one party on its own (#/party/<id>, e.g. for a Game Master without a character), joining by invite link (#/join/<code>[/<characterId>]).
 // One character = one party: characters already in another party cannot be picked.
-import { h, toast } from "../dom.js";
+import { h, toast, fill } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { loadAll, getById, storage } from "../store.js";
 import { CLASSES, SPECIES } from "../rules/index.js";
@@ -172,7 +172,7 @@ function painter() {
       return;
     }
     waiting.delete(el);
-    el.replaceChildren(...draw());
+    fill(el, draw());
   };
   return paint;
 }

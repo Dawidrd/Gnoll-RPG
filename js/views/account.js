@@ -1,5 +1,5 @@
 // Account box on the home screen: optional Google sign-in, the sync state, and deleting the account.
-import { h, toast } from "../dom.js";
+import { h, toast, fill } from "../dom.js";
 import { t } from "../i18n.js";
 import { storage } from "../store.js";
 import { account, onAccount, accountAvailable, signIn, signOut, connect, moveGuests } from "../sync/cloud.js";
@@ -85,7 +85,7 @@ export function accountBox() {
     if (s.error) kids.push(h("p", { cls: "small", role: "alert", text: t("acc.err." + s.error) }));
     // While deleting, the account signs out on its own at the end: keep showing the progress, not the sign-in button.
     if (del?.step && s.status !== "in") kids.splice(1, kids.length - 1, h("p", { cls: "small", role: "status", text: t("acc.del.step." + del.step) }));
-    box.replaceChildren(...kids);
+    fill(box, kids);
   };
   draw(account());
   const off = onAccount((s) => { if (!box.isConnected) return off(); draw(s); });

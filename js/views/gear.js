@@ -1,5 +1,5 @@
 // Equipment (items with quantity and a note, plus coins) and the session journal.
-import { h, toast } from "../dom.js";
+import { h, toast, fill } from "../dom.js";
 import { t } from "../i18n.js";
 import { weaponEditor } from "./weapons.js";
 
@@ -100,7 +100,7 @@ export function journalTab({ ch, save }) {
   }
   function draw() {
     const sorted = [...ch.journal].sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.created || 0) - (a.created || 0));
-    wrap.replaceChildren(
+    fill(wrap, [
       h("header", { cls: "stack" }, [h("h2", { text: t("journal.title") }), h("p", { cls: "lead", text: t("journal.lead") })]),
       editId ? null : form(null),
       sorted.length ? h("div", { cls: "list", id: "journal" }, sorted.map((e) => editId === e.id ? form(e) : h("article", { cls: "sess" }, [
@@ -108,7 +108,7 @@ export function journalTab({ ch, save }) {
         e.title ? h("h3", { text: e.title }) : null,
         e.body ? h("p", { cls: "body", text: e.body }) : null,
       ]))) : h("p", { cls: "empty", text: t("journal.empty") }),
-    );
+    ]);
   }
   draw();
   return [wrap];
