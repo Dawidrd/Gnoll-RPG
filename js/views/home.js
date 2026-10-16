@@ -5,6 +5,7 @@ import { loadAll, remove, exportFile, parseImport, upsert, getById } from "../st
 import { CLASSES, SPECIES, compute } from "../rules/index.js";
 import { accountBox } from "./account.js";
 import { accountAvailable } from "../sync/cloud.js";
+import { countEvent } from "../stats.js";
 
 const todoCount = (ch) => { try { const r = compute(structuredClone(ch)).review; return r.todo.length + r.errors.length; } catch { return 0; } };
 
@@ -23,7 +24,7 @@ export function renderHome(root, go) {
   const importText = (text) => {
     try {
       const { ch, report } = parseImport(text);
-      const done = () => { upsert(ch); toast(t("home.imported", { name: ch.name })); go(report ? `#/c/${ch.id}/start` : "#/"); };
+      const done = () => { upsert(ch); countEvent(report ? "import/old-page" : "import/file"); toast(t("home.imported", { name: ch.name })); go(report ? `#/c/${ch.id}/start` : "#/"); };
       if (getById(ch.id)) ask(t("home.importReplace", { name: ch.name }), done); else done();
     } catch { toast(t("home.importError")); }
   };

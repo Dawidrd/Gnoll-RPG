@@ -44,6 +44,7 @@ const FIELD_OF = {
 
 export { msg } from "./msg.js";
 import { msg } from "./msg.js";
+import { countEvent } from "../stats.js";
 import { levelChoiceUI } from "./levelchoice.js";
 
 /** opts.paper: a new character copied from a paper sheet (ch.entry = "paper": steps open in any order, scores typed in, current equipment). */
@@ -783,6 +784,7 @@ export function renderForm(root, go, id, opts = {}) {
     const after = c.hpMax;
     if (ch.hp.cur != null && before != null) ch.hp.cur = Math.max(0, Math.min(after, ch.hp.cur + (after - before)));
     if (!upsert(ch)) { toast(t("app.saveError")); return; }
+    if (isNew) countEvent(paper ? "character/paper" : "character/new", ch.classId);
     // Made for a party invite: back to the invite, with this character picked.
     go(isNew ? afterCreate(ch.id, opts.join) : `#/c/${ch.id}/start`);
   }

@@ -10,10 +10,9 @@ _(brak)_
 ## Pomysły
 
 1. Test z drużyną (eksport ze starych stron → import w aplikacji).
-2. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`).
-3. Analityka bez cookies (np. GoatCounter) — wybór narzędzia i lista zdarzeń do mierzenia; zgodnie z zasadą prywatności (Firebase Analytics w projekcie włączony, ale aplikacja go nie używa).
-4. **Tryb „Tryhard ;)”** (niepilne). Co: po wyborze klasy przycisk „Tryhard ;)” wypełnia wszystkie wybory według najmocniejszej strategii dla klasy; graczowi zostaje imię. Po co: szybka, mocna postać dla kogoś, kto nie chce analizować opcji. Jak: dla każdej klasy tabela „najlepszych wyborów” (gatunek, tło, rozkład tablicy standardowej, umiejętności, feat, czary, podklasa, wybory na poziomach); cechy wyłącznie z tablicy standardowej; wynik przechodzi te same sprawdzenia co zwykła postać i można go potem zmienić. Ravenloft tylko w trybie Ravenloft.
-5. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
+2. **Tryb „Tryhard ;)”** (niepilne). Co: po wyborze klasy przycisk „Tryhard ;)” wypełnia wszystkie wybory według najmocniejszej strategii dla klasy; graczowi zostaje imię. Po co: szybka, mocna postać dla kogoś, kto nie chce analizować opcji. Jak: dla każdej klasy tabela „najlepszych wyborów” (gatunek, tło, rozkład tablicy standardowej, umiejętności, feat, czary, podklasa, wybory na poziomach); cechy wyłącznie z tablicy standardowej; wynik przechodzi te same sprawdzenia co zwykła postać i można go potem zmienić. Ravenloft tylko w trybie Ravenloft.
+3. Jedna postać w kilku drużynach (na przyszłość, niepilne) — dziś obowiązuje zasada: jedna postać = jedna drużyna.
+4. Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`) (niepilne).
 
 ## W trakcie
 
@@ -21,6 +20,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.22.0** — Liczenie odwiedzin w GoatCounter (gnoll-rpg.goatcounter.com), bez ciasteczek i bez danych osobowych. Liczone: otwierane ekrany (bez id postaci i kodów zaproszeń), nowa postać i jej klasa (osobno „z karty”), import pliku i ze starych stron, założenie drużyny, prośba o dołączenie, język, otwarcie/instalacja jako aplikacja. Bez zewnętrznego skryptu. Nie liczy lokalnie, przy sygnale „nie śledź” przeglądarki i po zaznaczeniu „Nie licz moich wizyt” na ekranie Prywatność (nowa sekcja „Liczenie odwiedzin”, PL i EN).
 - **0.21.1** — Błąd: osoba bez postaci, która dostała zaproszenie do drużyny, po stworzeniu postaci musiała jeszcze raz wkleić link. Teraz przyciski „Nowa postać” i „Wprowadź postać z karty” na ekranie zaproszenia pamiętają zaproszenie; po zapisaniu postaci aplikacja wraca do zaproszenia z tą postacią już wybraną — wystarczy „Wyślij prośbę”. Te same przyciski są też dla kogoś, kto ma już postacie, ale chce zagrać nową.
 - **0.21.0** — Wyszukiwanie w długich listach rozwijanych: każda lista z ponad 12 pozycjami (broń, featy, narzędzia, zakupy, błyskotki, tła, featy przy awansie…) ma nad sobą pole „Szukaj na liście…”, które zawęża listę w trakcie pisania. Szuka po nazwie polskiej i angielskiej, bez znaczenia wielkość liter i polskie znaki (np. „luk” znajdzie „Łuk”). Enter otwiera zawężoną listę zamiast zapisywać postać. Wyszukiwarka czarów też ignoruje polskie znaki.
 - **0.20.2** — Błąd: w sekcji „Konto” między „Postacie są zsynchronizowane.” a przyciskami wyświetlał się napis „null” (gdy nie ma postaci do przeniesienia). Ten sam błąd groził w Dzienniku podczas edycji wpisu i w zakładkach drużyny. Poprawka: wspólna funkcja `fill()` w `dom.js` pomija puste elementy.

@@ -1,9 +1,11 @@
 // Project settings you can change without touching the rest of the code.
 export const CONFIG = {
   name: "Gnoll RPG",
-  version: "0.21.1",
+  version: "0.22.0",
   // Paste your buycoffee.to (or other) link here once the profile exists. Empty = the link is hidden.
   supportUrl: "",
+  // GoatCounter site for visit counts (no cookies, see js/stats.js and the Privacy screen). Empty = nothing is counted.
+  statsUrl: "https://gnoll-rpg.goatcounter.com",
   // Firebase project "gnoll-rpg" (optional account + sync). Copy the values from the Firebase console:
   // Project settings -> General -> Your apps -> SDK setup and configuration -> Config.
   // These values are public by design; access is guarded by firestore.rules. Empty apiKey = no account option.

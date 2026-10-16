@@ -24,7 +24,8 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - Projekt Firebase **gnoll-rpg** jest założony.
 - Włączone: logowanie Google (Authentication), baza Firestore (region europe-central2, tryb production), domena autoryzowana `dawidrd.github.io`.
 - Konfiguracja aplikacji (obiekt `firebaseConfig`): konsola Firebase → Project settings → General.
-- Analytics jest w projekcie włączony, ale **aplikacja go nie inicjalizuje**. Decyzja o analityce: pomysł w `docs/backlog.md`.
+- Analytics jest w projekcie włączony, ale **aplikacja go nie inicjalizuje**.
+- Liczenie odwiedzin (0.22.0): GoatCounter, https://gnoll-rpg.goatcounter.com (`statsUrl` w `js/config.js`, kod w `js/stats.js`, bez zewnętrznego skryptu). Liczone: ekrany (bez id i kodów), `character/new|paper/<klasa>`, `import/file|old-page`, `party/create`, `party/join-request`, `lang/<pl|en>`, `app/opened-installed`, `app/installed`. Wyłączone lokalnie, przy DNT/GPC i po „Nie licz moich wizyt” (ekran Prywatność).
 - Reguły bezpieczeństwa Firestore przygotowuje Claude Code w D1, a w konsoli wkleja je użytkownik.
 
 **Jak działa (0.13.0):**

@@ -10,13 +10,14 @@ import { renderPrivacy } from "./views/privacy.js";
 import { showNotice } from "./views/account.js";
 import { startAccount, accountAvailable } from "./sync/cloud.js";
 import { stopWatching, startSharing } from "./sync/party.js";
+import { countScreen, countEvent } from "./stats.js";
 
 const view = h("div", { id: "view" });
 
 function topbar() {
   const sw = h("div", { cls: "seg", role: "group", "aria-label": t("lang.label") }, Object.keys(LANGS).map((code) =>
     h("button", { type: "button", "aria-pressed": code === lang() ? "true" : "false", text: code.toUpperCase(),
-      onclick: () => { setLang(code); route(); } })));
+      onclick: () => { setLang(code); countEvent("lang", code); route(); } })));
   return h("div", { cls: "topbar" }, [
     h("a", { cls: "brand", href: "#/" }, [h("img", { cls: "brand-logo", src: "logo.png", alt: CONFIG.name, width: 420, height: 241 }), h("span", { cls: "brand-tag", text: t("app.tagline") })]),
     sw,
@@ -56,7 +57,7 @@ function route() {
 
 function layout() { document.documentElement.dataset.layout = innerWidth >= 900 ? "desk" : "phone"; }
 addEventListener("resize", layout);
-addEventListener("hashchange", () => { route(); scrollTo(0, 0); });
+addEventListener("hashchange", () => { route(); scrollTo(0, 0); countScreen(location.hash); });
 // Characters changed on another device: redraw, unless the user is in the middle of typing or editing.
 addEventListener("gnoll:remote", () => {
   const typing = document.activeElement?.matches?.("input, textarea, select");
@@ -64,6 +65,11 @@ addEventListener("gnoll:remote", () => {
 });
 layout();
 route();
+// Counted once per opening: the screen, the language, and whether it was opened as the installed app.
+countScreen(location.hash);
+countEvent("lang", lang());
+if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) countEvent("app/opened-installed");
+addEventListener("appinstalled", () => countEvent("app/installed"));
 startAccount();
 showNotice(); // e.g. "your account was deleted", left before the page reloaded
 startSharing(); // characters played in a party send their HP/AC summary there

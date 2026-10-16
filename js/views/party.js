@@ -12,6 +12,7 @@ import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, clea
   sessionWhen, cleanNote, sortNotes, canEditNote, canDeleteNote, marchOrder, marchRows, moveIn,
   GM_GROUPS, gmGroups, busyChars, paperState, paperValues } from "../sync/partylogic.js";
 import * as PARTY from "../sync/party.js";
+import { countEvent } from "../stats.js";
 
 const fail = () => toast(t("party.err.save"));
 const chLabel = (ch) => `${ch.name} — ${CLASSES[ch.classId] ? tr(CLASSES[ch.classId].name).split(" (")[0] : ch.classId} ${ch.level}`;
@@ -107,6 +108,7 @@ export function renderParties(root, go) {
       if (!name) { nameIn.focus(); return toast(t("party.nameNeeded")); }
       const ch = pickedChar(charIn);
       const { id, done } = PARTY.createParty(name, ch);
+      countEvent("party/create");
       done.catch(fail);
       go(ch ? `#/c/${ch.id}/party` : `#/party/${id}`);
     };
@@ -495,6 +497,7 @@ export function renderJoin(root, go, code, charId = "") {
     const send = () => {
       const ch = pickedChar(charIn);
       if (!ch || busy.has(ch.id)) return toast(t("party.join.pick"));
+      countEvent("party/join-request");
       PARTY.askToJoin(code, invite, ch).catch(() => toast(t("party.join.refused")));
       toast(t("party.join.sent", { name: invite.name }));
       go(`#/c/${ch.id}/party`);
@@ -575,6 +578,7 @@ function mountTab(panel, ch, go) {
       if (!name) { nameIn.focus(); return toast(t("party.nameNeeded")); }
       ui.name = "";
       PARTY.createParty(name, getById(ch.id) || ch).done.catch(fail);
+      countEvent("party/create");
     };
     const join = () => {
       const code = codeFrom(ui.link);

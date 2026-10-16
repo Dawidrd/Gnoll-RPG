@@ -54,4 +54,4 @@ Użytkownik jest osobą nietechniczną — tłumacz prosto, bez żargonu, i koń
 - Zaczynając wpis, przenieś go do „W trakcie”.
 - Po naprawieniu błędu albo zrobieniu pomysłu przenieś wpis do „Zrobione” z numerem wersji, np. `**0.13.0** — …`.
 
-Prywatność: dane tylko w `localStorage` — bez kont, serwera i analityki. Synchronizację drużyny projektuj z zachowaniem tej zasady albo najpierw uzgodnij odstępstwo.
+Prywatność: dane tylko w `localStorage` — bez kont, serwera i analityki. Wyjątek uzgodniony w 0.22.0: liczenie odwiedzin w GoatCounter (`js/stats.js`) — bez ciasteczek, bez danych osobowych, tylko nazwy ekranów i stałe nazwy zdarzeń (nigdy imiona, id, kody zaproszeń ani tekst wpisany przez gracza); wyłączane przez „Nie licz moich wizyt” i sygnał DNT/GPC. Nowe zdarzenie = wpis na ekranie Prywatność (PL i EN). Synchronizację drużyny projektuj z zachowaniem tej zasady albo najpierw uzgodnij odstępstwo.

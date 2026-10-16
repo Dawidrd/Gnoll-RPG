@@ -25,6 +25,7 @@ import LANG_EN from "../js/lang/en.js";
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const STORE = await import("../js/store.js");
+const STATS = await import("../js/stats.js");
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -1143,6 +1144,55 @@ test("a character made for a party invite goes back to that invite once saved", 
   eq(PARTY.afterCreate("c1", null), "#/c/c1/start", "no invite");
   eq(PARTY.afterCreate("c1", "bad/../code"), "#/c/c1/start", "broken code is ignored");
   for (const k of ["party.join.orNew", "form.forInvite"]) eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
+});
+
+// --- Visit counts (GoatCounter, js/stats.js) ---
+// Pretend to be the published site with a browser that sends nothing until a beacon is captured.
+const beacons = [];
+const withSite = (nav, fn) => {
+  const keep = { location: globalThis.location, navigator: Object.getOwnPropertyDescriptor(globalThis, "navigator") };
+  globalThis.location = { protocol: "https:", hostname: "dawidrd.github.io", origin: "https://dawidrd.github.io" };
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { sendBeacon: (u) => beacons.push(new URL(u)), ...nav } });
+  try { fn(); } finally {
+    globalThis.location = keep.location;
+    if (keep.navigator) Object.defineProperty(globalThis, "navigator", keep.navigator); else delete globalThis.navigator;
+  }
+};
+test("screen names carry no character ids, party ids or invite codes", () => {
+  eq(STATS.screenPath("#/c/k3j4h5/combat"), "/sheet/combat");
+  eq(STATS.screenPath("#/c/k3j4h5"), "/sheet");
+  eq(STATS.screenPath("#/edit/k3j4h5"), "/edit");
+  eq(STATS.screenPath("#/join/AbCdEf0123456789xyz/c1"), "/join");
+  eq(STATS.screenPath("#/new/join/AbCdEf0123456789xyz"), "/new/join");
+  eq(STATS.screenPath("#/paper"), "/paper");
+  eq(STATS.screenPath("#/party/p123"), "/party/view");
+  eq(STATS.screenPath("#/party"), "/party");
+  eq(STATS.screenPath("#/privacy"), "/privacy");
+  eq(STATS.screenPath(""), "/");
+  eq(STATS.screenPath("#/c/x/Weird Tab!"), "/sheet", "odd tab names are dropped");
+});
+test("visits are counted on the site, with fixed event names only", () => {
+  beacons.length = 0;
+  withSite({}, () => {
+    STATS.countScreen("#/c/abc/spells");
+    STATS.countEvent("character/new", "monk");
+    STATS.countEvent("character/new", "Anna Kowalska");
+  });
+  eq(beacons.map((u) => u.origin + u.pathname), Array(3).fill("https://gnoll-rpg.goatcounter.com/count"));
+  eq(beacons.map((u) => u.searchParams.get("p")), ["/sheet/spells", "character/new/monk", "character/new"]);
+  eq(beacons.map((u) => u.searchParams.get("e")), [null, "true", "true"]);
+});
+test("nothing is counted locally, with do-not-track, or after the user opts out", () => {
+  beacons.length = 0;
+  STATS.countEvent("lang", "pl"); // Node = no site address, like running on localhost
+  withSite({ doNotTrack: "1" }, () => STATS.countEvent("lang", "pl"));
+  withSite({ globalPrivacyControl: true }, () => { eq(STATS.browserSaysNo(), true); STATS.countEvent("lang", "pl"); });
+  STATS.setUserAllows(false);
+  withSite({}, () => { eq(STATS.statsOn(), false); STATS.countEvent("lang", "pl"); });
+  STATS.setUserAllows(true);
+  withSite({}, () => eq(STATS.statsOn(), true));
+  eq(beacons.length, 0);
+  for (const k of ["privacy.stats.h", "privacy.stats.p", "privacy.stats.off", "privacy.stats.browser"]) eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
 });
 
 let failed = 0;
