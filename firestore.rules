@@ -145,7 +145,8 @@ service cloud.firestore {
       match /gm/{u} {
         allow get: if signedIn() && (u == me() || isGm(t));
         allow list: if isGm(t);
-        allow create, update: if signedIn() && u == me() && isMember(t) && only(['v', 'at'])
+        // existsAfter: the founder writes their GM view in the same batch that creates the party and their seat
+        allow create, update: if signedIn() && u == me() && existsAfter(memberPath(t, me())) && only(['v', 'at'])
           && gmSheet(request.resource.data.v) && request.resource.data.at is int;
         // leaving, or an admin removing someone (or deleting the party)
         allow delete: if signedIn() && (u == me() || isAdmin(t));

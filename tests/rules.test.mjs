@@ -71,6 +71,20 @@ async function world({ bobIn = true } = {}) {
   return { alice, bob, carol, nobody };
 }
 
+test("founding a party with a character: party, membership, invite, my list and the GM view in one batch", async () => {
+  const dave = as("dave");
+  await ok(dave.batch([
+    ["set", "parties/t9", { name: "Drużyna", owner: "dave", invite: CODE2, created: 1 }],
+    ["set", "parties/t9/members/dave", { role: "admin", name: "Dave", charId: "d1", charName: "Zed", at: 1 }],
+    ["set", `invites/${CODE2}`, { party: "t9", name: "Drużyna" }],
+    ["set", "users/dave/parties/t9", { name: "Drużyna", state: "in", at: 1, charId: "d1" }],
+    ["set", "parties/t9/gm/dave", { v: gmOk(), at: 1 }],
+  ]));
+  // a stranger still can't slip a GM view into someone else's party
+  const { carol } = await world();
+  await no(carol.set("parties/t1/gm/carol", { v: gmOk(), at: 1 }));
+});
+
 test("anything not listed in the rules is closed", async () => {
   const { alice, nobody } = await world();
   await no(nobody.get("parties/t1"));

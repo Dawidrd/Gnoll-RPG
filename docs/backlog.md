@@ -24,6 +24,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.18.2** — Błąd: zakładanie drużyny z postacią kończyło się komunikatem „Serwer nie przyjął zmiany”. Zasady bazy nie pozwalały zapisać Widoku MG założyciela w tej samej paczce, w której powstaje drużyna. Poprawka w `firestore.rules` + test na emulatorze (wymaga wklejenia nowych zasad w konsoli Firebase).
 - **0.18.1** — Awans: własny wynik rzutu na HP z kości przy stole (liczba od 1 do kości klasy); wpisany wynik i stałą wartość można zmienić przed awansem, rzutu w aplikacji — nie.
 - **0.18.0** — Partia 9: ekwipunek startowy w kreatorze — zestaw albo złoto od klasy i tła (12 klas, 20 teł z Ravenloft), zakupy z cennika rozdz. 6, błyskotka (własna lista), dodatkowe złoto od 5. poziomu za zgodą MG; zbroja i broń z zestawu od razu w KP i atakach, przedmioty i monety w zakładce Ekwipunek po zapisie.
 - **0.17.1** — Kreator postaci: „Dalej” otwiera nowy krok od góry strony; nie przechodzi dalej, dopóki krok nie jest uzupełniony (komunikat + przewinięcie do brakującego pola). Test na telefonie zaliczony.
