@@ -22,6 +22,7 @@ import { BACKGROUNDS, backgroundBonus } from "./backgrounds.js";
 import { TOOLS, TOOL_GROUPS, toolOptions, ALL_TOOLS } from "./tools.js";
 import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./identity.js";
 import { review } from "./checks.js";
+import { startPlan, blankStartGear } from "./equipment.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
 
 export const CLASSES = { barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard };
@@ -184,6 +185,8 @@ export function normalize(ch) {
   if (!ch.active) ch.active = {};
   if (!Array.isArray(ch.weapons)) ch.weapons = []; // 0.12: weapons carried, for attack rolls
   if (!ch.familiar) ch.familiar = { name: "", kind: "", hp: { cur: null, max: null }, present: true };
+  // 0.18: starting equipment. Characters made before it already have their gear, so the creator doesn't ask again.
+  ch.startGear = blankStartGear(ch.startGear || { skip: true });
   if ((ch.schema || 1) < 3) {
     ch.setting = ch.setting || "standard";
     ch.languages = ch.languages || [];
@@ -476,6 +479,7 @@ export function compute(raw) {
       conMod: mods.con, extra: hpExtra, hpGain: Math.max(1, fixedHp(cls.hitDie) + mods.con) + hpExtra,
     } : null,
   };
+  result.startGear = startPlan(ch, result);
   result.review = review(ch, result);
   return result;
 }
@@ -492,7 +496,7 @@ export function blankCharacter() {
     abilities: { ...cls.standardArray },
     languages: [], alignment: "", toolPicks: {}, featPicks: {}, featChoices: {}, legacyFeats: [], levelChoices: {},
     skills: [], expertise: [], feats: [],
-    armor: "none", shield: false, classChoices: {}, spells: { cantrips: "", prepared: "" },
+    armor: "none", shield: false, startGear: blankStartGear(), classChoices: {}, spells: { cantrips: "", prepared: "" },
     hpRolls: {}, hp: { cur: null, temp: 0, maxOverride: null }, death: { ok: 0, fail: 0 }, used: {},
     notes: "", created: Date.now(), updated: Date.now(),
   };

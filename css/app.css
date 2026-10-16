@@ -261,6 +261,17 @@ details summary { cursor: pointer; }
 .formstatus.bad { color: #f0a0a6; }
 .formnav { position: sticky; bottom: env(safe-area-inset-bottom, 0px); background: rgba(13,10,15,.94); padding: 10px 0; z-index: 4; border-top: 1px solid var(--seam); }
 .checkcard { border-color: var(--gold-dim); }
+/* Starting equipment */
+.kitopts { display: grid; gap: 6px; }
+.kitopt { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1px solid var(--seam); border-radius: var(--r); background: var(--crypt);
+  color: var(--bone-dim); font: .88rem var(--f-ui); cursor: pointer; min-height: 48px; }
+.kitopt b { color: var(--bone); }
+.kitopt[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); color: var(--bone); }
+.picked.bad { color: #f0a0a6; }
+.shop summary { cursor: pointer; font-family: var(--f-ui); color: var(--gold); padding: 6px 0; }
+.shop[open] summary { margin-bottom: 6px; }
+.shop .row select { flex: 1 1 220px; min-width: 0; }
+.shop .row input[type="number"] { width: 5.5em; flex: 0 0 auto; }
 .card.flash { animation: flash 1.6s ease-out; }
 @keyframes flash { 0%, 40% { box-shadow: 0 0 0 2px var(--gold); } 100% { box-shadow: 0 0 0 2px transparent; } }
 @media (prefers-reduced-motion: reduce) { .card.flash { animation: none; outline: 2px solid var(--gold); } }

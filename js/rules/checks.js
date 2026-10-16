@@ -103,6 +103,14 @@ export function review(ch, c) {
     if (FEATS[f.id]?.spellAbility && !(ch.featChoices?.[f.id]?.ability)) T(5, "todo.featAbility", { name: FEATS[f.id].name });
   }
 
+  // Starting equipment: an option from the class and from the background; purchases can't cost more than the coins.
+  const sg = c.startGear;
+  if (sg && !sg.sg.applied && !sg.sg.skip) {
+    if (sg.needsClass) T(5, "todo.startClass");
+    if (sg.needsBg) T(5, "todo.startBg");
+    if (sg.left < 0) E(5, "err.startGold", { n: (-sg.left / 100).toFixed(2).replace(/\.00$/, "") });
+  }
+
   // Values typed by hand in versions before 0.4: still applied, but should be replaced.
   if (ch.acOverride) T(5, "todo.legacyAc", { n: ch.acOverride });
   if (ch.hp?.maxOverride) T(5, "todo.legacyHp", { n: ch.hp.maxOverride });

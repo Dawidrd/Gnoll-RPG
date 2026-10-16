@@ -36,7 +36,7 @@ export function weaponEditor({ ch, c, onChange }) {
   const rows = (ch.weapons || []).map((it) => {
     const a = c.attacks.find((x) => x.uid === it.uid);
     return h("div", { cls: "li" }, [
-      h("div", {}, [h("div", { cls: "t", text: tr(WEAPONS[it.id]?.name || { pl: it.id, en: it.id }) }),
+      h("div", {}, [h("div", { cls: "t", text: (it.qty > 1 ? `${it.qty}× ` : "") + tr(WEAPONS[it.id]?.name || { pl: it.id, en: it.id }) }),
         a ? h("div", { cls: "n", text: `${signed(a.hit)} · ${tr(a.damage)} ${tr(a.type)}${a.mastery ? " · " + short(a.mastery.name) : ""}` }) : null]),
       h("button", { type: "button", cls: "btn small ghost", text: t("inv.remove"), onclick: () => { ch.weapons = ch.weapons.filter((x) => x.uid !== it.uid); onChange(); } }),
     ]);

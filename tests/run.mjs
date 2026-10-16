@@ -10,6 +10,8 @@ import { WEAPONS } from "../js/rules/weapons.js";
 import * as MERGE from "../js/sync/merge.js";
 import * as PARTY from "../js/sync/partylogic.js";
 import { stepBlockers } from "../js/rules/checks.js";
+import * as EQ from "../js/rules/equipment.js";
+import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS } from "../js/rules/index.js";
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
@@ -23,7 +25,8 @@ const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 const eq = (a, b, what = "") => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${what} expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); };
 const keys = (list) => list.map((x) => x.key);
-const make = (over = {}) => Object.assign(blankCharacter(), over);
+// Most tests aren't about starting equipment, so their characters skip it; the equipment tests pick it explicitly.
+const make = (over = {}) => Object.assign(blankCharacter(), { startGear: EQ.blankStartGear({ skip: true }) }, over);
 const run = (ch) => compute(structuredClone(ch));
 
 // --- Ability scores (PHB ch. 2, step 3) ---
@@ -35,6 +38,94 @@ test("point buy above 27 is an error", () => {
   const c = run(make({ abilityMethod: "pointbuy", abilityBase: { str: 15, dex: 15, con: 15, int: 9, wis: 8, cha: 8 } }));
   eq(keys(c.review.errors).includes("err.pointbuy"), true);
 });
+// --- Starting equipment (PHB ch. 2 step 2, class and background kits, ch. 6 prices) ---
+const gear = (over) => make({ ...over, startGear: EQ.blankStartGear(over.startGear) });
+test("every class and background has kits, and every kit item is on the price list", () => {
+  for (const id of Object.keys(ALL_CLASSES)) eq(!!EQ.CLASS_KITS[id], true, "class " + id);
+  for (const [id, b] of Object.entries(ALL_BGS)) if (!b.legacy) eq(!!EQ.BG_KITS[id], true, "background " + id);
+  for (const k of [...Object.values(EQ.CLASS_KITS), ...Object.values(EQ.BG_KITS)]) for (const o of Object.values(k))
+    for (const [key] of o.items) eq(key.startsWith("tool:") || key.startsWith("any:") || !!EQ.CATALOG[key], true, key);
+});
+test("a new character must pick class and background equipment; older characters aren't asked", () => {
+  const fresh = run(Object.assign(blankCharacter(), { background: "sage" }));
+  eq(keys(fresh.review.todo).filter((k) => k.startsWith("todo.start")), ["todo.startClass", "todo.startBg"]);
+  const old = blankCharacter(); delete old.startGear;
+  eq(keys(run(normalize(old)).review.todo).filter((k) => k.startsWith("todo.start")), []);
+});
+test("Fighter A + Soldier A: chain mail worn, weapons with counts, packs unpacked, coins added up", () => {
+  const ch = gear({ classId: "fighter", background: "soldier", toolPicks: { bg: ["dice"] }, startGear: { cls: "A", bg: "A" } });
+  const p = run(ch).startGear;
+  eq(p.armor, "chain-mail");
+  eq(p.shield, false);
+  eq(p.weapons, [{ id: "greatsword", qty: 1 }, { id: "flail", qty: 1 }, { id: "javelin", qty: 8 }, { id: "spear", qty: 1 }, { id: "shortbow", qty: 1 }]);
+  eq(p.budget, 1800, "4 + 14 gp");
+  eq(p.items.find((x) => x.name.en.startsWith("Torch")).qty, 10, "Dungeoneer's Pack torches");
+  eq(p.items.find((x) => x.name.en.startsWith("Arrows")).qty, 20);
+  eq(!!p.items.find((x) => x.name.en === "Dice"), true, "gaming set = the one picked in step 2");
+  eq(run(ch).review.todo.filter((x) => x.key.startsWith("todo.start")).length, 0);
+});
+test("Rogue A + Criminal A: daggers from both kits make one attack line of 4", () => {
+  const p = run(gear({ classId: "rogue", background: "criminal", startGear: { cls: "A", bg: "A" } })).startGear;
+  eq(p.weapons.find((w) => w.id === "dagger").qty, 4);
+  eq(p.items.find((x) => x.name.en.startsWith("Thieves")).qty, 2, "thieves' tools from both kits");
+});
+test("buying: costs come off the coins, too much is an error, bought armor is worn and the kit's goes in the pack", () => {
+  const ch = gear({ classId: "cleric", background: "acolyte", startGear: { cls: "A", bg: "B", buys: [{ key: "a:scale", qty: 1 }, { key: "g:arrows", qty: 2 }] } });
+  let c = run(ch);
+  eq(c.startGear.budget, 5700);
+  eq(c.startGear.spent, 5200, "scale 50 + 2 bundles of arrows");
+  eq(c.startGear.left, 500);
+  eq(c.startGear.armor, "scale");
+  eq(!!c.startGear.items.find((x) => x.name.en.startsWith("Chain shirt")), true, "kit armor kept as an item");
+  eq(c.startGear.items.find((x) => x.name.en === "Arrows").qty, 40, "arrows come in 20s");
+  ch.startGear.buys.push({ key: "a:half-plate", qty: 1 });
+  c = run(ch);
+  eq(keys(c.review.errors).includes("err.startGold"), true);
+});
+test("a tool from a proficiency not yet picked shows as pending", () => {
+  const p = run(gear({ classId: "monk", background: "artisan", startGear: { cls: "A", bg: "A" } })).startGear;
+  eq(p.pendingTools, 2);
+  const q = run(gear({ classId: "monk", background: "artisan", toolPicks: { class: ["flute"], bg: ["smith"] }, startGear: { cls: "A", bg: "A" } })).startGear;
+  eq(q.pendingTools, 0);
+  eq(q.items.some((x) => x.name.en === "Flute") && q.items.some((x) => x.name.en === "Smith's Tools"), true);
+});
+test("wearing follows the kit, but never overrides armor the player chose", () => {
+  const ch = gear({ classId: "fighter", background: "sage" });
+  const empty = run(ch).startGear;
+  ch.startGear.cls = "A";
+  const a = run(ch).startGear;
+  EQ.wearStart(ch, empty, a);
+  eq(ch.armor, "chain-mail");
+  eq(ch.weapons.filter((w) => w.start).map((w) => w.id), ["greatsword", "flail", "javelin"]);
+  ch.startGear.cls = "B";
+  const b = run(ch).startGear;
+  EQ.wearStart(ch, a, b);
+  eq(ch.armor, "studded");
+  eq(ch.weapons.filter((w) => w.start).map((w) => w.id), ["scimitar", "shortsword", "longbow"]);
+  ch.armor = "breastplate";
+  ch.startGear.cls = "C";
+  EQ.wearStart(ch, b, run(ch).startGear);
+  eq(ch.armor, "breastplate", "player's own pick stays");
+  eq(ch.weapons.length, 0);
+});
+test("handing out the equipment: items, coins and weapons once, then never again", () => {
+  const ch = gear({ classId: "wizard", background: "sage", startGear: { cls: "A", bg: "A", trinket: 3, buys: [{ key: "g:tinderbox", qty: 1 }] } });
+  const p = run(ch).startGear;
+  EQ.wearStart(ch, EQ.startPlan(gear({}), {}), p);
+  eq(EQ.applyStartGear(ch, p, "en"), true);
+  eq(ch.gold.gp, 12, "5 + 8 gp minus 5 sp");
+  eq(ch.gold.sp, 5);
+  eq(ch.items.find((x) => x.name.startsWith("Spellbook")).qty, 1);
+  eq(ch.items.find((x) => x.note === "trinket").name, EQ.TRINKETS[3].en);
+  eq(ch.items.find((x) => x.name.startsWith("Tinderbox")).qty, 2, "one from the Scholar's Pack, one bought");
+  eq(ch.weapons.map((w) => [w.id, w.qty, w.start]), [["dagger", 2, undefined], ["quarterstaff", 2, undefined]]);
+  eq(ch.startGear.applied, true);
+  const n = ch.items.length;
+  eq(EQ.applyStartGear(ch, run(ch).startGear, "en"), false);
+  eq(ch.items.length, n);
+  eq(keys(run(ch).review.todo).filter((k) => k.startsWith("todo.start")), []);
+});
+
 // --- Creator "Next" gate ---
 test("Next is blocked by the current step's to-dos and errors, errors first", () => {
   const c = run(make({ abilityMethod: "pointbuy", abilityBase: { str: 15, dex: 15, con: 15, int: 9, wis: 8, cha: 8 } }));
