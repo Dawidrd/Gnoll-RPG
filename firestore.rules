@@ -6,6 +6,8 @@
 //     party notes (members read; authors edit; admins may remove) and private notes (only their author, under users/).
 // 0.17: the Game Master role (gm, given by admins) and each member's GM view (gm/{uid}), read only by the party's GMs.
 //     My list of parties remembers which character plays in each (charId): one character = one party.
+// 0.19: scores copied from a paper sheet. The summary carries their fingerprint (paper), the GM view their values;
+//     a GM confirms them in the member's document (paperOk), and only a GM changes it.
 // Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
@@ -29,20 +31,27 @@ service cloud.firestore {
     function num(v) { return v is int && v >= 0 && v <= 10000; }
     // What the party sees of a character (partylogic.js sheetSummary).
     function sheet(s) {
-      return s is map && s.keys().hasOnly(['species', 'cls', 'sub', 'level', 'hp', 'hpMax', 'temp', 'ac'])
+      return s is map && s.keys().hasOnly(['species', 'cls', 'sub', 'level', 'hp', 'hpMax', 'temp', 'ac', 'paper'])
         && text(s.get('species', ''), 40) && text(s.get('cls', ''), 40) && text(s.get('sub', ''), 60)
-        && num(s.get('level', 0)) && num(s.get('hp', 0)) && num(s.get('hpMax', 0)) && num(s.get('temp', 0)) && num(s.get('ac', 0));
+        && num(s.get('level', 0)) && num(s.get('hp', 0)) && num(s.get('hpMax', 0)) && num(s.get('temp', 0)) && num(s.get('ac', 0))
+        && text(s.get('paper', ''), 16);
     }
     function gmNum(v) { return v is int && v >= -30 && v <= 1000; }
     // What a GM sees of a character beyond the summary (partylogic.js gmSummary).
     function gmSheet(s) {
-      return s is map && s.keys().hasOnly(['per', 'ins', 'inv', 'init', 'speed', 'dv', 'dc', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'acrobatics', 'animal', 'arcana', 'athletics', 'deception', 'history', 'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception', 'performance', 'persuasion', 'religion', 'sleight', 'stealth', 'survival', 'dOk', 'dFail'])
+      return s is map && s.keys().hasOnly(['per', 'ins', 'inv', 'init', 'speed', 'dv', 'dc', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'acrobatics', 'animal', 'arcana', 'athletics', 'deception', 'history', 'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception', 'performance', 'persuasion', 'religion', 'sleight', 'stealth', 'survival', 'dOk', 'dFail', 'paper'])
         && gmNum(s.get('per', 0)) && gmNum(s.get('ins', 0)) && gmNum(s.get('inv', 0)) && gmNum(s.get('init', 0)) && gmNum(s.get('speed', 0)) && gmNum(s.get('dv', 0))
         && gmNum(s.get('dc', 0)) && gmNum(s.get('str', 0)) && gmNum(s.get('dex', 0)) && gmNum(s.get('con', 0)) && gmNum(s.get('int', 0)) && gmNum(s.get('wis', 0))
         && gmNum(s.get('cha', 0)) && gmNum(s.get('acrobatics', 0)) && gmNum(s.get('animal', 0)) && gmNum(s.get('arcana', 0)) && gmNum(s.get('athletics', 0)) && gmNum(s.get('deception', 0))
         && gmNum(s.get('history', 0)) && gmNum(s.get('insight', 0)) && gmNum(s.get('intimidation', 0)) && gmNum(s.get('investigation', 0)) && gmNum(s.get('medicine', 0)) && gmNum(s.get('nature', 0))
         && gmNum(s.get('perception', 0)) && gmNum(s.get('performance', 0)) && gmNum(s.get('persuasion', 0)) && gmNum(s.get('religion', 0)) && gmNum(s.get('sleight', 0)) && gmNum(s.get('stealth', 0))
-        && gmNum(s.get('survival', 0)) && gmNum(s.get('dOk', 0)) && gmNum(s.get('dFail', 0));
+        && gmNum(s.get('survival', 0)) && gmNum(s.get('dOk', 0)) && gmNum(s.get('dFail', 0))
+        && text(s.get('paper', ''), 40);
+    }
+    // A GM's confirmation of a member's paper scores (partylogic.js paperConfirmation): signed with the GM's own uid.
+    function confirmation(p) {
+      return p is map && p.keys().hasOnly(['sig', 'charId', 'by', 'name', 'at']) && p.keys().hasAll(['sig', 'charId', 'by', 'name', 'at'])
+        && name(p.sig, 16) && name(p.charId, 128) && p.by == me() && text(p.name, 100) && p.at is int;
     }
     function march(m) {
       return m is map && m.keys().hasOnly(['mode', 'order']) && m.mode in ['5', '10'] && m.order is list && m.order.size() <= 50;
@@ -117,6 +126,8 @@ service cloud.firestore {
           (isAdmin(t) && u != ownerOf(t) && changes(['role']) && request.resource.data.role in ['admin', 'player'])
           // an admin giving or taking the Game Master role (anyone's, the founder's and their own too)
           || (isAdmin(t) && changes(['gm']) && request.resource.data.gm is bool)
+          // a GM confirming a member's paper scores, or taking the confirmation back (anyone's, their own too)
+          || (isGm(t) && changes(['paperOk']) && (!('paperOk' in request.resource.data) || confirmation(request.resource.data.paperOk)))
           // a member changing their own character or its summary
           || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet'])
             && text(request.resource.data.charId, 128) && text(request.resource.data.charName, 100)

@@ -1,4 +1,5 @@
 // Languages, alignments and sizes (2024 Player's Handbook, chapter 2).
+import { ABILITIES, STANDARD_ARRAY } from "./core.js";
 
 export const LANGUAGES = {
   common: { std: true, name: { pl: "Wspólny (Common)", en: "Common" } },
@@ -47,3 +48,28 @@ export const SIZES = {
 /** Point buy (chapter 2): 27 points, scores 8–15 before background increases. */
 export const POINT_BUY = { budget: 27, min: 8, max: 15, cost: { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 } };
 export const pointsSpent = (base) => Object.values(base).reduce((s, v) => s + (POINT_BUY.cost[v] ?? 99), 0);
+
+// --- A character copied from a paper sheet (0.19) ---
+/** Scores rolled on paper: each a whole number from 3 to 18 (4d6, drop the lowest). */
+export const PAPER = { min: 3, max: 18 };
+const sorted = (list) => [...list].sort((x, y) => x - y).join(",");
+/**
+ * Where scores typed from a paper sheet come from: the standard array, a point buy (8–15, at most 27 points),
+ * or else a roll made on paper, which the party's GM confirms.
+ */
+export function paperMethod(base) {
+  const v = ABILITIES.map((a) => base[a]);
+  if (sorted(v) === sorted(STANDARD_ARRAY)) return "array";
+  if (v.every((x) => x >= POINT_BUY.min && x <= POINT_BUY.max) && pointsSpent(base) <= POINT_BUY.budget) return "pointbuy";
+  return "paper";
+}
+export const validPaper = (base) => ABILITIES.every((a) => Number.isInteger(base[a]) && base[a] >= PAPER.min && base[a] <= PAPER.max);
+/** Short fingerprint of a character's paper scores (FNV-1a): the GM confirms this, so changed scores are no longer confirmed. */
+export function paperSig(ch) {
+  const s = `${ch.id}|${ABILITIES.map((a) => ch.abilityBase?.[a]).join(",")}`;
+  let x = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; }
+  return x.toString(16).padStart(8, "0");
+}
+/** Scores from paper that the GM confirmed, unchanged since: they can no longer be edited. */
+export const paperLocked = (ch) => ch.abilityMethod === "paper" && !!ch.paperConfirm && ch.paperConfirm.sig === paperSig(ch);

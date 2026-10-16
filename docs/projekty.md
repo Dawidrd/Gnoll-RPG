@@ -6,7 +6,7 @@ Projekty większych zmian z backlogu. Status każdego: **do zatwierdzenia** → 
 
 ## 1. „Wprowadź postać” z papierowej karty
 
-**Status:** zatwierdzony 2026-10-16. Backlog: Pomysły nr 2.
+**Status:** wdrożony w 0.19.0 (zatwierdzony 2026-10-16). Skrót w `plan-i-decyzje.md`.
 
 **Decyzje użytkownika:** P1 — cechy z papieru potwierdza w drużynie osoba z rolą MG. P2 — postać z niepotwierdzonymi cechami dołącza do drużyny normalnie. P3 — gracz może poprawić cechy z papieru do chwili potwierdzenia przez MG.
 

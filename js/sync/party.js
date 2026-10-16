@@ -2,7 +2,8 @@
 // Shared data (D3): party info, marching order, notes, and a short summary of each member's character.
 // Cloud layout (who may read and write what: firestore.rules):
 //   parties/{partyId}                 = { name, owner, invite, created, campaign?, next?, march?: { mode: "5"|"10", order: [uid] } }
-//   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet? }   (sheet: partylogic.js sheetSummary)
+//   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet?, paperOk? }
+//                                       (sheet: partylogic.js sheetSummary; paperOk: a GM's confirmation of scores from paper, paperConfirmation)
 //   parties/{partyId}/gm/{uid}        = { v, at }   (what the party's GMs see of my character: partylogic.js gmSummary)
 //   parties/{partyId}/requests/{uid}  = { name, charId, charName, code, at }
 //   parties/{partyId}/notes/{id}      = { author, name, text, at }   (party notes)
@@ -10,10 +11,10 @@
 //   users/{uid}/parties/{partyId}     = { name, state: asked|in, at, charId }   (my own list of parties; one character = one party)
 //   users/{uid}/parties/{partyId}/notes/{id} = { text, at }   (my private notes for that party)
 // Writes go to the device cache at once and to the server when online; the returned promise fails if the server refuses.
-import { cloud } from "./cloud.js";
-import { onChange, getById } from "../store.js";
+import { cloud, onAccount } from "./cloud.js";
+import { onChange, getById, upsert, loadAll } from "../store.js";
 import { compute } from "../rules/index.js";
-import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, validWhen, validMarch, CAMPAIGN_MAX } from "./partylogic.js";
+import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation } from "./partylogic.js";
 
 const need = () => { const c = cloud(); if (!c) throw new Error("signed-out"); return c; };
 const charFields = (ch) => ({ charId: ch?.id || "", charName: cleanName(ch?.name, 100) });
@@ -162,6 +163,9 @@ function shareTo(partyId, m) {
   const c = cloud();
   const ch = m?.charId ? getById(m.charId) : null;
   if (!c || !ch) return;
+  // A GM confirmed (or took back) my scores from paper: the character keeps it, which locks the scores.
+  const ok = confirmFor(ch, m);
+  if (JSON.stringify(ok) !== JSON.stringify(ch.paperConfirm || null)) { ch.paperConfirm = ok; upsert(ch); }
   const sheet = summary(ch), charName = cleanName(ch.name, 100);
   if (!sameSheet(sheet, m.sheet) || charName !== m.charName) c.F.updateDoc(c.F.doc(c.db, "parties", partyId, "members", c.uid), { sheet, charName }).catch(() => {});
   const v = gmView(ch), key = c.uid + "/" + partyId;
@@ -200,14 +204,13 @@ async function shareChanged() {
     } catch { /* not a member any more, or offline without a cached copy */ }
   }
 }
+const shareSoon = (ids) => { ids.forEach((id) => changedChars.add(id)); clearTimeout(shareTimer); shareTimer = setTimeout(shareChanged, 3000); };
 /** Called once at start-up. */
 export function startSharing() {
-  onChange((e) => {
-    if (e.type !== "put" || !cloud()) return;
-    changedChars.add(e.ch.id);
-    clearTimeout(shareTimer);
-    shareTimer = setTimeout(shareChanged, 3000);
-  });
+  onChange((e) => { if (e.type === "put" && cloud()) shareSoon([e.ch.id]); });
+  // Once signed in, check every party once: e.g. a GM confirmed my scores from paper while the app was closed.
+  let checked = false;
+  onAccount((st) => { if (st.status === "in" && !checked) { checked = true; shareSoon(loadAll().map((ch) => ch.id)); } });
 }
 
 // --- D3: party info and marching order (admins) ---
@@ -265,6 +268,11 @@ export function removeMember(partyId, uid) {
   return b.commit();
 }
 /** Give or take the Game Master role (admins). */
+/** A GM confirms a member's scores from paper (m = their member row), or takes the confirmation back. */
+export function confirmPaper(partyId, m, on) {
+  const { F, db, uid, name } = need();
+  return F.updateDoc(F.doc(db, "parties", partyId, "members", m.uid), { paperOk: on ? paperConfirmation(m, { uid, name }) : F.deleteField() });
+}
 export function setGm(partyId, uid, on) { const { F, db } = need(); return F.updateDoc(F.doc(db, "parties", partyId, "members", uid), { gm: !!on }); }
 export function setRole(partyId, uid, role) { const { F, db } = need(); return F.updateDoc(F.doc(db, "parties", partyId, "members", uid), { role }); }
 

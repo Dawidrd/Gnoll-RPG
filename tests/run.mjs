@@ -2,7 +2,7 @@
 // No dependencies; each test is a name and a function that throws on failure.
 import { compute, blankCharacter, normalize, typedHpRoll } from "../js/rules/index.js";
 import { fitSkills, trimSkills } from "../js/rules/skills.js";
-import { pointsSpent } from "../js/rules/identity.js";
+import { pointsSpent, paperMethod, paperSig, paperLocked } from "../js/rules/identity.js";
 import { SPELLS, spellsOf } from "../js/rules/spells.js";
 import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
@@ -945,7 +945,8 @@ test("party: the party sees only species, class, level, HP and AC", () => {
   ch.hp = { cur: 7, temp: 4, maxOverride: null };
   const c = run(ch);
   const s = PARTY.sheetSummary(ch, c);
-  eq(Object.keys(s), ["species", "cls", "sub", "level", "hp", "hpMax", "temp", "ac"]);
+  eq(Object.keys(s), ["species", "cls", "sub", "level", "hp", "hpMax", "temp", "ac", "paper"]);
+  eq(s.paper, "", "scores not from paper: no fingerprint");
   eq([s.species, s.cls, s.level, s.hp, s.temp, s.ac, s.hpMax], ["dwarf", "fighter", 3, 7, 4, c.ac.value, c.hpMax]);
   ch.hp.cur = null;
   eq(PARTY.sheetSummary(ch, c).hp, c.hpMax, "not set yet = full");
@@ -969,7 +970,8 @@ test("party: the GM view holds what a GM needs for rolls; the GM's choice of gro
   const ch = make({ classId: "cleric", speciesId: "dwarf", abilities: { str: 14, dex: 10, con: 15, int: 8, wis: 15, cha: 12 } });
   ch.death = { ok: 2, fail: 9 };
   const c = run(ch), v = PARTY.gmSummary(ch, c);
-  eq(Object.keys(v), PARTY.GM_KEYS);
+  eq(Object.keys(v), [...PARTY.GM_KEYS, "paper"]);
+  eq(v.paper, "", "scores not from paper: no values");
   eq([v.per, v.init, v.speed, v.dv, v.dc, v.wis, v.stealth], [c.passivePerception, c.initiative, c.speed, c.darkvision, c.spells.dc, c.saves.wis.value, c.skills.find((s) => s.id === "stealth").value]);
   eq([v.dOk, v.dFail], [2, 3], "death saves stop at 3");
   eq(PARTY.gmSummary(make({ classId: "fighter" }), run(make({ classId: "fighter" }))).dc, 0, "no spells: no DC");
@@ -989,6 +991,67 @@ test("party: one character = one party; a refused request frees the character", 
   const rows = [{ id: "p1", charId: "a", status: "in" }, { id: "p2", charId: "b", status: "asked" }, { id: "p3", charId: "c", status: "rejected" }, { id: "p4", charId: "", status: "in" }];
   eq([...PARTY.busyChars(rows)], ["a", "b"]);
   eq([...PARTY.busyChars(rows, "p1")], ["b"], "the party being changed does not count");
+});
+
+// --- A character from a paper sheet (0.19) ---
+const paperChar = (base, over = {}) => Object.assign(blankCharacter({ paper: true }), { abilityBase: base, abilityMethod: paperMethod(base) }, over);
+test("paper: scores from a sheet are recognized as the standard array, a point buy or a roll on paper", () => {
+  eq(paperMethod({ str: 8, dex: 15, con: 13, int: 14, wis: 10, cha: 12 }), "array", "array in any order");
+  eq(paperMethod({ str: 15, dex: 15, con: 15, int: 8, wis: 8, cha: 8 }), "pointbuy", "27 points");
+  eq(paperMethod({ str: 13, dex: 13, con: 13, int: 10, wis: 10, cha: 10 }), "pointbuy", "fewer than 27 points");
+  eq(paperMethod({ str: 15, dex: 15, con: 15, int: 9, wis: 8, cha: 8 }), "paper", "28 points");
+  eq(paperMethod({ str: 17, dex: 12, con: 14, int: 8, wis: 10, cha: 11 }), "paper", "above 15");
+  eq(paperMethod({ str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 7 }), "paper", "below 8");
+});
+test("paper: a new character from paper has open steps, no starting equipment and no point-buy nagging", () => {
+  const ch = blankCharacter({ paper: true });
+  eq([ch.entry, ch.abilityMethod, ch.startGear.skip], ["paper", "pointbuy", true]);
+  const k = keys(run(ch).review.todo);
+  eq([k.includes("todo.pointbuy"), k.includes("todo.startClass"), k.includes("todo.startBg")], [false, false, false]);
+  eq(keys(run(make({ abilityMethod: "pointbuy", abilityBase: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 } })).review.todo).includes("todo.pointbuy"), true, "a normal point buy still asks");
+});
+test("paper: scores rolled on paper must be whole numbers from 3 to 18; the array and point buy stay checked", () => {
+  const ok = paperChar({ str: 17, dex: 12, con: 14, int: 8, wis: 10, cha: 11 });
+  eq(keys(run(ok).review.errors).includes("err.paper"), false);
+  eq(run(ok).abilities.str, 17, "the score counts as typed");
+  for (const bad of [19, 2, 12.5]) eq(keys(run(paperChar({ str: bad, dex: 12, con: 14, int: 8, wis: 10, cha: 11 }, { abilityMethod: "paper" })).review.errors).includes("err.paper"), true, String(bad));
+  // Outside the paper creator the array keeps its check.
+  eq(keys(run(make({ abilityMethod: "array", abilityBase: { str: 17, dex: 12, con: 14, int: 8, wis: 10, cha: 11 } })).review.errors).includes("err.array"), true);
+});
+test("paper: the GM's confirmation locks the scores, and only for the scores it was given to", () => {
+  const ch = paperChar({ str: 17, dex: 12, con: 14, int: 8, wis: 10, cha: 11 });
+  const sig = paperSig(ch);
+  eq(/^[0-9a-f]{8}$/.test(sig), true, "short fingerprint");
+  eq(paperLocked(ch), false, "not confirmed yet");
+  ch.paperConfirm = { sig, by: "gm", name: "Ola", at: 1 };
+  eq(paperLocked(ch), true);
+  eq(paperLocked({ ...ch, abilityBase: { ...ch.abilityBase, str: 18 } }), false, "other scores");
+  eq(paperSig({ ...ch, id: "other" }) === sig, false, "another character");
+});
+test("party: scores from paper — the party sees a fingerprint, the GM the values; a confirmation holds for the same character and scores", () => {
+  const ch = paperChar({ str: 17, dex: 12, con: 14, int: 8, wis: 10, cha: 11 });
+  const c = run(ch), sheet = PARTY.sheetSummary(ch, c), v = PARTY.gmSummary(ch, c);
+  eq(sheet.paper, paperSig(ch));
+  eq(v.paper, "17,12,14,8,10,11");
+  eq(PARTY.paperValues(v.paper), ch.abilityBase);
+  eq([PARTY.paperValues(""), PARTY.paperValues("1,2,x,4,5,6")], [null, null]);
+  const m = { uid: "bob", charId: ch.id, sheet };
+  eq(PARTY.paperState(m), { state: "open" });
+  eq(PARTY.paperState({ ...m, sheet: { ...sheet, paper: "" } }), { state: "" }, "not from paper");
+  const ok = PARTY.paperConfirmation(m, { uid: "gm1", name: "  Ola  " }, 5);
+  eq(ok, { sig: sheet.paper, charId: ch.id, by: "gm1", name: "Ola", at: 5 });
+  eq(PARTY.paperState({ ...m, paperOk: ok }), { state: "ok", by: "Ola" });
+  eq(PARTY.paperState({ ...m, sheet: { ...sheet, paper: "00000000" }, paperOk: ok }).state, "open", "scores changed");
+  eq(PARTY.paperState({ ...m, charId: "other", paperOk: ok }).state, "open", "another character");
+  eq(PARTY.confirmFor(ch, { ...m, paperOk: ok }), { sig: sheet.paper, by: "gm1", name: "Ola", at: 5 });
+  eq(PARTY.confirmFor(ch, m), null, "no confirmation");
+  eq(PARTY.confirmFor({ ...ch, abilityBase: { ...ch.abilityBase, str: 18 } }, { ...m, paperOk: ok }), null, "scores changed since");
+});
+test("import: a GM's confirmation never comes from a file", () => {
+  const ch = paperChar({ str: 17, dex: 12, con: 14, int: 8, wis: 10, cha: 11 }, { name: "Grok" });
+  ch.paperConfirm = { sig: paperSig(ch), by: "gm", name: "Ola", at: 1 };
+  const { ch: back } = STORE.parseImport(JSON.stringify({ app: "gnoll-rpg", character: ch }));
+  eq([back.paperConfirm, back.entry, back.abilityMethod], [undefined, "paper", "paper"]);
 });
 
 let failed = 0;

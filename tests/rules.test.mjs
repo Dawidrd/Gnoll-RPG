@@ -299,3 +299,25 @@ test("my list of parties remembers the character playing there", async () => {
   await no(bob.update("users/bob/parties/t1", { charId: 7 }));
   await no(bob.update("users/bob/parties/t1", { secret: 1 }));
 });
+
+test("scores from paper: the party sees a fingerprint, the GM the values; only a GM confirms, signed with their own uid", async () => {
+  const { alice, bob, carol } = await world();
+  const paperOk = { sig: "a1b2c3d4", charId: "b1", by: "alice", name: "Alice", at: 5 };
+  await ok(bob.update("parties/t1/members/bob", { sheet: { ...sheetOk, paper: "a1b2c3d4" }, charName: "Grok" }));
+  await no(bob.update("parties/t1/members/bob", { sheet: { ...sheetOk, paper: "x".repeat(17) } }));
+  await ok(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), paper: "17,12,14,8,10,11" }, at: 1 }));
+  await no(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), paper: 17 }, at: 1 }));
+  // Not a GM yet: an admin alone cannot confirm; the player never confirms their own scores.
+  await no(alice.update("parties/t1/members/bob", { paperOk }));
+  await no(bob.update("parties/t1/members/bob", { paperOk: { ...paperOk, by: "bob" } }));
+  await ok(alice.update("parties/t1/members/alice", { gm: true }));
+  await no(alice.update("parties/t1/members/bob", { paperOk: { ...paperOk, by: "bob" } }), "signed with someone else's uid");
+  await no(alice.update("parties/t1/members/bob", { paperOk: { ...paperOk, extra: 1 } }));
+  await no(alice.update("parties/t1/members/bob", { paperOk, role: "admin" }), "one change at a time");
+  await ok(alice.update("parties/t1/members/bob", { paperOk }));
+  // The player can't touch it while changing their own summary.
+  await no(bob.update("parties/t1/members/bob", { paperOk: DELETE() }));
+  await ok(bob.update("parties/t1/members/bob", { sheet: sheetOk }));
+  await no(carol.update("parties/t1/members/bob", { paperOk: DELETE() }));
+  await ok(alice.update("parties/t1/members/bob", { paperOk: DELETE() }));
+});

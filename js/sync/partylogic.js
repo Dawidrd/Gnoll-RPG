@@ -1,6 +1,7 @@
 // Party logic without Firebase: invite codes, links, statuses and who may do what. Tested in tests/run.mjs.
 // The same limits are enforced on the server by firestore.rules; these only keep the app from trying.
 import { ABILITIES, SKILLS } from "../rules/core.js";
+import { paperSig } from "../rules/identity.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 export const CODE_LENGTH = 20;
@@ -106,8 +107,12 @@ export function moveIn(list, i, delta) {
 export const MARCH_MAX = 50;
 export const validMarch = (m) => !!m && (m.mode === "5" || m.mode === "10") && Array.isArray(m.order) && m.order.length <= MARCH_MAX && m.order.every((u) => typeof u === "string" && u.length <= 128);
 
+/** Fingerprint of scores rolled on paper (identity.js paperSig), or "" when the scores come from the array or a point buy. */
+const paperOf = (ch) => (ch.abilityMethod === "paper" ? paperSig(ch) : "");
+
 /**
  * What the party sees of a character: species, class, subclass, level, HP, temporary HP and AC. Nothing else leaves the device.
+ * paper: only a fingerprint of scores rolled on paper (the party sees "scores from paper", the GM sees the values).
  * `c` is compute(ch) (passed in, so this file needs no rules).
  */
 export function sheetSummary(ch, c) {
@@ -116,6 +121,7 @@ export function sheetSummary(ch, c) {
   return {
     species: String(ch.speciesId || "").slice(0, 40), cls: String(ch.classId || "").slice(0, 40), sub: String(c.subclassId || "").slice(0, 60),
     level: n(c.level), hp: Math.min(ch.hp?.cur == null ? hpMax : n(ch.hp.cur), hpMax), hpMax, temp: n(ch.hp?.temp), ac: n(c.ac?.value),
+    paper: paperOf(ch),
   };
 }
 export const sameSheet = (a, b) => !!a && !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((k) => a[k] === b[k]);
@@ -145,6 +151,8 @@ export function gmSummary(ch, c) {
   for (const a of ABILITIES) out[a] = n(c.saves?.[a]?.value);
   for (const s of SKILLS) out[s.id] = n(skill[s.id]);
   out.dOk = n(Math.min(3, ch.death?.ok || 0)); out.dFail = n(Math.min(3, ch.death?.fail || 0));
+  // Scores rolled on paper, before background increases ("15,14,…" in ability order), for the GM to confirm.
+  out.paper = paperOf(ch) ? ABILITIES.map((a) => n(ch.abilityBase?.[a])).join(",") : "";
   return out;
 }
 /** The GM's choice of groups (saved on the device), cleaned of unknown names. */
@@ -152,3 +160,30 @@ export const gmGroups = (list) => (Array.isArray(list) ? list.filter((g, i) => g
 
 /** One character = one party: characters already in a party (or waiting for an answer) from my list of parties. */
 export const busyChars = (rows, except = "") => new Set((rows || []).filter((r) => r.charId && r.id !== except && ["in", "asked", "checking"].includes(r.status)).map((r) => r.charId));
+
+// --- Scores from a paper sheet (0.19): the party's GM confirms them ---
+/**
+ * A member's paper scores: "" (not from paper), "open" (not confirmed) or "ok" (confirmed by a GM, with their name).
+ * The confirmation holds only for the same character and the same scores (its fingerprint).
+ */
+export function paperState(m) {
+  const sig = m?.charId ? m.sheet?.paper : "";
+  if (!sig) return { state: "" };
+  const ok = m.paperOk;
+  return ok && ok.sig === sig && ok.charId === m.charId ? { state: "ok", by: ok.name || "" } : { state: "open" };
+}
+/** What the GM writes into a member's document to confirm their paper scores (me: { uid, name }). */
+export const paperConfirmation = (m, me, at = Date.now()) => ({ sig: m.sheet.paper, charId: m.charId, by: me.uid, name: cleanName(me.name, 100), at });
+/**
+ * The confirmation my device keeps in the character (it locks the scores): { sig, by, name, at } from my member document,
+ * or null when no GM confirmed these scores of this character.
+ */
+export function confirmFor(ch, m) {
+  const ok = m?.paperOk, sig = paperOf(ch);
+  return sig && ok && ok.sig === sig && ok.charId === ch.id ? { sig, by: ok.by, name: ok.name || "", at: ok.at } : null;
+}
+/** The GM view's "15,14,13,12,10,8" as { str: 15, … }; null when missing. */
+export function paperValues(text) {
+  const v = String(text || "").split(",").map(Number);
+  return v.length === ABILITIES.length && v.every(Number.isInteger) ? Object.fromEntries(ABILITIES.map((a, i) => [a, v[i]])) : null;
+}

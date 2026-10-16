@@ -65,11 +65,13 @@ export function renderHome(root, go) {
       confirmBox,
       h("div", { cls: "row" }, [
         h("a", { cls: "btn gold", href: "#/new", text: t("home.new") }),
+        h("a", { cls: "btn", href: "#/paper", id: "paper-new", text: t("home.paperNew") }),
         h("button", { type: "button", cls: "btn", text: t("home.import"), onclick: () => fileInput.click() }),
         h("button", { type: "button", cls: "btn ghost", id: "paste-open", text: t("home.paste"), onclick: () => { pasteBox.hidden = false; pasteArea.focus(); } }),
         fileInput,
       ]),
       pasteBox,
+      h("p", { cls: "hint", text: t("home.paperHint") }),
       h("p", { cls: "hint", text: t("home.pageHint") }),
       accountBox(),
       h("p", { cls: "hint" }, [t(accountAvailable() ? "home.privacyAccount" : "home.privacy"), " ", h("a", { href: "#/privacy", text: t("privacy.more") })]),

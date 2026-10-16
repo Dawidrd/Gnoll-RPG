@@ -6,6 +6,7 @@ import { compute, typedHpRoll, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS, CREATURE_
 import { msg } from "./msg.js";
 import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
+import { paperLocked } from "../rules/identity.js";
 import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
@@ -48,6 +49,9 @@ export function renderSheet(root, go, id, tab) {
         h("a", { cls: "eyebrow back", href: "#/", text: "← " + t("sheet.back") }),
         h("h1", { cls: "name", text: ch.name }),
         h("p", { cls: "sub", text: [spName, tr(c.cls.name), subName].filter(Boolean).join(" · ") }),
+        // Scores rolled on paper are always marked; the GM of the character's party confirms them.
+        ch.abilityMethod === "paper" ? h("p", { cls: "paperbadge" + (paperLocked(ch) ? " ok" : ""), id: "paper-badge",
+          text: paperLocked(ch) ? t("paper.badgeOk", { name: ch.paperConfirm.name || t("party.role.gm") }) : t("paper.badgeOpen") }) : null,
       ]),
       h("div", { cls: "mast-ctl" }, [
         h("div", { cls: "lvl" }, [

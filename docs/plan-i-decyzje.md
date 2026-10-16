@@ -98,6 +98,14 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 1. Wkleić nowe `firestore.rules` (Firestore Database → Rules → Publish). Stare drużyny testowe przestaną być widoczne — trzeba założyć nowe.
 2. Test na dwóch kontach: założyć drużynę z zakładki „Drużyna” na karcie postaci, wysłać link, dołączyć drugim kontem z jego karty; nadać rolę MG (np. sobie) i sprawdzić Widok MG; sprawdzić, że gracz bez roli MG go nie widzi; zmiana HP/rzutów przeciw śmierci u gracza pojawia się u MG; postać z drużyny nie da się wybrać do drugiej drużyny.
 
+## Postać z papierowej karty (0.19.0)
+Projekt: `docs/projekty.md` §1 (zatwierdzony 2026-10-16).
+- Przycisk „Wprowadź postać z karty” → `#/paper`, ten sam kreator z `ch.entry = "paper"`: „Dalej” nie blokuje, zapis blokują tylko błędy.
+- Cechy wpisywane z kartki (przed premią z tła); `paperMethod` rozpoznaje tablicę standardową, point buy (8–15, do 27 pkt) albo rzut na papierze (`abilityMethod = "paper"`, 3–18). Tablica i point buy są sprawdzane jak zwykle.
+- Rzut na papierze: stały znaczek „Cechy z papieru” (karta, podgląd drużyny, Widok MG). Drużyna widzi tylko odcisk wartości (`sheet.paper`, 8 znaków), MG widzi wartości (`gm.v.paper`).
+- Potwierdza MG drużyny: zapis `paperOk = { sig, charId, by, name, at }` w dokumencie członka (`firestore.rules`: tylko MG, podpisany własnym uid). Potwierdzenie działa tylko dla tej samej postaci i tych samych wartości. Urządzenie gracza przepisuje je do `ch.paperConfirm`, co blokuje wartości; „Cofnij potwierdzenie” je odblokowuje. Import z pliku nie przenosi potwierdzenia.
+- Zamiast ekwipunku startowego: monety i przedmioty (ten sam edytor co zakładka Ekwipunek), broń i zbroja z listy.
+
 ## Testy reguł na emulatorze
 - Java 21 zainstalowana przez użytkownika; testy uprawnień przeniesione z autorskiego symulatora na oficjalny **Firebase Local Emulator Suite** (emulator Firestore) i `@firebase/rules-unit-testing`. Symulator usunięty.
 - `npm run test:rules` uruchamia emulator (projekt `demo-gnoll`, bez łączenia z prawdziwym Firebase), testy z `tests/rules.test.mjs` (16) i zamyka emulator. `node tests/run.mjs` (87) zostaje bez zależności.
@@ -112,7 +120,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - `sw.js` — service worker (`VERSION`, `SHELL`).
 
 ## Zrobione (wersje)
-0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3). 0.16: testy reguł bezpieczeństwa, ekran Prywatność, usuwanie konta (D4). 0.17: drużyna w karcie postaci, rola MG, Party zamiast Team.
+0.1–0.3: podstawy, Monk, Barbarian, Rogue, Cleric. 0.4: kreator wg rozdz. 2. 0.5: awans krok po kroku, featy. 0.6: wszystkie gatunki PHB. 0.7: tryb Ravenloft. 0.8: czary. 0.9: Warlock i Sorcerer. 0.10: przeniesienie postaci ze starych stron, zakładki Walka (planer tury), Ekwipunek, Dziennik sesji. 0.11: Bard, Druid, Wizard (partia 7). 0.12: Fighter, Paladin, Ranger, broń i Weapon Mastery (partia 8). 0.13: konta (D1). 0.14: drużyna (D2). 0.15: wspólne dane drużyny (D3). 0.16: testy reguł bezpieczeństwa, ekran Prywatność, usuwanie konta (D4). 0.17: drużyna w karcie postaci, rola MG, Party zamiast Team. 0.18: ekwipunek startowy (partia 9). 0.19: postać z papierowej karty.
 
 ## Następne kroki (kolejność)
 Przeniesione do `docs/backlog.md` (sekcja „Pomysły”).

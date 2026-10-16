@@ -41,6 +41,7 @@ function route() {
   stopWatching(); // live party listeners belong to the screen being left
   app.replaceChildren(topbar(), h("div", { cls: "wrap" }, [view]), footer());
   if (parts[0] === "new") renderForm(view, go, null);
+  else if (parts[0] === "paper") renderForm(view, go, null, { paper: true });
   else if (parts[0] === "edit" && parts[1]) renderForm(view, go, parts[1]);
   else if (parts[0] === "c" && parts[1]) renderSheet(view, go, parts[1], parts[2]);
   else if (parts[0] === "party" && parts[1]) renderParty(view, go, parts[1]);
@@ -57,7 +58,7 @@ addEventListener("hashchange", () => { route(); scrollTo(0, 0); });
 // Characters changed on another device: redraw, unless the user is in the middle of typing or editing.
 addEventListener("gnoll:remote", () => {
   const typing = document.activeElement?.matches?.("input, textarea, select");
-  if (!typing && !/^#\/(new|edit|party|join)\b|^#\/c\/[^/]+\/party\b/.test(location.hash)) route();
+  if (!typing && !/^#\/(new|paper|edit|party|join)\b|^#\/c\/[^/]+\/party\b/.test(location.hash)) route();
 });
 layout();
 route();

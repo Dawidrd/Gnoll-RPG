@@ -420,3 +420,7 @@ ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .gm-table th, .gm-table td { padding: 5px 8px; border-bottom: 1px solid var(--seam); white-space: nowrap; text-align: center; }
 .gm-table thead th { color: var(--bone-dim); font-weight: 500; font-size: .76rem; }
 .gm-table tbody th { text-align: left; color: var(--gold); position: sticky; left: 0; background: var(--slab); }
+
+/* 0.19: scores copied from a paper sheet */
+.paperbadge { display: inline-block; align-self: flex-start; font-family: var(--f-ui); font-size: .78rem; color: var(--gold); border: 1px solid var(--gold-dim); border-radius: 99px; padding: 1px 8px; margin: 2px 0; }
+.paperbadge.ok { color: var(--moss); border-color: var(--moss); }

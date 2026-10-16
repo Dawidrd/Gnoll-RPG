@@ -20,7 +20,7 @@ import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
 import { SPECIES, SPECIES_SPELLS, speciesTraits } from "./species.js";
 import { BACKGROUNDS, backgroundBonus } from "./backgrounds.js";
 import { TOOLS, TOOL_GROUPS, toolOptions, ALL_TOOLS } from "./tools.js";
-import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES } from "./identity.js";
+import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES, paperMethod } from "./identity.js";
 import { review } from "./checks.js";
 import { startPlan, blankStartGear } from "./equipment.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
@@ -491,9 +491,17 @@ export function compute(raw) {
   return result;
 }
 
-/** A brand-new character with sensible defaults. */
-export function blankCharacter() {
+/**
+ * A brand-new character with sensible defaults.
+ * paper: a character copied from a paper sheet (all steps open, scores typed in, current equipment instead of starting gear).
+ */
+export function blankCharacter({ paper = false } = {}) {
   const cls = monk;
+  if (paper) {
+    const base = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+    return { ...blankCharacter(), entry: "paper", abilityMethod: paperMethod(base), abilityBase: base, abilities: { ...base }, startGear: blankStartGear({ skip: true }),
+      items: [], gold: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 } }; // the creator edits the current equipment right away
+  }
   return {
     schema: 3, setting: "standard",
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),

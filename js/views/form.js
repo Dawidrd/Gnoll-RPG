@@ -9,7 +9,7 @@ import {
   blankCharacter, normalize, compute, finalAbilities, fixedHp,
 } from "../rules/index.js";
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
-import { POINT_BUY, pointsSpent } from "../rules/identity.js";
+import { POINT_BUY, pointsSpent, PAPER, paperMethod, paperLocked } from "../rules/identity.js";
 import { backgroundBonus } from "../rules/backgrounds.js";
 import { stepBlockers } from "../rules/checks.js";
 import { fitSkills, trimSkills } from "../rules/skills.js";
@@ -22,6 +22,7 @@ import { classOptionUI } from "./classoptions.js";
 import { weaponEditor } from "./weapons.js";
 import { CATALOG, SHOP_SECTIONS, TRINKETS, priceText, wearStart, applyStartGear } from "../rules/equipment.js";
 import { WEAPONS } from "../rules/weapons.js";
+import { gearEditor } from "./gear.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 // Where to scroll when "Next" is blocked by a checks item (anything else: the step's checklist).
@@ -43,11 +44,13 @@ export { msg } from "./msg.js";
 import { msg } from "./msg.js";
 import { levelChoiceUI } from "./levelchoice.js";
 
-export function renderForm(root, go, id) {
+/** opts.paper: a new character copied from a paper sheet (ch.entry = "paper": steps open in any order, scores typed in, current equipment). */
+export function renderForm(root, go, id, opts = {}) {
   const stored = id ? getById(id) : null;
   if (id && !stored) return go("#/");
-  const ch = stored ? normalize(structuredClone(stored)) : blankCharacter();
+  const ch = stored ? normalize(structuredClone(stored)) : blankCharacter({ paper: !!opts.paper });
   const isNew = !id;
+  const paper = ch.entry === "paper";
   let step = 1;
   const short = (a) => ABILITY_NAMES[a].short[lang()];
   const skillName = (sid) => SKILLS.find((k) => k.id === sid)[lang()];
@@ -118,7 +121,9 @@ export function renderForm(root, go, id) {
   // The stepper is sticky, so scrolling it into view does nothing: a new step always opens at the top of the page.
   const goStep = (n) => { step = n; tidy(); root.replaceChildren(build()); scrollTo(0, 0); };
   // "Next" moves on only when the current step is complete; otherwise it says what's missing and shows where.
+  // A character from paper moves on freely: what's missing stays on the "To do" list.
   const goNext = () => {
+    if (paper) return goStep(step + 1);
     const first = stepBlockers(compute(structuredClone(ch)).review, step)[0];
     if (!first) return goStep(step + 1);
     toast(t("form.nextBlocked", { what: msg(first) }));
@@ -159,8 +164,9 @@ export function renderForm(root, go, id) {
       text: errors.length ? t("form.statusErrors", { n: errors.length }) : totalTodo ? t("form.statusTodo", { n: totalTodo }) : t("form.statusDone") });
 
     return h("form", { cls: "panel cform", novalidate: true, onsubmit: (e) => { e.preventDefault(); save(); } }, [
-      h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? "form.titleNew" : "form.titleEdit") }),
-        h("a", { cls: "btn ghost", href: isNew ? "#/" : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status]),
+      h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? (paper ? "form.titlePaper" : "form.titleNew") : "form.titleEdit") }),
+        h("a", { cls: "btn ghost", href: isNew ? "#/" : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status,
+        paper ? h("p", { cls: "hint", id: "f-paper-intro", text: t("form.paperIntro") }) : null]),
       stepper,
       h("h3", { cls: "steptitle", text: `${step}. ${t("step." + step + ".title")}` }),
       h("p", { cls: "hint", text: t("step." + step + ".hint") }),
@@ -175,7 +181,8 @@ export function renderForm(root, go, id) {
     const clsSel = h("select", { id: "f-class", onchange: (e) => {
       ch.classId = e.target.value; ch.subclass = ""; ch.classChoices = {}; ch.expertise = []; ch.levelChoices = {}; ch.classOptions = {}; ch.spellPicks = {};
       ch.level = Math.min(ch.level, cls().maxLevel);
-      if (ch.abilityMethod === "array") ch.abilityBase = { ...cls().standardArray };
+      // Scores copied from paper stay as typed.
+      if (ch.abilityMethod === "array" && !paper) ch.abilityBase = { ...cls().standardArray };
       if (ch.abilityMethod === "roll" && ch.rolled) assignByClass(ch.rolled.map((r) => r.total));
       draw();
     } }, [
@@ -315,7 +322,16 @@ export function renderForm(root, go, id) {
       draw();
     };
     const spent = pointsSpent(ch.abilityBase);
+    const sealed = paperLocked(ch);
     const baseCell = (a) => {
+      // From paper: the value as written on the sheet; where it comes from is worked out from all six.
+      if (paper) return h("input", { type: "number", min: PAPER.min, max: PAPER.max, inputmode: "numeric", id: "f-pp-" + a, "aria-label": short(a),
+        value: ch.abilityBase[a], disabled: sealed, onchange: (e) => {
+          const n = parseInt(e.target.value, 10);
+          if (Number.isFinite(n)) ch.abilityBase[a] = n;
+          ch.abilityMethod = paperMethod(ch.abilityBase);
+          draw();
+        } });
       if (method === "pointbuy") {
         const v = ch.abilityBase[a];
         const nextCost = (POINT_BUY.cost[v + 1] ?? 99) - POINT_BUY.cost[v];
@@ -383,6 +399,12 @@ export function renderForm(root, go, id) {
           ]),
       );
     }
+    if (paper) return [card(t("form.abilities"), [
+      h("p", { cls: "hint", text: t("form.paperAbHint") }),
+      abRows,
+      h("p", { cls: "picked" + (method === "paper" ? "" : " done"), id: "f-paper-kind", text: t("form.paperIs." + method, { n: spent }) }),
+      method === "paper" ? h("p", { cls: sealed ? "hint" : "warn soft", text: sealed ? t("form.paperLocked", { name: ch.paperConfirm.name || t("party.role.gm") }) : t("form.paperOpen") }) : null,
+    ]), card(t("form.increase"), incParts)];
     return [card(t("form.abilities"), parts), card(t("form.increase"), incParts)];
   }
 
@@ -410,7 +432,7 @@ export function renderForm(root, go, id) {
     const bg = BACKGROUNDS[ch.background];
     const out = [skillsUI(c, bg), ...c.classOptions.map((g) => card(null, [classOptionUI({ group: g, c, known: c.knownClassCantrips,
       onChange: (raws) => { ch.classOptions = { ...(ch.classOptions || {}), [g.key]: raws }; draw(); } })])), featsUI(c, bg),
-      ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), startGearUI(c), armorUI(c), spellsUI(c), hpUI(c),
+      ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), ...(paper ? paperGearUI() : [startGearUI(c)]), armorUI(c), spellsUI(c), hpUI(c),
       ...c.asiLevels.map((L) => card(t("lvl.asiTitle", { n: L }), [levelChoiceUI({ draft: ch, L, profSkills: c.skills.filter((s) => s.prof && !s.fromFeat).map((s) => s.id),
         onChange: (lc) => { ch.levelChoices = { ...ch.levelChoices, [L]: lc }; draw(); } })]))];
     const legacy = legacyUI(c);
@@ -642,6 +664,11 @@ export function renderForm(root, go, id) {
     return card(t("form.startTitle"), parts, { id: "f-start" });
   }
 
+  /** From paper: the coins and items the character has now (the Equipment tab's editor), instead of starting equipment. */
+  function paperGearUI() {
+    return [card(t("form.paperGear"), [h("p", { cls: "hint", text: t("form.paperGearHint") })], { id: "f-start" }), gearEditor({ ch, onChange: () => {} })];
+  }
+
   function armorUI(c) {
     return card(t("form.armorTitle"), [
       h("p", { cls: "hint", text: t("form.training") + ": " + (c.training.length ? c.training.map((k) => t("armor." + k)).join(", ") : t("armor.none")) }),
@@ -743,6 +770,8 @@ export function renderForm(root, go, id) {
     ch.name = ch.name.trim(); ch.player = (ch.player || "").trim();
     ch.size = c.size;
     ch.abilities = finalAbilities(ch);
+    // A GM's confirmation holds only for the scores it was given to.
+    if (ch.paperConfirm && !paperLocked(ch)) ch.paperConfirm = null;
     ch.schema = 3;
     applyStartGear(ch, c.startGear, lang());
     const before = stored ? compute(structuredClone(stored)).hpMax : null;

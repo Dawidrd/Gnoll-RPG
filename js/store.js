@@ -138,5 +138,7 @@ export function parseImport(text) {
   if (isPageExport(data)) return fromPage(data);
   const ch = data && data.app === "gnoll-rpg" ? data.character : null;
   if (!ch || typeof ch !== "object" || !ch.abilities || !ch.classId) throw new Error("bad-file");
+  // A GM's confirmation of scores from paper comes only from the party, never from a file.
+  delete ch.paperConfirm;
   return { ch, report: null };
 }

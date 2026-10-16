@@ -5,12 +5,12 @@ import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { loadAll, getById, storage } from "../store.js";
 import { CLASSES, SPECIES } from "../rules/index.js";
-import { ABILITY_NAMES, SKILLS, signed } from "../rules/core.js";
+import { ABILITIES, ABILITY_NAMES, SKILLS, signed } from "../rules/core.js";
 import { account, onAccount, accountAvailable } from "../sync/cloud.js";
 import { accountBox } from "./account.js";
 import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX, NOTE_MAX,
   sessionWhen, cleanNote, sortNotes, canEditNote, canDeleteNote, marchOrder, marchRows, moveIn,
-  GM_GROUPS, gmGroups, busyChars } from "../sync/partylogic.js";
+  GM_GROUPS, gmGroups, busyChars, paperState, paperValues } from "../sync/partylogic.js";
 import * as PARTY from "../sync/party.js";
 
 const fail = () => toast(t("party.err.save"));
@@ -139,6 +139,12 @@ function gmLabel({ g, k }) {
   if (g === "skills") { const sk = SKILLS.find((x) => x.id === k); return sk ? sk[lang()] || sk.en : k; }
   return t("party.gm.k." + k);
 }
+/** "Scores from paper": not confirmed yet, or confirmed by a GM (by name). */
+function paperBadge(m) {
+  const p = paperState(m);
+  if (!p.state) return null;
+  return h("span", { cls: "paperbadge" + (p.state === "ok" ? " ok" : ""), text: p.state === "ok" ? t("paper.badgeOk", { name: p.by || t("party.role.gm") }) : t("paper.badgeOpen") });
+}
 /** "Krasnolud · Wojownik (Champion) 3" from the summary the member shared. */
 function sheetLine(s) {
   const cls = CLASSES[s.cls];
@@ -248,6 +254,7 @@ function partyBody(panel, go, id, home) {
       return h("article", { cls: "ccard member" }, [
         h("span", { cls: "ccard-name", text: m.charName || t("party.noCharShort") }),
         s ? h("span", { cls: "ccard-meta", text: sheetLine(s) }) : m.charId ? h("span", { cls: "hint", text: t("party.sheet.none") }) : null,
+        paperBadge(m),
         s ? h("div", { cls: "member-vit" }, [
           h("div", { cls: "vit hp" }, [h("span", { cls: "k", text: "HP" }), h("span", { cls: "v", text: `${s.hp}/${s.hpMax}` }),
             s.temp ? h("span", { cls: "v small", text: "+" + s.temp }) : null]),
@@ -287,12 +294,25 @@ function partyBody(panel, go, id, home) {
       h("thead", {}, [h("tr", {}, [h("th", { text: t("party.gm.char") }), ...cols.map((c) => h("th", { text: gmLabel(c) }))])]),
       h("tbody", {}, playing.map((m) => h("tr", {}, [h("th", { text: m.charName || m.name || "?" }), ...cols.map((c) => h("td", { text: cell(c, v.gm[m.uid]?.[c.k]) }))]))),
     ])]) : h("p", { cls: "small", text: t(playing.length ? "party.gm.pick" : "party.gm.empty") });
+    // Scores rolled on paper: the GM checks the values and confirms them (or takes the confirmation back).
+    const paperRows = playing.filter((m) => paperState(m).state).map((m) => {
+      const p = paperState(m), vals = paperValues(v.gm[m.uid]?.paper);
+      return h("div", { cls: "li" }, [
+        h("div", {}, [h("div", { cls: "t", text: m.charName || m.name || "?" }),
+          h("div", { cls: "n", text: vals ? ABILITIES.map((a) => `${ABILITY_NAMES[a].short[lang()]} ${vals[a]}`).join(" · ") : t("party.paper.noValues") }),
+          paperBadge(m)]),
+        p.state === "ok" ? btn(t("party.paper.undo"), () => PARTY.confirmPaper(id, m, false).catch(fail), "btn small ghost")
+          : btn(t("party.paper.confirm"), () => PARTY.confirmPaper(id, m, true).catch(fail), "btn small gold", { disabled: !vals }),
+      ]);
+    });
     return [h("section", { cls: "card key", id: "party-gm" }, [
       h("h3", { text: t("party.gm.title") }),
       h("p", { cls: "hint", text: t("party.gm.hint") }),
       h("div", { cls: "seg small", role: "group", "aria-label": t("party.gm.groups") }, Object.keys(GM_GROUPS).map((g) =>
         h("button", { type: "button", "aria-pressed": groups.includes(g) ? "true" : "false", text: t("party.gm.group." + g), onclick: () => toggle(g) }))),
       table,
+      paperRows.length ? h("div", { cls: "stack", id: "gm-paper" }, [h("h4", { text: t("party.paper.title") }),
+        h("p", { cls: "hint", text: t("party.paper.hint") }), h("div", { cls: "list" }, paperRows)]) : null,
     ])];
   };
 

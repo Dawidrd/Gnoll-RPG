@@ -2,7 +2,7 @@
 // Each item: { step: 1–5, key: i18n key, vars }. Errors block saving; todo items don't.
 import { ABILITIES, FEATS, SKILLS } from "./core.js";
 import { STANDARD_ARRAY } from "./core.js";
-import { POINT_BUY, pointsSpent, ALIGNMENTS } from "./identity.js";
+import { POINT_BUY, pointsSpent, ALIGNMENTS, validPaper } from "./identity.js";
 
 const sortNums = (a) => [...a].sort((x, y) => x - y).join(",");
 
@@ -35,10 +35,12 @@ export function review(ch, c) {
   const base = ch.abilityBase || {};
   if (ch.abilityMethod === "manual") T(3, "todo.legacyAbilities");
   else if (ch.abilityMethod === "roll" && !ch.rolled) T(3, "todo.roll");
+  else if (ch.abilityMethod === "paper") { if (!validPaper(base)) E(3, "err.paper"); }
   else if (ch.abilityMethod === "pointbuy") {
     const spent = pointsSpent(base);
     if (ABILITIES.some((a) => base[a] < POINT_BUY.min || base[a] > POINT_BUY.max) || spent > POINT_BUY.budget) E(3, "err.pointbuy");
-    else if (spent < POINT_BUY.budget) T(3, "todo.pointbuy", { n: POINT_BUY.budget - spent });
+    // Copied from paper: unspent points are what the sheet has, not something left to do.
+    else if (spent < POINT_BUY.budget && ch.entry !== "paper") T(3, "todo.pointbuy", { n: POINT_BUY.budget - spent });
   } else if (ch.abilityMethod === "array" && sortNums(ABILITIES.map((a) => base[a])) !== sortNums(STANDARD_ARRAY)) E(3, "err.array");
   else if (ch.abilityMethod === "roll" && ch.rolled && sortNums(ABILITIES.map((a) => base[a])) !== sortNums(ch.rolled.map((r) => r.total))) E(3, "err.roll");
   if (c.bg && !c.bg.legacy) {
