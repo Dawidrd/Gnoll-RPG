@@ -1,6 +1,6 @@
 // Rules tests. Run with: node tests/run.mjs
 // No dependencies; each test is a name and a function that throws on failure.
-import { compute, blankCharacter, normalize } from "../js/rules/index.js";
+import { compute, blankCharacter, normalize, typedHpRoll } from "../js/rules/index.js";
 import { fitSkills, trimSkills } from "../js/rules/skills.js";
 import { pointsSpent } from "../js/rules/identity.js";
 import { SPELLS, spellsOf } from "../js/rules/spells.js";
@@ -975,6 +975,16 @@ test("party: the GM view holds what a GM needs for rolls; the GM's choice of gro
   eq(PARTY.gmSummary(make({ classId: "fighter" }), run(make({ classId: "fighter" }))).dc, 0, "no spells: no DC");
   eq([PARTY.gmGroups(["skills", "bogus", "skills"]), PARTY.gmGroups(null)], [["skills"], PARTY.GM_GROUPS_DEFAULT]);
 });
+test("level up: an HP roll typed from the table must be a whole number from 1 to the hit die", () => {
+  eq(typedHpRoll(8, "5"), 5, "d8 5");
+  eq(typedHpRoll(8, " 8 "), 8, "max, spaces");
+  eq(typedHpRoll(12, "1"), 1, "min");
+  for (const bad of ["0", "9", "-3", "4.5", "", "abc", null]) eq(typedHpRoll(8, bad), null, `"${bad}"`);
+  // A typed result counts like a roll made in the app.
+  const ch = make({ classId: "fighter", level: 2, hpRolls: { 2: typedHpRoll(10, "7") } });
+  eq(run(ch).hpPerLevel[0], { level: 2, die: 7, rolled: true, gain: 7 + run(ch).mods.con }, "level 2");
+});
+
 test("party: one character = one party; a refused request frees the character", () => {
   const rows = [{ id: "p1", charId: "a", status: "in" }, { id: "p2", charId: "b", status: "asked" }, { id: "p3", charId: "c", status: "rejected" }, { id: "p4", charId: "", status: "in" }];
   eq([...PARTY.busyChars(rows)], ["a", "b"]);

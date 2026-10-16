@@ -2,7 +2,7 @@
 import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert, exportFile } from "../store.js";
-import { compute, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS, CREATURE_TYPES, DAMAGE_NAMES } from "../rules/index.js";
+import { compute, typedHpRoll, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS, CREATURE_TYPES, DAMAGE_NAMES } from "../rules/index.js";
 import { msg } from "./msg.js";
 import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
@@ -284,7 +284,7 @@ export function renderSheet(root, go, id, tab) {
       const out = [];
       const nx = c.next;
       if (nx) {
-        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, subclass: "", skills: [], expertise: [], lc: null, spellPicks: null, classOptions: null };
+        if (!pending || pending.level !== nx.level) pending = { level: nx.level, hp: null, hpTyped: false, subclass: "", skills: [], expertise: [], lc: null, spellPicks: null, classOptions: null };
         const N = nx.level;
         const draft = structuredClone(ch);
         draft.level = N;
@@ -308,12 +308,25 @@ export function renderSheet(root, go, id, tab) {
           hpBox.append(h("p", { cls: "hint", text: t("lvl.hpChoose", { d: nx.hitDie, n: nx.fixed, con: signed(nx.conMod) }) }),
             h("div", { cls: "row" }, [
               h("button", { type: "button", cls: "btn gold", id: "lvl-roll", text: t("lvl.roll", { d: nx.hitDie }), onclick: () => { pending.hp = rollDie(nx.hitDie); draw(); } }),
-              h("button", { type: "button", cls: "btn", id: "lvl-fixed", text: t("lvl.fixedPick", { n: nx.fixed, hp: gainOf(nx.fixed) }), onclick: () => { pending.hp = "fixed"; draw(); } }),
+              h("button", { type: "button", cls: "btn", id: "lvl-fixed", text: t("lvl.fixedPick", { n: nx.fixed, hp: gainOf(nx.fixed) }), onclick: () => { pending.hp = "fixed"; pending.hpTyped = false; draw(); } }),
             ]));
+          // A roll made with real dice at the table.
+          const typed = h("input", { type: "number", id: "lvl-typed", min: 1, max: nx.hitDie, step: 1, inputmode: "numeric", "aria-label": t("lvl.typedLabel", { d: nx.hitDie }) });
+          const useTyped = () => {
+            const v = typedHpRoll(nx.hitDie, typed.value);
+            if (v == null) { toast(t("lvl.typedBad", { d: nx.hitDie })); typed.focus(); return; }
+            pending.hp = v; pending.hpTyped = true; draw();
+          };
+          typed.addEventListener("keydown", (e) => { if (e.key === "Enter") useTyped(); });
+          hpBox.append(h("p", { cls: "hint", text: t("lvl.typedHint", { d: nx.hitDie }) }),
+            h("div", { cls: "row" }, [typed, h("button", { type: "button", cls: "btn ghost", id: "lvl-typed-ok", text: t("lvl.typedOk"), onclick: useTyped })]));
         } else {
           const die = pending.hp === "fixed" ? nx.fixed : pending.hp;
-          hpBox.append(h("p", { cls: "rollres" }, [pending.hp === "fixed" ? t("lvl.fixedChosen", { n: nx.fixed }) + " " : t("lvl.rolled", { d: nx.hitDie }) + " ",
-            h("b", { text: die }), " → " + t("lvl.gain", { hp: gainOf(die) })]));
+          const label = pending.hp === "fixed" ? t("lvl.fixedChosen", { n: nx.fixed }) : pending.hpTyped ? t("lvl.typedChosen", { d: nx.hitDie }) : t("lvl.rolled", { d: nx.hitDie });
+          hpBox.append(h("p", { cls: "rollres" }, [label + " ", h("b", { text: die }), " → " + t("lvl.gain", { hp: gainOf(die) })]));
+          // A fixed value or a typed result can be corrected; a roll made in the app is final.
+          if (pending.hp === "fixed" || pending.hpTyped)
+            hpBox.append(h("button", { type: "button", cls: "btn ghost", id: "lvl-hp-change", text: t("lvl.hpChange"), onclick: () => { pending.hp = null; pending.hpTyped = false; draw(); } }));
         }
         steps.push(hpBox); ok.push(pending.hp != null);
 

@@ -40,7 +40,7 @@ Commity nazywamy `X.Y.Z: krótki opis`, a w treści lista zmian.
 
 ## Gdzie co jest
 
-- Plan i ustalenia: `docs/` (`backlog.md`, `plan-i-decyzje.md`, `druzyna-synchronizacja.md`, `zrodla.md`).
+- Plan i ustalenia: `docs/` (`backlog.md`, `plan-i-decyzje.md`, `projekty.md` — projekty do zatwierdzenia, `druzyna-synchronizacja.md`, `zrodla.md`).
 - Podręczniki (PDF) leżą w `../dnd-zrodla/`, poza repo. **Nigdy nie dodawaj ich do gita** (prawa autorskie). Wersje tekstowe: `../dnd-zrodla/tekst/` — szukaj w nich zamiast czytać całe PDF-y.
 
 ## Użytkownik

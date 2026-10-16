@@ -41,6 +41,13 @@ export const SETTINGS = {
 
 /** Fixed hit points per level after the first (the 2024 "fixed value"). */
 export const fixedHp = (hitDie) => hitDie / 2 + 1;
+/** A hit-die result typed by the player (rolled at the table): a whole number from 1 to the die, otherwise null. */
+export const typedHpRoll = (hitDie, raw) => {
+  const s = String(raw ?? "").trim();
+  if (!/^\d+$/.test(s)) return null;
+  const n = +s;
+  return n >= 1 && n <= hitDie ? n : null;
+};
 
 /** Increases from one level choice: ASI (+2, or +1/+1) or a feat's +1. */
 export function choiceIncreases(lc) {
