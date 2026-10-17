@@ -26,3 +26,13 @@ Skrót: ścieżka z repo to `../dnd-zrodla/`.
 ## Gdzie które rozdziały (PHB 2024)
 - Rozdz. 2 — tworzenie postaci; 3 — klasy; 4 — pochodzenie (tła, gatunki); 5 — featy; 6 — ekwipunek; 7 — czary.
 - The Horrors Within, rozdz. 1 „Character Options” — gatunki, tła, Dark Gifts, podklasy Ravenloft.
+
+## Dźwięki (`assets/audio/sfx/`, od 0.40.0)
+Pliki `.mp3`, krótkie (do ~1,5 s, do ~50 KB). Nazwa pliku = nazwa dźwięku z listy `SOUNDS` w `js/sfx.js`. Gdy plik trafi do folderu, dopisz go do `SHELL` w `sw.js` (pilnuje tego test) i uzupełnij tabelę.
+
+| Plik | Kiedy gra | Źródło | Licencja |
+|---|---|---|---|
+| `attack.mp3` | atak w planerze tury (Attack, druga broń, atak okazyjny) | — | — |
+| `rage.mp3` | wejście w Szał (barbarzyńca) | — | — |
+| `down.mp3` | postać spada do 0 HP | — | — |
+| `eldritch-blast.mp3` | Eldritch Blast w planerze tury | — | — |

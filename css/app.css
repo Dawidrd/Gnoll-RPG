@@ -76,6 +76,7 @@ main.panel { padding-top: 0; }
 .btn.blood { background: #3a1015; border-color: var(--blood); color: #f3d6d6; }
 .btn.ghost { background: none; }
 .btn.sq { min-width: 42px; padding: 8px 0; }
+.btn.sfx { min-width: 44px; min-height: 44px; font-size: 1.15rem; } /* sound effects on the sheet header (0.40) */
 input, textarea, select { font: 1rem var(--f-body); color: var(--bone); background: #120e14; border: 1px solid var(--seam); border-radius: var(--r); padding: 8px 10px; min-width: 0; min-height: 40px; }
 input[type=number] { font-family: var(--f-ui); font-variant-numeric: tabular-nums; width: 5.5em; }
 textarea { width: 100%; resize: vertical; line-height: 1.5; }

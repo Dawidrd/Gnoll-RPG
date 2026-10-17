@@ -26,6 +26,7 @@ import { familiarTab, hasFamiliar } from "./familiar.js";
 import { familiarAccess } from "../rules/familiars.js";
 import { accountAvailable } from "../sync/cloud.js";
 import { searchSelects } from "./selectsearch.js";
+import { sfxOn, setSfx, play } from "../sfx.js";
 import { skillGroups } from "./skillgroups.js";
 
 const TABS = ["start", "combat", "character", "spells", "familiar", "inventory", "party", "levelup", "notes"];
@@ -33,6 +34,25 @@ let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
 let freshShown = 0; // the new spell circle being shown on the Spells tab (ch.newCircle is cleared on the first look)
+
+/** The speaker on the sheet's header: sound effects on or off (this device, all characters). */
+function sfxButton() {
+  const paint = (b) => {
+    const on = sfxOn();
+    b.textContent = on ? "🔊" : "🔇";
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.setAttribute("aria-label", t(on ? "sfx.labelOn" : "sfx.labelOff"));
+    b.title = t("sfx.hint");
+  };
+  const b = h("button", { type: "button", cls: "btn ghost sq sfx", id: "sfx-toggle", onclick: () => {
+    const on = !sfxOn();
+    const kept = setSfx(on);
+    paint(b);
+    toast(t(on ? "sfx.on" : "sfx.off") + (kept ? "" : " " + t("sfx.notKept")));
+  } });
+  paint(b);
+  return b;
+}
 
 export function renderSheet(root, go, id, tab) {
   if (id !== lastId) { lastHp = null; pending = null; lastId = id; freshShown = 0; }
@@ -75,6 +95,7 @@ export function renderSheet(root, go, id, tab) {
         h("div", { cls: "row" }, [
           h("a", { cls: "btn ghost", href: `#/edit/${ch.id}`, text: t("sheet.edit") }),
           h("button", { type: "button", cls: "btn ghost", text: t("sheet.export"), onclick: () => exportFile(ch) }),
+          sfxButton(),
         ]),
       ]),
     ]);
@@ -597,7 +618,7 @@ export function renderSheet(root, go, id, tab) {
 
   function changeHp(delta) {
     snap();
-    const hp = ch.hp, max = compute(ch).hpMax;
+    const hp = ch.hp, max = compute(ch).hpMax, wasUp = hp.cur > 0;
     ch.death = ch.death || { ok: 0, fail: 0 };
     let massive = false;
     if (delta < 0) {
@@ -618,6 +639,7 @@ export function renderSheet(root, go, id, tab) {
       else toast(t("conc.check", { dc: Math.min(30, Math.max(10, Math.floor(-delta / 2))) }));
     }
     save();
+    if (wasUp && hp.cur === 0) play("down");
   }
 
   function rest(kind) {

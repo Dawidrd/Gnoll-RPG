@@ -9,6 +9,7 @@ import { clamp, signed } from "../rules/core.js";
 import { dmgTag, dmgTags, dmgIcons, typeChip } from "./dmgtag.js";
 import { BEASTS, speedText } from "../rules/beasts.js";
 import { familiarStartBox, hasFamiliar } from "./familiar.js";
+import { play, playFor } from "../sfx.js";
 
 const left = (r) => (r ? r.max - r.used : 0);
 const short = (x) => tr(x).split(" (")[0];
@@ -54,6 +55,7 @@ export function combatTab({ ch, c, save }) {
     if (pay.how === "free") p.note = t("turn.paidFree");
     if (slot === "free") turn.free = [...(turn.free || []), p]; else turn[slot] = p;
     save();
+    playFor(o); // attack, Rage, Eldritch Blast
   }
   function undo(slot, i) {
     const p = slot === "free" ? turn.free[i] : turn[slot];
@@ -176,7 +178,7 @@ export function activeCard({ ch, c, save }) {
     toggle("rage", t("active.rage"), c.active.rage, c.active.rage ? t("active.rageHint") : t("active.rageLeft", { n: left(r) }), () => {
       if (c.active.rage) return set("rage", false);
       if (!left(r)) return toast(t("turn.cantPay"));
-      ch.used = { ...ch.used, rage: (ch.used?.rage || 0) + 1 }; set("rage", true); toast(t("active.rageOn"));
+      ch.used = { ...ch.used, rage: (ch.used?.rage || 0) + 1 }; set("rage", true); toast(t("active.rageOn")); play("rage");
     });
   }
   // Wild Shape (Druid): pick a known form and shift (spends a use, gives Temporary HP), or leave the form.

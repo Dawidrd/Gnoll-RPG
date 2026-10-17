@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.40.0", date: "2026-10-17",
+    points: [
+      { pl: "Efekty dźwiękowe: przycisk z głośnikiem obok „Edytuj” i „Eksportuj” na karcie postaci. Domyślnie wyłączone; telefon pamięta Twój wybór.", en: "Sound effects: a speaker button next to “Edit” and “Export” on the character sheet. Off by default; your device remembers the choice." },
+      { pl: "Dźwięk gra przy ataku i Eldritch Blast w planerze tury, przy wejściu w Szał i gdy postać spada do 0 HP.", en: "A sound plays for attacks and Eldritch Blast in the turn planner, when you start a Rage, and when your character drops to 0 HP." },
+    ],
+  },
+  {
     version: "0.39.2", date: "2026-10-17",
     points: [
       { pl: "Portrety postaci w zakładce Drużyna już nie migają, gdy ktoś zmieni HP albo coś innego na swojej karcie.", en: "Character portraits on the Party tab no longer flicker when someone changes their HP or anything else on their sheet." },

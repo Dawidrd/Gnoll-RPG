@@ -18,7 +18,7 @@ import { stepBlockers, saveState } from "../js/rules/checks.js";
 import * as EQ from "../js/rules/equipment.js";
 import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS } from "../js/rules/index.js";
 import { inAppBrowser, phoneKind, androidBrowser, installOrder } from "../js/inapp.js";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
 import { RELEASES, latest, isUnseen } from "../js/releases.js";
@@ -29,6 +29,7 @@ import { fieldOf } from "../js/views/fieldof.js";
 import * as FAM from "../js/rules/familiars.js";
 import * as NOTES from "../js/rules/notes.js";
 import * as AV from "../js/rules/avatar.js";
+import * as SFX from "../js/sfx.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1686,6 +1687,30 @@ test("0.39.2 party portraits: the same picture element is kept across redraws un
   eq(b === a, false);
   eq(k.get("u2", "sm|Grok|data:B", make) === b, false); // another member has their own
   eq(made, 3);
+});
+
+test("0.40 sound effects: which pick makes which sound, when it may play, files match the offline list", () => {
+  eq(SFX.soundFor({ spell: "eldritch-blast", attack: true }), "eldritch-blast");
+  eq(SFX.soundFor({ spell: "fire-bolt" }), ""); // other spells quiet for now
+  eq(SFX.soundFor({ set: { rage: true } }), "rage");
+  eq(SFX.soundFor({ id: "attack", attack: true }), "attack");
+  eq(SFX.soundFor({ id: "dash" }), "");
+  const base = { on: true, hidden: false, playing: new Set(), name: "attack" };
+  eq(SFX.mayPlay(base), true);
+  eq(SFX.mayPlay({ ...base, on: false }), false);
+  eq(SFX.mayPlay({ ...base, hidden: true }), false);
+  eq(SFX.mayPlay({ ...base, playing: new Set(["attack"]) }), false); // the same sound does not overlap itself
+  eq(SFX.mayPlay({ ...base, playing: new Set(["rage", "down", "eldritch-blast"]) }), false); // at most 3 at once
+  eq(SFX.mayPlay({ ...base, name: "nope" }), false);
+  eq(SFX.sfxOn(), false); // off by default
+  // A sound file in the folder must be in SHELL (plays offline); SHELL must not list a missing file (it would block installing).
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  for (const n of SFX.SOUNDS) {
+    const f = SFX.sfxFile(n);
+    eq([f, existsSync(new URL("../" + f, import.meta.url))], [f, sw.includes(`"${f}"`)]);
+  }
+  eq(sw.includes('"./js/sfx.js"'), true);
+  for (const k of ["sfx.on", "sfx.off", "sfx.notKept", "sfx.labelOn", "sfx.labelOff", "sfx.hint"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
 let failed = 0;
