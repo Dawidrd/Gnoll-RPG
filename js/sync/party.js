@@ -2,8 +2,9 @@
 // Shared data (D3): party info, marching order, notes, and a short summary of each member's character.
 // Cloud layout (who may read and write what: firestore.rules):
 //   parties/{partyId}                 = { name, owner, invite, created, campaign?, next?, march?: { mode: "5"|"10", order: [uid] } }
-//   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet?, paperOk? }
-//                                       (sheet: partylogic.js sheetSummary; paperOk: a GM's confirmation of scores from paper, paperConfirmation)
+//   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet?, avatar?, paperOk? }
+//                                       (sheet: partylogic.js sheetSummary; avatar: the character's portrait, partylogic.js avatarOf;
+//                                        paperOk: a GM's confirmation of scores from paper, paperConfirmation)
 //   parties/{partyId}/gm/{uid}        = { v, at }   (what the party's GMs see of my character: partylogic.js gmSummary)
 //   parties/{partyId}/requests/{uid}  = { name, charId, charName, code, at }
 //   parties/{partyId}/notes/{id}      = { author, name, char?, gm?, text, at }   (party notes; char/gm since 0.31.0: partylogic.js noteSign)
@@ -14,7 +15,7 @@
 import { cloud, onAccount } from "./cloud.js";
 import { onChange, getById, upsert, loadAll } from "../store.js";
 import { compute } from "../rules/index.js";
-import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign } from "./partylogic.js";
+import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, avatarOf, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign } from "./partylogic.js";
 
 const need = () => { const c = cloud(); if (!c) throw new Error("signed-out"); return c; };
 const charFields = (ch) => ({ charId: ch?.id || "", charName: cleanName(ch?.name, 100) });
@@ -166,8 +167,12 @@ function shareTo(partyId, m) {
   // A GM confirmed (or took back) my scores from paper: the character keeps it, which locks the scores.
   const ok = confirmFor(ch, m);
   if (JSON.stringify(ok) !== JSON.stringify(ch.paperConfirm || null)) { ch.paperConfirm = ok; upsert(ch); }
-  const sheet = summary(ch), charName = cleanName(ch.name, 100);
-  if (!sameSheet(sheet, m.sheet) || charName !== m.charName) c.F.updateDoc(c.F.doc(c.db, "parties", partyId, "members", c.uid), { sheet, charName }).catch(() => {});
+  const sheet = summary(ch), charName = cleanName(ch.name, 100), avatar = avatarOf(ch);
+  const patch = {};
+  if (!sameSheet(sheet, m.sheet) || charName !== m.charName) Object.assign(patch, { sheet, charName });
+  // The portrait is sent only when it changed (it is bigger than everything else in the summary).
+  if (avatar !== (m.avatar || "")) patch.avatar = avatar || c.F.deleteField();
+  if (Object.keys(patch).length) c.F.updateDoc(c.F.doc(c.db, "parties", partyId, "members", c.uid), patch).catch(() => {});
   const v = gmView(ch), key = c.uid + "/" + partyId;
   if (sameSheet(v, sentGm.get(key))) return;
   sentGm.set(key, v);
@@ -178,7 +183,7 @@ function shareTo(partyId, m) {
 export function setMyChar(partyId, ch) {
   const { F, db, uid } = need();
   const b = F.writeBatch(db), gm = F.doc(db, "parties", partyId, "gm", uid);
-  b.update(F.doc(db, "parties", partyId, "members", uid), ch ? { ...charFields(ch), sheet: summary(ch) } : { charId: "", charName: "", sheet: F.deleteField() });
+  b.update(F.doc(db, "parties", partyId, "members", uid), ch ? { ...charFields(ch), sheet: summary(ch), avatar: avatarOf(ch) || F.deleteField() } : { charId: "", charName: "", sheet: F.deleteField(), avatar: F.deleteField() });
   b.set(F.doc(db, "users", uid, "parties", partyId), { charId: ch?.id || "" }, { merge: true });
   if (ch) b.set(gm, { v: gmView(ch), at: Date.now() }); else b.delete(gm);
   sentGm.delete(uid + "/" + partyId);

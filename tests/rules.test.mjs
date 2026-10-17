@@ -339,3 +339,16 @@ test("scores from paper: the party sees a fingerprint, the GM the values; only a
   await no(carol.update("parties/t1/members/bob", { paperOk: DELETE() }));
   await ok(alice.update("parties/t1/members/bob", { paperOk: DELETE() }));
 });
+
+test("0.37: the character's portrait — only a small picture, written only by the member", async () => {
+  const { alice, bob } = await world();
+  const pic = "data:image/jpeg;base64," + "A".repeat(30000);
+  await ok(bob.update("parties/t1/members/bob", { avatar: pic }));
+  await ok(bob.update("parties/t1/members/bob", { sheet: sheetOk, charName: "Grok", avatar: pic }));
+  await no(alice.update("parties/t1/members/bob", { avatar: pic + "B" }), "someone else's portrait");
+  await no(bob.update("parties/t1/members/bob", { avatar: "data:image/jpeg;base64," + "A".repeat(70000) }), "too big");
+  await no(bob.update("parties/t1/members/bob", { avatar: "https://example.com/x.jpg" }), "a link to another site");
+  await no(bob.update("parties/t1/members/bob", { avatar: "data:image/svg+xml;base64,PHN2Zz4=" }), "SVG can carry scripts");
+  await no(bob.update("parties/t1/members/bob", { avatar: 7 }));
+  await ok(bob.update("parties/t1/members/bob", { avatar: DELETE() }));
+});

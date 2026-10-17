@@ -7,6 +7,7 @@ import { accountBox } from "./account.js";
 import { accountAvailable } from "../sync/cloud.js";
 import { addCards, addHref, countAdd } from "./addmode.js";
 import { newsCard } from "./news.js";
+import { avatarPic } from "./avatar.js";
 
 const todoCount = (ch) => { try { const r = compute(structuredClone(ch)).review; return r.todo.length + r.errors.length; } catch { return 0; } };
 
@@ -50,9 +51,12 @@ export function renderHome(root, go) {
       ask(t("home.deleteConfirm", { name: ch.name }), () => { remove(ch.id); go("#/"); });
     } });
     return h("article", { cls: "ccard" }, [
-      h("a", { cls: "ccard-main", href: `#/c/${ch.id}/start` }, [
-        h("span", { cls: "ccard-name", text: ch.name }),
-        h("span", { cls: "ccard-meta", text: meta }),
+      h("a", { cls: "ccard-main withpic", href: `#/c/${ch.id}/start` }, [
+        avatarPic(ch.avatar, ch.name, "sm"),
+        h("span", { cls: "ccard-text" }, [
+          h("span", { cls: "ccard-name", text: ch.name }),
+          h("span", { cls: "ccard-meta", text: meta }),
+        ]),
       ]),
       todoCount(ch) ? h("span", { cls: "ccard-todo", text: t("home.todo", { n: todoCount(ch) }) }) : null,
       h("div", { cls: "row" }, [

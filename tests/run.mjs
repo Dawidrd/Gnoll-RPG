@@ -28,6 +28,7 @@ import { newSpellCircle } from "../js/rules/magic.js";
 import { fieldOf } from "../js/views/fieldof.js";
 import * as FAM from "../js/rules/familiars.js";
 import * as NOTES from "../js/rules/notes.js";
+import * as AV from "../js/rules/avatar.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1620,6 +1621,19 @@ test("notes: texts in both languages, the Journal tab is gone, new files work of
   for (const k of ["tab.journal", "journal.title", "fam.notes", "party.notes.mine"]) eq([k, LANG_PL[k], LANG_EN[k]], [k, undefined, undefined]);
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   for (const f of ["./js/views/notes.js", "./js/views/live.js", "./js/rules/notes.js"]) eq(sw.includes(`"${f}"`), true, f + " in SHELL");
+});
+
+test("0.37 avatar: only a small picture is valid; framing stays inside the photo", () => {
+  eq(AV.validAvatar("data:image/jpeg;base64,AAAA"), true);
+  eq(AV.validAvatar("https://x.pl/a.jpg"), false);
+  eq(AV.validAvatar("data:image/svg+xml;base64,AAAA"), false);
+  eq(AV.validAvatar("data:image/jpeg;base64," + "A".repeat(AV.AVATAR_MAX)), false);
+  const s = AV.coverScale(400, 200, 240, 1);
+  eq(s, 1.2);
+  eq(AV.clampPan(400, 200, 240, s, 50, -999), { x: 0, y: 0 });
+  eq(AV.sourceRect(400, 200, 240, s, -999, 0), { sx: 200, sy: 0, side: 200 });
+  eq(PARTY.avatarOf({ avatar: "zle" }), "");
+  for (const k of ["av.title", "av.add", "av.change", "av.remove", "av.removeAsk", "av.hint", "av.cropHint", "av.use", "av.bad"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
 let failed = 0;

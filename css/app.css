@@ -485,3 +485,24 @@ summary .dmgs { margin-left: 4px; }
 .addcard:hover { border-color: var(--gold-dim); }
 .addcard .ccard-name { font-size: 1.25rem; }
 #add-file-help p { margin: 6px 0 0; }
+
+/* Character portrait (0.37) */
+.avatar { flex: none; border-radius: 50%; border: 1px solid var(--gold-dim); background: var(--slab); object-fit: cover; display: inline-grid; place-items: center;
+  font-family: var(--f-head); color: var(--gold-dim); }
+.avatar.sm { width: 48px; height: 48px; font-size: 1.4rem; }
+.avatar.md { width: 64px; height: 64px; font-size: 1.8rem; }
+.avatar.lg { width: 96px; height: 96px; font-size: 2.6rem; }
+.withpic { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ccard-text { display: grid; min-width: 0; }
+.whoname { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.whoname a { line-height: 0; border-radius: 50%; }
+.avbox { display: grid; gap: 12px; }
+.avrow { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.avrow > .stack { flex: 1 1 200px; min-width: 0; }
+.avedit { justify-items: center; }
+.avcrop { position: relative; width: 240px; height: 240px; overflow: hidden; border-radius: var(--r); background: #000; touch-action: none; cursor: grab; user-select: none; }
+.avcrop:active { cursor: grabbing; }
+.avcrop img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; -webkit-user-drag: none; }
+.avring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 200px rgba(13,10,15,.6); border: 2px solid var(--gold); pointer-events: none; }
+.avzoom { display: flex; align-items: center; gap: 10px; width: 240px; }
+.avzoom input { flex: 1; }

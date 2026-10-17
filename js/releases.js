@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.37.0", date: "2026-10-17",
+    points: [
+      { pl: "Postać może mieć portret: dodaj zdjęcie albo rysunek w kreatorze (krok „Charakter i tożsamość”) albo na karcie w zakładce Postać.", en: "A character can have a portrait: add a photo or drawing in the creator (the identity step) or on the sheet's Character tab." },
+      { pl: "Sam ustawiasz kadr: przesuń zdjęcie i powiększ je, a zapisze się to, co jest w kółku.", en: "You frame it yourself: drag and zoom the picture, and what is inside the circle is saved." },
+      { pl: "Portret widać na liście postaci, na karcie i w drużynie (widzą go pozostali gracze i MG).", en: "The portrait shows on the character list, on the sheet and in the party (the other players and the GM see it)." },
+    ],
+  },
+  {
     version: "0.36.0", date: "2026-10-17",
     points: [
       { pl: "Wszystkie notatki są teraz w jednym miejscu — w zakładce „Notatki” na karcie postaci.", en: "All your notes are now in one place — the “Notes” tab on the character sheet." },

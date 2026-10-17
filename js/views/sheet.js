@@ -7,6 +7,7 @@ import { msg } from "./msg.js";
 import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
 import { paperLocked, genderText } from "../rules/identity.js";
+import { avatarPic, avatarEditor } from "./avatar.js";
 import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie, pipTarget, rechargeKey, asksBeforeSpend } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
@@ -58,7 +59,10 @@ export function renderSheet(root, go, id, tab) {
     const header = h("header", { cls: "mast" }, [
       h("div", { cls: "who" }, [
         h("a", { cls: "eyebrow back", href: "#/", text: "← " + t("sheet.back") }),
-        h("h1", { cls: "name", text: ch.name }),
+        h("div", { cls: "whoname" }, [
+          ch.avatar ? h("a", { href: `#/c/${ch.id}/character`, title: t("av.title") }, [avatarPic(ch.avatar, ch.name, "md")]) : null,
+          h("h1", { cls: "name", text: ch.name }),
+        ]),
         h("p", { cls: "sub", text: [ch.gender === "none" ? "" : genderText(ch, lang()), spName, tr(c.cls.name), subName].filter(Boolean).join(" · ") }),
         // Scores rolled on paper are always marked; the GM of the character's party confirms them.
         ch.abilityMethod === "paper" ? h("p", { cls: "paperbadge" + (paperLocked(ch) ? " ok" : ""), id: "paper-badge",
@@ -213,6 +217,8 @@ export function renderSheet(root, go, id, tab) {
       return [
         h("section", { cls: "blk" }, [h("p", { cls: "lead gl", text: tr(c.cls.role) })]),
         identity,
+        h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("av.title") }),
+          avatarEditor({ get: () => ch.avatar, set: (v) => { ch.avatar = v; save(); }, name: () => ch.name })]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.abilities") }), abil]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.skills") }), skills]),
         h("section", { cls: "blk" }, [h("div", { cls: "orn", text: t("char.classFeatures") }), featList(c.classFeatures)]),

@@ -35,6 +35,7 @@ export { msg } from "./msg.js";
 import { msg } from "./msg.js";
 import { countEvent } from "../stats.js";
 import { levelChoiceUI } from "./levelchoice.js";
+import { avatarEditor } from "./avatar.js";
 
 /** opts.paper: a new character copied from a paper sheet (ch.entry = "paper": steps open in any order, scores typed in, current equipment).
  *  A new character in the making is kept on this device until it is saved, one per kind (new / from paper);
@@ -506,6 +507,8 @@ export function renderForm(root, go, id, opts = {}) {
         h("div", { cls: "row" }, [field(t("form.gender"), genderSel), genderOwn]),
         h("p", { cls: "hint", text: t("form.genderHint") }),
         h("div", { cls: "row" }, [field(t("form.player"), player)]),
+        h("div", { cls: "stack" }, [h("span", { cls: "small", text: t("av.title") }),
+          avatarEditor({ get: () => ch.avatar, set: (v) => { ch.avatar = v; draw(); }, name: () => ch.name })]),
       ]),
     ];
   }

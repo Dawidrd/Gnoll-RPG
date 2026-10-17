@@ -8,6 +8,7 @@
 //     My list of parties remembers which character plays in each (charId): one character = one party.
 // 0.19: scores copied from a paper sheet. The summary carries their fingerprint (paper), the GM view their values;
 //     a GM confirms them in the member's document (paperOk), and only a GM changes it.
+// 0.37: the character's portrait (avatar) next to the summary: only a small base64 JPEG/WebP/PNG, written by its owner.
 // Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
@@ -36,6 +37,8 @@ service cloud.firestore {
         && num(s.get('level', 0)) && num(s.get('hp', 0)) && num(s.get('hpMax', 0)) && num(s.get('temp', 0)) && num(s.get('ac', 0))
         && text(s.get('paper', ''), 16);
     }
+    // The character's portrait (rules/avatar.js validAvatar, AVATAR_MAX).
+    function avatar(v) { return v is string && v.size() <= 70000 && v.matches('data:image/(jpeg|webp|png);base64,[A-Za-z0-9+/]+={0,2}'); }
     function gmNum(v) { return v is int && v >= -30 && v <= 1000; }
     // What a GM sees of a character beyond the summary (partylogic.js gmSummary).
     function gmSheet(s) {
@@ -129,9 +132,10 @@ service cloud.firestore {
           // a GM confirming a member's paper scores, or taking the confirmation back (anyone's, their own too)
           || (isGm(t) && changes(['paperOk']) && (!('paperOk' in request.resource.data) || confirmation(request.resource.data.paperOk)))
           // a member changing their own character or its summary
-          || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet'])
+          || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet', 'avatar'])
             && text(request.resource.data.charId, 128) && text(request.resource.data.charName, 100)
-            && (!('sheet' in request.resource.data) || sheet(request.resource.data.sheet)));
+            && (!('sheet' in request.resource.data) || sheet(request.resource.data.sheet))
+            && (!('avatar' in request.resource.data) || avatar(request.resource.data.avatar)));
         allow delete: if signedIn() && (
           // leaving, or an admin removing someone; the founder stays
           (u != ownerOf(t) && (u == me() || isAdmin(t)))

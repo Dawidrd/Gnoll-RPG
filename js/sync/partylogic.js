@@ -2,6 +2,7 @@
 // The same limits are enforced on the server by firestore.rules; these only keep the app from trying.
 import { ABILITIES, SKILLS } from "../rules/core.js";
 import { paperSig } from "../rules/identity.js";
+import { validAvatar } from "../rules/avatar.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 export const CODE_LENGTH = 20;
@@ -141,6 +142,8 @@ export function sheetSummary(ch, c) {
     paper: paperOf(ch),
   };
 }
+/** The character's portrait as the party sees it (0.37), or "" for none. Only a valid small picture is ever sent. */
+export const avatarOf = (ch) => (validAvatar(ch?.avatar) ? ch.avatar : "");
 export const sameSheet = (a, b) => !!a && !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((k) => a[k] === b[k]);
 
 // --- The Game Master's view: what a GM needs for decisions and secret rolls, beyond HP and AC ---
