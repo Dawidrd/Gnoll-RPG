@@ -23,6 +23,8 @@ Każda zmiana plików aplikacji wymaga podbicia wersji w **obu** miejscach, z t�
 
 Nowy plik JS/CSS/ikonę dopisz też do listy `SHELL` w `sw.js`, żeby działał offline.
 
+Gdy nowa wersja zmienia coś widocznego dla graczy, dopisz ją na początku `RELEASES` w `js/releases.js` (karta „Co nowego” na ekranie głównym): ten sam numer co w `sw.js` i `js/config.js`, data, 1–4 punkty językiem gracza (bez żargonu), PL i EN. Drobne poprawki techniczne można pominąć.
+
 Commity nazywamy `X.Y.Z: krótki opis`, a w treści lista zmian.
 
 ## Opisy reguł

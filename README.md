@@ -27,6 +27,7 @@
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
 - Długie listy rozwijane (ponad 12 pozycji) z polem „Szukaj na liście…” — po polsku i angielsku, bez znaczenia polskie znaki
 - Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
+- „Co nowego” na ekranie głównym: najnowsze zmiany językiem gracza (rozwinięte ze znaczkiem „Nowe”, dopóki gracz nie kliknie „Rozumiem”) i pełna historia zmian pod „Zobacz wcześniejsze zmiany”
 - Instrukcja „Jak zainstalować na telefonie” (iPhone/iPad, Android z Chrome i Samsung Internet) w ramce Konto i pod linkiem na dole strony
 - Konto (nieobowiązkowe): logowanie przez Google; w przeglądarce wbudowanej w Messengera, Facebooka itp. zamiast przycisku instrukcja, jak otworzyć stronę w Safari albo Chrome, i przycisk „Skopiuj adres”; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci
 - Drużyna (z kontem, po angielsku „Party”) w zakładce „Drużyna” na karcie postaci: jedna postać = jedna drużyna; MG bez postaci wchodzi z listy „Moje drużyny”. Zakładanie drużyny, link zaproszenia (kopiuj/udostępnij, nowy link unieważnia stary), prośba o dołączenie z wybraną postacią, akceptacja/odrzucenie, usuwanie graczy, role admin/gracz i MG (założyciela nie da się usunąć), opuszczanie i usuwanie drużyny

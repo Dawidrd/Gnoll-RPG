@@ -21,6 +21,8 @@ import { inAppBrowser, phoneKind, androidBrowser, installOrder } from "../js/ina
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
+import { RELEASES, latest, isUnseen } from "../js/releases.js";
+import { CONFIG } from "../js/config.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1458,6 +1460,31 @@ test("shield without training gives no AC bonus (PHB 2024)", () => {
   const cle = run(make({ classId: "cleric", shield: true, ...base }));
   eq(cle.ac.value, run(make({ classId: "cleric", ...base })).ac.value + 2);
   for (const k of ["wpn.onlyTrained", "wpn.showAll", "wpn.noProf", "wpn.untrainedWarn"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+});
+
+// --- What's new (js/releases.js) ---
+test("news: the newest entry matches the version in config.js and sw.js", () => {
+  eq(latest().version, CONFIG.version, "config.js");
+  eq(readFileSync(new URL("../sw.js", import.meta.url), "utf8").includes(`"gnoll-${latest().version}"`), true, "sw.js");
+});
+test("news: entries are newest first, dated, with 1–4 points in PL and EN", () => {
+  const num = (v) => v.split(".").map(Number).reduce((a, x) => a * 1000 + x, 0);
+  RELEASES.forEach((r, i) => {
+    if (i) eq(num(r.version) < num(RELEASES[i - 1].version), true, r.version + " order");
+    eq(/^\d{4}-\d{2}-\d{2}$/.test(r.date), true, r.version + " date");
+    eq(r.points.length >= 1 && r.points.length <= 4, true, r.version + " points");
+    for (const p of r.points) eq([!!p.pl, !!p.en], [true, true], r.version);
+  });
+});
+test("news: the card opens for returning players until they saw this version", () => {
+  eq(isUnseen(null, true, "0.30.0"), true, "player with characters, never saw it");
+  eq(isUnseen("0.29.0", false, "0.30.0"), true, "saw an older version");
+  eq(isUnseen("0.30.0", true, "0.30.0"), false, "already seen");
+  eq(isUnseen(null, false, "0.30.0"), false, "brand-new visitor: folded");
+  for (const k of ["news.title", "news.version", "news.new", "news.ok", "news.more", "news.allTitle"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+  eq(STATS.screenPath("#/news"), "/news");
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  eq([sw.includes("./js/releases.js"), sw.includes("./js/views/news.js")], [true, true], "offline");
 });
 
 let failed = 0;

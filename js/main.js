@@ -9,6 +9,7 @@ import { renderSheet } from "./views/sheet.js";
 import { renderParties, renderParty, renderJoin } from "./views/party.js";
 import { renderPrivacy } from "./views/privacy.js";
 import { renderInstall } from "./views/install.js";
+import { renderNews } from "./views/news.js";
 import { showNotice } from "./views/account.js";
 import { startAccount, accountAvailable } from "./sync/cloud.js";
 import { stopWatching, startSharing } from "./sync/party.js";
@@ -55,6 +56,7 @@ function route() {
   else if (parts[0] === "join" && parts[1]) renderJoin(view, go, parts[1], parts[2]);
   else if (parts[0] === "privacy") renderPrivacy(view);
   else if (parts[0] === "install") renderInstall(view);
+  else if (parts[0] === "news") renderNews(view);
   else renderHome(view, go);
   document.title = CONFIG.name;
 }

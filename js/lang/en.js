@@ -971,4 +971,10 @@ export default {
   "form.toPaper": "Already have a character on paper? Copy it from the sheet →",
   "home.add": "+ Add a character",
   "home.draftTitlePaper": "Unfinished character from a sheet",
+  "news.title": "What's new",
+  "news.version": "version {v}",
+  "news.new": "New",
+  "news.ok": "Got it",
+  "news.more": "See earlier changes",
+  "news.allTitle": "Change history",
 };

@@ -33,6 +33,7 @@ export function screenPath(hash) {
   if (p[0] === "join") return "/join";
   if (p[0] === "privacy") return "/privacy";
   if (p[0] === "install") return "/install";
+  if (p[0] === "news") return "/news";
   return "/";
 }
 

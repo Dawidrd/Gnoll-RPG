@@ -971,4 +971,10 @@ export default {
   "form.toPaper": "Masz już postać na papierze? Przepisz ją z karty →",
   "home.add": "+ Dodaj postać",
   "home.draftTitlePaper": "Niedokończona postać z karty",
+  "news.title": "Co nowego",
+  "news.version": "wersja {v}",
+  "news.new": "Nowe",
+  "news.ok": "Rozumiem",
+  "news.more": "Zobacz wcześniejsze zmiany",
+  "news.allTitle": "Historia zmian",
 };

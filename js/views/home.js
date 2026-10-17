@@ -6,6 +6,7 @@ import { CLASSES, SPECIES, compute } from "../rules/index.js";
 import { accountBox } from "./account.js";
 import { accountAvailable } from "../sync/cloud.js";
 import { addCards, addHref, countAdd } from "./addmode.js";
+import { newsCard } from "./news.js";
 
 const todoCount = (ch) => { try { const r = compute(structuredClone(ch)).review; return r.todo.length + r.errors.length; } catch { return 0; } };
 
@@ -65,6 +66,7 @@ export function renderHome(root, go) {
   root.replaceChildren(
     h("section", { cls: "panel" }, [
       h("header", { cls: "stack" }, [h("h2", { text: t("home.title") })]),
+      newsCard(list.length > 0 || draftCards.length > 0),
       draftCards.length ? h("div", { cls: "ccards" }, draftCards) : null,
       list.length ? h("div", { cls: "ccards" }, cards) : null,
       confirmBox,
