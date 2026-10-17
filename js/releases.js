@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.39.1", date: "2026-10-17",
+    points: [
+      { pl: "Pytanie „Na pewno?” przy usuwaniu albo przenoszeniu notatki pokazuje się teraz tuż pod tą notatką — strona już nie skacze na górę.", en: "The “Are you sure?” question when deleting or moving a note now shows right under that note — the page no longer jumps to the top." },
+      { pl: "Działa też z klawiatury: Esc anuluje, a po usunięciu kursor przechodzi na następną notatkę.", en: "It works with the keyboard too: Esc cancels, and after deleting the cursor moves to the next note." },
+    ],
+  },
+  {
     version: "0.39.0", date: "2026-10-17",
     points: [
       { pl: "Stuknięcie w kropkę zasobu (np. Szał, sloty czarów) zużywa zawsze dokładnie 1 — nieważne, którą pełną kropkę stukniesz.", en: "Tapping a resource dot (e.g. Rage, spell slots) always uses exactly 1, whichever full dot you tap." },

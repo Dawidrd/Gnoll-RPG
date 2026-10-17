@@ -229,6 +229,7 @@ export default {
   "notes.showAll": "All",
   "notes.showMine": "Mine",
   "notes.showParty": "Party's",
+  "notes.list": "Saved notes",
   "notes.none": "No notes.",
   "notes.noDate": "no date",
   "notes.whyLocal": "Party notes need an account and a party.",

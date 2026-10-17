@@ -159,6 +159,7 @@ export function renderParty(root, go, id) {
 function partyBody(panel, go, id, home, sheetCh = null) {
   const onSheet = !!sheetCh;
   const { box, ask } = confirmer();
+  const notesAsk = confirmer(); // questions about a GM's note show under that note
   const paint = painter();
   // What the user is doing here; kept across redraws.
   const ui = { tab: "overview", editInfo: null, notes: { show: "all", text: "", shared: false, editing: null }, march: null };
@@ -363,7 +364,7 @@ function partyBody(panel, go, id, home, sheetCh = null) {
       move: (n) => PARTY.addNote(id, n.text, n.shared, v.me).then(() => PARTY.deleteNote(id, n.id, !n.shared)).catch(fail),
     };
     return [h("section", { cls: "card stack", id: "notes-party" }, [h("h3", { text: t("notes.title") }), h("p", { cls: "hint", text: t("notes.gmLead") }),
-      ...drawBoard({ ui: ui.notes, priv: v.mine, party: v.notes, uid: v.uid, me: v.me, why: "", ops, ask, redraw: () => redraw(true) })])];
+      ...drawBoard({ ui: ui.notes, priv: v.mine, party: v.notes, uid: v.uid, me: v.me, why: "", ops, ask: notesAsk.ask, box: notesAsk.box, redraw: () => redraw(true) })])];
   };
 
   // --- managing: requests and the invite link (admins), leaving or deleting ---

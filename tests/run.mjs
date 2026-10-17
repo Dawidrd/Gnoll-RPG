@@ -1574,6 +1574,12 @@ test("0.39 resource dots: one tap = one use, empty dots do nothing, rests give b
   eq(restUsed(res, { c: 0 }, "short").c, 0, "never below zero");
   for (const k of ["res.spent", "res.undo", "res.undone", "res.regain", "res.regainAsk", "res.regainYes", "res.regained", "res.pipFree", "res.pipUsed"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
+test("0.39.1 notes: the question shows under the note, not at the top of the tab", () => {
+  eq([!!LANG_PL["notes.list"], !!LANG_EN["notes.list"]], [true, true]);
+  const src = readFileSync(new URL("../js/views/notes.js", import.meta.url), "utf8");
+  eq(src.includes('t("notes.lead") })]), board]'), true, "the Notes tab no longer has the question box above the list");
+  eq(/drawBoard\(\{[^)]*box: notesAsk\.box/.test(readFileSync(new URL("../js/views/party.js", import.meta.url), "utf8")), true, "the GM's notes get their own question box");
+});
 test("resource dots: spending asks unless switched off", () => {
   // Familiar HP dots still set the value "up to this dot"
   eq([pipTarget(3, 1), pipTarget(3, 0), pipTarget(3, 2), pipTarget(3, 3)], [2, 1, 2, 4]);

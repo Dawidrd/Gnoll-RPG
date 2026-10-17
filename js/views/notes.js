@@ -41,9 +41,11 @@ export function bringPartyNotes(ch, v) {
 }
 
 /**
- * The list with the "new note" box. o = { ui, priv, party, uid, me, why, ops, ask, redraw }:
- * ui = { show, text, shared, editing } (kept by the caller); priv / party = notes ([] or null: party notes not possible, `why` says why);
- * ops = { add(text, shared), edit(row, text), remove(row), move(row) }.
+ * The list with the "new note" box. o = { ui, priv, party, uid, me, why, ops, ask, box, redraw }:
+ * ui = { show, text, shared, editing, asking } (kept by the caller); priv / party = notes ([] or null: party notes not possible, `why` says why);
+ * ops = { add(text, shared), edit(row, text), remove(row), move(row) }; ask / box = a confirmer() just for this list.
+ * 0.39.1: a question about a note shows right under that note (not at the top, where the page jumped to the new-note box);
+ * "No" or Esc gives the focus back to the button that asked; after deleting, the focus goes to the next note or the list title.
  */
 export function drawBoard(o) {
   const { ui, party } = o;
@@ -65,8 +67,15 @@ export function drawBoard(o) {
     h("div", { cls: "row" }, [btn(t("party.notes.add"), add, "btn gold", { id: "note-add" })]),
   ]);
 
+  const keyOf = (n) => (n.shared ? "p:" : "m:") + n.id;
+  const inList = (key, sel = "") => document.querySelector(`#notes-list [data-key="${CSS.escape(key)}"] ${sel}`.trim());
+  const askAt = (key, act, text, fn) => {
+    const n = ui.askN = (ui.askN || 0) + 1; // closing an older question must not hide this one
+    ui.asking = key; o.redraw();
+    o.ask(text, fn, { onClose: () => { if (ui.askN === n) ui.asking = null; }, back: () => inList(key, `[data-act="${act}"]`)?.focus() });
+  };
   const note = (n) => {
-    const key = (n.shared ? "p:" : "m:") + n.id;
+    const key = keyOf(n);
     if (ui.editing?.key === key) {
       return h("article", { cls: "note" + (n.shared ? "" : " note-private") }, [
         area(ui.editing.text, (x) => (ui.editing.text = x), { rows: 6, maxlength: n.shared ? NOTE_MAX : false, "aria-label": t("party.notes.edit") }),
@@ -85,7 +94,7 @@ export function drawBoard(o) {
     const meta = n.shared
       ? `👥 ${t("notes.party")} · ${noteSigned(n, t("party.notes.gmSign"))}${n.author === o.uid ? " " + t("party.you") : ""} · ${day(n.at)}`
       : `🔒 ${t("notes.onlyMe")} · ${day(n.at)}`;
-    return h("article", { cls: "note" + (n.shared ? "" : " note-private") }, [
+    return h("article", { cls: "note" + (n.shared ? "" : " note-private"), "data-key": key, tabindex: "-1" }, [
       title ? h("p", { cls: "note-title", text: title }) : null,
       body ? h("p", { cls: "note-text", text: body }) : null,
       h("p", { cls: "hint", text: meta }),
@@ -93,20 +102,27 @@ export function drawBoard(o) {
         mayEdit ? btn(t("party.notes.edit"), () => { ui.editing = { key, text: n.text }; o.redraw(); }) : null,
         !n.shared && canShare ? btn("👥 " + t("notes.toParty"), () => {
           if (n.text.trim().length > NOTE_MAX) return toast(t("notes.tooLong", { n: NOTE_MAX }));
-          o.ask(t("notes.toPartyConfirm"), () => { o.ops.move(n); o.redraw(); });
-        }) : null,
-        n.shared && mine ? btn("🔒 " + t("notes.toMe"), () => o.ask(t("notes.toMeConfirm"), () => { o.ops.move(n); o.redraw(); })) : null,
-        mayDelete ? btn(t("party.notes.delete"), () => o.ask(t("party.notes.deleteConfirm"), () => { o.ops.remove(n); o.redraw(); }), "btn small ghost") : null,
+          askAt(key, "move", t("notes.toPartyConfirm"), () => { o.ops.move(n); o.redraw(); });
+        }, "btn small", { "data-act": "move" }) : null,
+        n.shared && mine ? btn("🔒 " + t("notes.toMe"), () => askAt(key, "move", t("notes.toMeConfirm"), () => { o.ops.move(n); o.redraw(); }), "btn small", { "data-act": "move" }) : null,
+        mayDelete ? btn(t("party.notes.delete"), () => askAt(key, "del", t("party.notes.deleteConfirm"), () => {
+          const at = rows.indexOf(n), next = rows[at + 1] || rows[at - 1]; // party notes leave the list only when the cloud answers
+          o.ops.remove(n); o.redraw();
+          ((next && inList(keyOf(next))) || document.getElementById("notes-heading"))?.focus();
+        }), "btn small ghost", { "data-act": "del" }) : null,
       ]),
     ]);
   };
 
   const rows = noteBoard(o.priv, party, ui.show);
+  const listed = rows.flatMap((n) => (ui.asking === keyOf(n) ? [note(n), o.box] : [note(n)]));
+  if (ui.asking && !rows.some((n) => keyOf(n) === ui.asking)) ui.asking = null; // the note is gone (e.g. deleted elsewhere)
   return [
     fresh,
     canShare ? seg(t("notes.show"), [["all", t("notes.showAll")], ["mine", "🔒 " + t("notes.showMine")], ["party", "👥 " + t("notes.showParty")]], ui.show,
       (k) => { ui.show = k; o.redraw(); }) : null,
-    rows.length ? h("div", { cls: "stack", id: "notes-list" }, rows.map(note)) : h("p", { cls: "empty", text: t("notes.none") }),
+    h("h3", { cls: "notes-heading", id: "notes-heading", tabindex: "-1", text: t("notes.list") }),
+    rows.length ? h("div", { cls: "stack", id: "notes-list" }, listed) : h("p", { cls: "empty", text: t("notes.none") }),
   ];
 }
 
@@ -121,7 +137,7 @@ export function notesTab({ ch, save }) {
   const paint = painter();
   const board = h("div", { cls: "stack", id: "notes-board" });
   const el = h("div", { cls: "stack", id: "notes-tab" }, [
-    h("header", { cls: "stack" }, [h("h2", { text: t("notes.title") }), h("p", { cls: "lead", text: t("notes.lead") })]), box, board]);
+    h("header", { cls: "stack" }, [h("h2", { text: t("notes.title") }), h("p", { cls: "lead", text: t("notes.lead") })]), board]);
   if (!drafts.has(ch.id)) drafts.set(ch.id, { show: "all", text: "", shared: false, editing: null });
   const entry = live = { ch, el, alive: true, watching: false, loading: false, partyId: null, v: null };
   PARTY.onStop(() => { entry.alive = false; });
@@ -158,7 +174,7 @@ export function notesTab({ ch, save }) {
   const why = () => !accountAvailable() ? "notes.whyLocal" : account().status !== "in" ? "notes.whySignIn"
     : entry.loading ? "notes.whyLoading" : "notes.whyNoParty";
   const redraw = (force = true) => paint(board, () => drawBoard({ ui: drafts.get(ch.id), priv: ch.notebook, party: entry.v ? entry.v.notes : null,
-    uid: entry.v?.uid, me: entry.v?.me, why: why(), ops: safe(ops), ask, redraw }), force);
+    uid: entry.v?.uid, me: entry.v?.me, why: why(), ops: safe(ops), ask, box, redraw }), force);
   entry.redraw = redraw;
 
   // Party notes: only with an account, for a character playing in a party.

@@ -229,6 +229,7 @@ export default {
   "notes.showAll": "Wszystkie",
   "notes.showMine": "Moje",
   "notes.showParty": "Drużyny",
+  "notes.list": "Zapisane notatki",
   "notes.none": "Brak notatek.",
   "notes.noDate": "bez daty",
   "notes.whyLocal": "Notatki dla drużyny działają z kontem i drużyną.",
