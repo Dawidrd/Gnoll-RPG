@@ -32,6 +32,7 @@ export function screenPath(hash) {
   if (p[0] === "party") return p[1] ? "/party/view" : "/party";
   if (p[0] === "join") return "/join";
   if (p[0] === "privacy") return "/privacy";
+  if (p[0] === "install") return "/install";
   return "/";
 }
 

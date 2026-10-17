@@ -4,7 +4,8 @@ import { t } from "../i18n.js";
 import { storage } from "../store.js";
 import { account, onAccount, accountAvailable, signIn, signOut, connect, moveGuests } from "../sync/cloud.js";
 import { deleteAccount } from "../sync/erase.js";
-import { inAppBrowser } from "../inapp.js";
+import { inAppBrowser, phoneKind } from "../inapp.js";
+import { installHelp } from "./install.js";
 
 const NOTICE = "gnoll.notice"; // a message to show after the page reloads
 
@@ -24,18 +25,23 @@ function deleteError(e) {
   return "failed";
 }
 
-/** In Messenger's (or another app's) built-in browser Google won't sign in: explain how to open the page in a normal browser. */
+/** In Messenger's (or another app's) built-in browser Google won't sign in: explain how to open the page in a normal browser,
+ *  for this phone (iPhone or Android), or both when it can't be told. */
 function inAppNote(app) {
   const link = h("input", { id: "acc-inapp-link", readonly: true, value: location.href, "aria-label": t("acc.inapp.link"), onfocus: (e) => e.target.select() });
   const copy = async () => {
-    try { await navigator.clipboard.writeText(location.href); toast(t("party.copied")); }
+    try { await navigator.clipboard.writeText(location.href); toast(t("acc.inapp.copied")); }
     catch { link.focus(); link.select(); toast(t("party.copyManual")); }
   };
+  const kind = phoneKind(navigator.userAgent, navigator.maxTouchPoints || 0);
+  const phones = kind ? [kind] : ["ios", "android"];
   return h("div", { cls: "stack", id: "acc-inapp" }, [
     h("p", { cls: "warn soft", text: app ? t("acc.inapp.named", { app }) : t("acc.inapp.unnamed") }),
-    h("p", { cls: "small", text: t("acc.inapp.how") }),
+    h("h4", { text: t("acc.inapp.exit") }),
+    ...phones.map((k) => h("p", { cls: "small", id: `acc-inapp-${k}` }, [h("b", { text: t(`acc.inapp.${k}.h`) }), " ", t(`acc.inapp.${k}`)])),
+    h("p", { cls: "small", text: t("acc.inapp.copyHint") }),
     link,
-    h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-inapp-copy", text: t("party.copy"), onclick: copy })]),
+    h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-inapp-copy", text: t("acc.inapp.copy"), onclick: copy })]),
   ]);
 }
 
@@ -95,12 +101,12 @@ export function accountBox() {
       kids.push(h("p", { cls: "small", text: t("acc.unreachable") }),
         h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn", text: t("acc.retry"), onclick: () => connect() })]));
     } else if (app !== null) {
-      kids.push(h("p", { cls: "small", text: t("acc.why") }), inAppNote(app));
+      kids.push(h("p", { cls: "small", text: t("acc.why") }), inAppNote(app), installHelp());
     } else {
       kids.push(h("p", { cls: "small", text: t("acc.why") }),
         s.cont ? h("p", { cls: "small", text: t("acc.cont.hint") }) : null,
         h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-in", text: t(s.cont ? "acc.cont" : "acc.signIn"), onclick: () => signIn() })]),
-        h("p", { cls: "hint", text: t("acc.firstSync") }));
+        h("p", { cls: "hint", text: t("acc.firstSync") }), installHelp());
     }
     if (s.error) kids.push(h("p", { cls: "small", role: "alert", text: t("acc.err." + s.error) }));
     // While deleting, the account signs out on its own at the end: keep showing the progress, not the sign-in button.

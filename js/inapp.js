@@ -18,3 +18,20 @@ export function inAppBrowser(ua = "") {
   if (/Android/.test(ua) && /; wv\)/.test(ua)) return ""; // Android WebView inside some other app
   return null;
 }
+
+/** Which phone the help texts should speak to: "ios", "android" or null (computer, unknown). iPads on iPadOS 13+ say "Macintosh", so touch counts too. */
+export function phoneKind(ua = "", touchPoints = 0) {
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touchPoints > 1)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  return null;
+}
+
+/** Android browser whose install steps differ: "samsung" (Samsung Internet), otherwise "chrome". */
+export const androidBrowser = (ua = "") => (/SamsungBrowser/.test(ua) ? "samsung" : "chrome");
+
+/** Install steps to show, by section: this phone's first, the rest folded away (null = a computer: all of them). */
+export function installOrder(kind, browser) {
+  if (kind === "ios") return { mine: ["ios"], rest: ["chrome", "samsung"] };
+  if (kind === "android") return browser === "samsung" ? { mine: ["samsung"], rest: ["chrome", "ios"] } : { mine: ["chrome"], rest: ["samsung", "ios"] };
+  return { mine: ["ios", "chrome", "samsung"], rest: [] };
+}

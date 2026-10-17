@@ -17,7 +17,7 @@ import * as PARTY from "../js/sync/partylogic.js";
 import { stepBlockers } from "../js/rules/checks.js";
 import * as EQ from "../js/rules/equipment.js";
 import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS } from "../js/rules/index.js";
-import { inAppBrowser } from "../js/inapp.js";
+import { inAppBrowser, phoneKind, androidBrowser, installOrder } from "../js/inapp.js";
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
@@ -1275,6 +1275,24 @@ test("inAppBrowser: Messenger, Facebook, Instagram and Android WebView are caugh
   eq(inAppBrowser("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"), null);
   eq(inAppBrowser("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"), null);
   eq(inAppBrowser(""), null);
+});
+
+test("phoneKind and install help: this phone's steps first, a computer gets all of them", () => {
+  const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/MessengerForiOS]";
+  const ipad = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15";
+  const samsung = "Mozilla/5.0 (Linux; Android 14; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0 Mobile Safari/537.36";
+  eq(phoneKind(iphone), "ios");
+  eq(phoneKind(ipad, 5), "ios"); // iPadOS says "Macintosh", but has a touch screen
+  eq(phoneKind(ipad, 0), null); // a real Mac
+  eq(phoneKind(samsung), "android");
+  eq(phoneKind("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0"), null);
+  eq(androidBrowser(samsung), "samsung");
+  eq(androidBrowser("Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/126.0 Mobile Safari/537.36"), "chrome");
+  eq(installOrder("ios", "chrome"), { mine: ["ios"], rest: ["chrome", "samsung"] });
+  eq(installOrder("android", "samsung"), { mine: ["samsung"], rest: ["chrome", "ios"] });
+  eq(installOrder("android", "chrome"), { mine: ["chrome"], rest: ["samsung", "ios"] });
+  eq(installOrder(null, "chrome"), { mine: ["ios", "chrome", "samsung"], rest: [] });
+  eq(STATS.screenPath("#/install"), "/install");
 });
 
 let failed = 0;
