@@ -1295,6 +1295,14 @@ test("phoneKind and install help: this phone's steps first, a computer gets all 
   eq(STATS.screenPath("#/install"), "/install");
 });
 
+test("PL: 'Pochodzenie' instead of 'Tło' (background) in Polish texts", () => {
+  const word = /(^|[^\p{L}])(tło|tła|tłem|tłu|tle|teł|tłach|tłami|tłom)(?![\p{L}])/iu;
+  eq(Object.entries(LANG_PL).filter(([, v]) => word.test(v)).map(([k]) => k), []);
+  eq(ALL_BGS.custom.name.pl, "Własne pochodzenie (stara wersja)");
+  eq(LANG_PL["step.2"], "Gatunek i pochodzenie");
+  eq(LANG_PL["form.featChoose"], "— wybierz feat pochodzenia —");
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

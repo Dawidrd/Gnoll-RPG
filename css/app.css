@@ -250,7 +250,7 @@ details summary { cursor: pointer; }
   font-family: var(--f-ui); cursor: pointer; min-width: 0; min-height: 56px; }
 .stepbtn.on { border-color: var(--gold); color: var(--bone); box-shadow: inset 0 -2px 0 var(--gold); }
 .stepnum { font-weight: 700; font-size: .95rem; }
-.steplbl { font-size: .72rem; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.steplbl { font-size: .72rem; letter-spacing: .04em; line-height: 1.15; text-align: center; overflow-wrap: anywhere; max-width: 100%; }
 .stepstate { font-size: .72rem; font-weight: 700; min-width: 20px; border-radius: 99px; padding: 0 6px; }
 .stepbtn.done .stepstate { color: var(--moss); }
 .stepbtn.todo .stepstate { color: #1a130a; background: var(--gold); }
@@ -307,7 +307,7 @@ details summary { cursor: pointer; }
 .idgrid div { display: grid; gap: 2px; }
 .idgrid dt { font-family: var(--f-ui); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bone-dim); }
 .idgrid dd { margin: 0; }
-@media (max-width: 420px) { .steplbl { font-size: .62rem; } .stepbtn { padding: 6px 2px; } }
+@media (max-width: 420px) { .steplbl { font-size: .62rem; letter-spacing: 0; } .stepbtn { padding: 6px 2px; } }
 .formhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .formnav { flex-wrap: nowrap; }
 .formnav .btn { flex: 1 1 0; min-width: 0; padding-inline: 8px; }
