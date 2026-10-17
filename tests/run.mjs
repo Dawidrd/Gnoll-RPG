@@ -1732,6 +1732,41 @@ test("0.40 sound effects: which pick makes which sound, when it may play, files 
 });
 
 let failed = 0;
+test("0.41 Initiative: d20 + modifier, Advantage keeps the higher die, Survivor rerolls 9 or lower", () => {
+  const dice = (...v) => () => v.shift();
+  eq(PARTY.rollInitiative({ mod: 3, fight: 2 }, dice(12), 7), { total: 15, roll: 12, mod: 3, adv: false, rr: false, fight: 2, at: 7 });
+  eq(PARTY.rollInitiative({ mod: 1, adv: true }, dice(4, 17), 7).roll, 17);
+  eq(PARTY.rollInitiative({ mod: -1, adv: true }, dice(18, 3), 7).total, 17);
+  const rr = PARTY.rollInitiative({ mod: 2, reroll: 9 }, dice(9, 5), 7);
+  eq([rr.roll, rr.rr, rr.total], [5, true, 7], "a 9 is rerolled and the new roll stands, even if lower");
+  eq(PARTY.rollInitiative({ mod: 2, reroll: 9 }, dice(10), 7).rr, false);
+  eq(PARTY.rollInitiative({ mod: 99 }, dice(1), 7).mod, 30, "the modifier stays within what the server accepts");
+  for (let i = 0; i < 200; i++) { const x = PARTY.rollInitiative({ mod: 0, adv: i % 2 === 0 }); eq(x.roll >= 1 && x.roll <= 20 && PARTY.validInit(x), true); }
+  eq(PARTY.initText({ total: 15, roll: 12, mod: 3 }), "15 (12+3)");
+  eq(PARTY.initText({ total: 11, roll: 12, mod: -1 }), "11 (12−1)");
+  eq(PARTY.validInit({ total: 40, roll: 12, mod: 3, adv: false, rr: false, fight: 0, at: 1 }), false);
+});
+test("0.41 Initiative order: only the current fight, highest first, then who hasn't rolled", () => {
+  const r = (total, mod, fight = 1) => ({ total, roll: total - mod, mod, adv: false, rr: false, fight, at: 1 });
+  const members = [
+    { uid: "a", charId: "1", charName: "Ann", init: r(12, 1) },
+    { uid: "b", charId: "2", charName: "Bob", init: r(18, 2) },
+    { uid: "c", charId: "3", charName: "Cid", init: r(12, 4) }, // a tie: higher modifier first
+    { uid: "d", charId: "4", charName: "Dan", init: r(20, 0, 0) }, // an earlier fight: waits for a roll
+    { uid: "e", charId: "", charName: "", init: r(19, 0) }, // no character (the GM): not in the order
+    { uid: "f", charId: "6", charName: "Abe" },
+  ];
+  eq(PARTY.initOrder(members, 1).map((x) => [x.m.uid, x.init?.total ?? null]), [["b", 18], ["c", 12], ["a", 12], ["f", null], ["d", null]]);
+  eq(PARTY.initOf(members[3], 0)?.total, 20);
+  eq(PARTY.initOf(members[3], undefined)?.total, 20, "a party that never started a new fight is fight 0");
+});
+test("0.41 Initiative from the sheet: Champion and Assassin roll with Advantage, Survivor rerolls", () => {
+  eq(run(make({ classId: "fighter", subclass: "champion", level: 3 })).initiativeAdv, true);
+  eq(run(make({ classId: "rogue", subclass: "assassin", level: 3 })).initiativeAdv, true);
+  eq(run(make({ classId: "rogue", subclass: "thief", level: 3 })).initiativeAdv, false);
+  eq(run(rv({ background: "haunted-one", featPicks: { bg: "survivor" } })).initiativeReroll, 9);
+  eq(run(make({})).initiativeReroll, 0);
+});
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }
   catch (e) { failed++; console.log("FAIL " + name + "\n     " + e.message); }

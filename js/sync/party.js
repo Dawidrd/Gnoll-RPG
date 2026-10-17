@@ -1,10 +1,12 @@
 // Parties (D2): founding a party, invite links, requests, accepting or rejecting, removing players, roles.
 // Shared data (D3): party info, marching order, notes, and a short summary of each member's character.
 // Cloud layout (who may read and write what: firestore.rules):
-//   parties/{partyId}                 = { name, owner, invite, created, campaign?, next?, march?: { mode: "5"|"10", order: [uid] } }
-//   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet?, avatar?, paperOk? }
+//   parties/{partyId}                 = { name, owner, invite, created, campaign?, next?, march?: { mode: "5"|"10", order: [uid] }, fight? }
+//                                       (fight: number of the current fight, for Initiative; a GM or an admin starts a new one)
+//   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet?, avatar?, paperOk?, init? }
 //                                       (sheet: partylogic.js sheetSummary; avatar: the character's portrait, partylogic.js avatarOf;
-//                                        paperOk: a GM's confirmation of scores from paper, paperConfirmation)
+//                                        paperOk: a GM's confirmation of scores from paper, paperConfirmation;
+//                                        init: my character's Initiative roll, partylogic.js rollInitiative)
 //   parties/{partyId}/gm/{uid}        = { v, at }   (what the party's GMs see of my character: partylogic.js gmSummary)
 //   parties/{partyId}/requests/{uid}  = { name, charId, charName, code, at }
 //   parties/{partyId}/notes/{id}      = { author, name, char?, gm?, text, at }   (party notes; char/gm since 0.31.0: partylogic.js noteSign)
@@ -15,7 +17,7 @@
 import { cloud, onAccount } from "./cloud.js";
 import { onChange, getById, upsert, loadAll } from "../store.js";
 import { compute } from "../rules/index.js";
-import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, avatarOf, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign } from "./partylogic.js";
+import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, avatarOf, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign, rollInitiative } from "./partylogic.js";
 
 const need = () => { const c = cloud(); if (!c) throw new Error("signed-out"); return c; };
 const charFields = (ch) => ({ charId: ch?.id || "", charName: cleanName(ch?.name, 100) });
@@ -183,7 +185,7 @@ function shareTo(partyId, m) {
 export function setMyChar(partyId, ch) {
   const { F, db, uid } = need();
   const b = F.writeBatch(db), gm = F.doc(db, "parties", partyId, "gm", uid);
-  b.update(F.doc(db, "parties", partyId, "members", uid), ch ? { ...charFields(ch), sheet: summary(ch), avatar: avatarOf(ch) || F.deleteField() } : { charId: "", charName: "", sheet: F.deleteField(), avatar: F.deleteField() });
+  b.update(F.doc(db, "parties", partyId, "members", uid), ch ? { ...charFields(ch), sheet: summary(ch), avatar: avatarOf(ch) || F.deleteField(), init: F.deleteField() } : { charId: "", charName: "", sheet: F.deleteField(), avatar: F.deleteField(), init: F.deleteField() });
   b.set(F.doc(db, "users", uid, "parties", partyId), { charId: ch?.id || "" }, { merge: true });
   if (ch) b.set(gm, { v: gmView(ch), at: Date.now() }); else b.delete(gm);
   sentGm.delete(uid + "/" + partyId);
@@ -237,6 +239,21 @@ export function saveMarch(partyId, march) {
   const { F, db } = need();
   if (!validMarch(march)) return Promise.reject(new Error("bad-march"));
   return F.updateDoc(F.doc(db, "parties", partyId), { march: { mode: march.mode, order: [...march.order] } });
+}
+
+// --- Initiative (0.41): I roll for my own character; a GM or an admin starts a new fight ---
+
+/** Roll my character's Initiative in this party's current fight. Returns { roll, done } (done: the server's answer). */
+export function rollInit(partyId, ch, fight) {
+  const { F, db, uid } = need();
+  const c = compute(structuredClone(ch));
+  const roll = rollInitiative({ mod: c.initiative, adv: c.initiativeAdv, reroll: c.initiativeReroll, fight });
+  return { roll, done: F.updateDoc(F.doc(db, "parties", partyId, "members", uid), { init: roll }) };
+}
+/** A new fight: everyone's results from the last one stop showing. */
+export function newFight(partyId) {
+  const { F, db } = need();
+  return F.updateDoc(F.doc(db, "parties", partyId), { fight: F.increment(1) });
 }
 
 // --- D3: notes. Party notes: everyone in the party reads them. Private notes: only their author. ---

@@ -9,6 +9,7 @@
 // 0.19: scores copied from a paper sheet. The summary carries their fingerprint (paper), the GM view their values;
 //     a GM confirms them in the member's document (paperOk), and only a GM changes it.
 // 0.37: the character's portrait (avatar) next to the summary: only a small base64 JPEG/WebP/PNG, written by its owner.
+// 0.41: Initiative. Each member writes only their own roll (init); a GM or an admin starts a new fight (fight on the party).
 // Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
@@ -58,6 +59,13 @@ service cloud.firestore {
       return p is map && p.keys().hasOnly(['sig', 'charId', 'by', 'name', 'at']) && p.keys().hasAll(['sig', 'charId', 'by', 'name', 'at'])
         && name(p.sig, 16) && name(p.charId, 128) && p.by == me() && text(p.name, 100) && p.at is int;
     }
+    // A fight's number on the party (partylogic.js initOf) and one member's Initiative roll (partylogic.js rollInitiative, validInit).
+    function fightNo(v) { return v is int && v >= 0 && v <= 1000000000; }
+    function initRoll(x) {
+      return x is map && x.keys().hasOnly(['total', 'roll', 'mod', 'adv', 'rr', 'fight', 'at']) && x.keys().hasAll(['total', 'roll', 'mod', 'adv', 'rr', 'fight', 'at'])
+        && x.roll is int && x.roll >= 1 && x.roll <= 20 && x.mod is int && x.mod >= -10 && x.mod <= 30 && x.total == x.roll + x.mod
+        && x.adv is bool && x.rr is bool && fightNo(x.fight) && x.at is int;
+    }
     function march(m) {
       return m is map && m.keys().hasOnly(['mode', 'order']) && m.mode in ['5', '10'] && m.order is list && m.order.size() <= 50;
     }
@@ -106,10 +114,13 @@ service cloud.firestore {
         && request.resource.data.owner == me() && name(request.resource.data.name, 60)
         && code(request.resource.data.invite) && request.resource.data.created is int
         && adminAfter(t);
-      allow update: if isAdmin(t) && changes(['name', 'invite', 'campaign', 'next', 'march'])
+      allow update: if (isAdmin(t) && changes(['name', 'invite', 'campaign', 'next', 'march', 'fight'])
         && name(request.resource.data.name, 60) && code(request.resource.data.invite)
         && text(request.resource.data.get('campaign', ''), 100) && when(request.resource.data.get('next', ''))
-        && (!('march' in request.resource.data) || march(request.resource.data.march));
+        && (!('march' in request.resource.data) || march(request.resource.data.march))
+        && (!('fight' in request.resource.data) || fightNo(request.resource.data.fight)))
+        // a GM starting a new fight
+        || (isGm(t) && changes(['fight']) && fightNo(request.resource.data.fight));
       allow delete: if signedIn() && resource.data.owner == me();
 
       match /members/{u} {
@@ -133,11 +144,12 @@ service cloud.firestore {
           || (isAdmin(t) && changes(['gm']) && request.resource.data.gm is bool)
           // a GM confirming a member's paper scores, or taking the confirmation back (anyone's, their own too)
           || (isGm(t) && changes(['paperOk']) && (!('paperOk' in request.resource.data) || confirmation(request.resource.data.paperOk)))
-          // a member changing their own character or its summary
-          || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet', 'avatar'])
+          // a member changing their own character, its summary or its Initiative roll
+          || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet', 'avatar', 'init'])
             && text(request.resource.data.charId, 128) && text(request.resource.data.charName, 100)
             && (!('sheet' in request.resource.data) || sheet(request.resource.data.sheet))
-            && (!('avatar' in request.resource.data) || avatar(request.resource.data.avatar)));
+            && (!('avatar' in request.resource.data) || avatar(request.resource.data.avatar))
+            && (!('init' in request.resource.data) || initRoll(request.resource.data.init)));
         allow delete: if signedIn() && (
           // leaving, or an admin removing someone; the founder stays
           (u != ownerOf(t) && (u == me() || isAdmin(t)))

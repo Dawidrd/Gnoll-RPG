@@ -28,6 +28,7 @@ export const RAVENLOFT_ORIGIN_FEATS = {
   survivor: o("Ocalały", "Survivor", {
     desc: D("Hypervigilance: wynik 9 lub mniej na k20 Inicjatywy przerzucasz (bierzesz nowy). Steel Yourself: raz na długi odpoczynek, gdy oblejesz rzut przeciw Charmed albo Frightened, Reakcją dodajesz PB do wyniku.",
       "Hypervigilance: reroll an Initiative d20 of 9 or lower (use the new roll). Steel Yourself: once per long rest, when you fail a save to avoid or end Charmed or Frightened, add your PB to it as a Reaction."),
+    initiativeReroll: 9, // Hypervigilance: the party's Initiative roll (0.41) rerolls a kept d20 of 9 or lower
     resource: () => ({ id: "steel-yourself", max: 1, recharge: "long", name: D("Steel Yourself (Survivor)", "Steel Yourself (Survivor)") }),
   }),
 };

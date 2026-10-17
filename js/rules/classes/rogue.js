@@ -84,6 +84,7 @@ export const rogue = {
     },
     assassin: {
       source: "phb2024", name: { pl: "Assassin (Zabójca)", en: "Assassin" },
+      initiativeAdv: true, // Assassinate
       features: [
         { lv: 3, id: "assassinate", name: { pl: "Assassinate (Zamach)", en: "Assassinate" },
           desc: (c) => ({ pl: `Przewaga na Inicjatywę. W pierwszej rundzie walki masz Przewagę na ataki w każdego, kto jeszcze nie miał tury, a cel trafiony Sneak Attack dostaje dodatkowe ${c.level} obrażeń.`,

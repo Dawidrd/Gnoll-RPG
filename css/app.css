@@ -440,6 +440,13 @@ ol.march.two li { grid-template-columns: 1.6em 1fr 1fr; }
 ol.march-edit { margin: 0; padding-left: 1.6em; display: grid; gap: 6px; }
 ol.march-edit li { display: flex; align-items: center; gap: 8px; }
 ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* Initiative (0.41): highest first; the result is a small badge in the same row as the name */
+.init-roll { width: 100%; min-height: 44px; }
+ol.init-order { margin: 0; padding-left: 1.8em; display: grid; gap: 6px; }
+ol.init-order li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+ol.init-order li.me .init-who { color: var(--gold); }
+.init-who { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-family: var(--f-ui); }
+.init-badge { border: 1px solid var(--seam); background: var(--crypt); border-radius: var(--r); padding: 2px 8px; font-family: var(--f-ui); font-size: .85rem; white-space: nowrap; }
 .note { display: grid; gap: 6px; border-top: 1px solid var(--seam); padding-top: 10px; }
 .note-title { margin: 0; font-weight: 600; color: var(--gold); overflow-wrap: anywhere; }
 .note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }

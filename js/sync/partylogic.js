@@ -1,6 +1,6 @@
 // Party logic without Firebase: invite codes, links, statuses and who may do what. Tested in tests/run.mjs.
 // The same limits are enforced on the server by firestore.rules; these only keep the app from trying.
-import { ABILITIES, SKILLS } from "../rules/core.js";
+import { ABILITIES, SKILLS, rollDie } from "../rules/core.js";
 import { paperSig } from "../rules/identity.js";
 import { validAvatar } from "../rules/avatar.js";
 
@@ -124,6 +124,38 @@ export function moveIn(list, i, delta) {
 }
 export const MARCH_MAX = 50;
 export const validMarch = (m) => !!m && (m.mode === "5" || m.mode === "10") && Array.isArray(m.order) && m.order.length <= MARCH_MAX && m.order.every((u) => typeof u === "string" && u.length <= 128);
+
+// --- Initiative (0.41): each player rolls for their own character; the whole party sees the results ---
+// A GM or an admin starts a new fight (the party's fight number goes up); results from an earlier fight are not shown.
+export const INIT_MOD_MIN = -10, INIT_MOD_MAX = 30;
+/**
+ * Roll Initiative: a d20 (two with Advantage, the higher one kept) + the modifier.
+ * reroll: Survivor (Ravenloft) rerolls a kept d20 of that number or lower and must use the new roll.
+ * `die` lets tests fix the dice.
+ */
+export function rollInitiative({ mod, adv = false, reroll = 0, fight = 0 }, die = () => rollDie(20), at = Date.now()) {
+  const m = Math.min(INIT_MOD_MAX, Math.max(INIT_MOD_MIN, Math.round(Number(mod) || 0)));
+  let roll = adv ? Math.max(die(), die()) : die(), rr = false;
+  if (reroll && roll <= reroll) { roll = die(); rr = true; }
+  return { total: roll + m, roll, mod: m, adv: !!adv, rr, fight: fightNo(fight), at };
+}
+const fightNo = (n) => (Number.isInteger(n) && n >= 0 ? n : 0);
+export const validInit = (x) => !!x && Number.isInteger(x.roll) && x.roll >= 1 && x.roll <= 20
+  && Number.isInteger(x.mod) && x.mod >= INIT_MOD_MIN && x.mod <= INIT_MOD_MAX && x.total === x.roll + x.mod
+  && typeof x.adv === "boolean" && typeof x.rr === "boolean" && Number.isInteger(x.fight) && Number.isInteger(x.at);
+/** A member's result in the party's current fight, or null (not rolled yet, an earlier fight, no character). */
+export const initOf = (m, fight) => (m?.charId && validInit(m.init) && m.init.fight === fightNo(fight) ? m.init : null);
+/**
+ * Initiative order (only a view; the marching order stays as set): everyone who plays a character,
+ * highest result first (a tie: higher modifier first), then those who haven't rolled yet, by name.
+ */
+export function initOrder(members, fight) {
+  const rows = members.filter((m) => m.charId).map((m) => ({ m, init: initOf(m, fight) }));
+  const name = (r) => r.m.charName || r.m.name || "";
+  return rows.sort((a, b) => (!!b.init - !!a.init) || (b.init?.total ?? 0) - (a.init?.total ?? 0) || (b.init?.mod ?? 0) - (a.init?.mod ?? 0) || name(a).localeCompare(name(b)));
+}
+/** "17 (12+5)" — the result with the kept d20 and the modifier. */
+export const initText = (x) => `${x.total} (${x.roll}${x.mod < 0 ? "−" + -x.mod : "+" + x.mod})`;
 
 /** Fingerprint of scores rolled on paper (identity.js paperSig), or "" when the scores come from the array or a point buy. */
 const paperOf = (ch) => (ch.abilityMethod === "paper" ? paperSig(ch) : "");

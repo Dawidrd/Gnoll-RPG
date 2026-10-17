@@ -10,7 +10,7 @@ import { account, onAccount, accountAvailable } from "../sync/cloud.js";
 import { accountBox } from "./account.js";
 import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX,
   sessionWhen, marchOrder, marchRows, moveIn,
-  GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar, gmTodoItems } from "../sync/partylogic.js";
+  GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar, gmTodoItems, initOf, initOrder, initText } from "../sync/partylogic.js";
 import { msg } from "./msg.js";
 import * as PARTY from "../sync/party.js";
 import { confirmer, painter } from "./live.js";
@@ -166,7 +166,7 @@ function partyBody(panel, go, id, home, sheetCh = null) {
   const ui = { tab: "overview", editInfo: null, notes: { show: "all", text: "", shared: false, editing: null }, march: null };
   const body = h("div", { cls: "stack" }, [h("p", { cls: "small", text: t("party.loading") })]);
   const tabs = h("div", { cls: "seg party-tabs", role: "tablist" });
-  const sec = { info: h("div"), members: h("div"), gm: h("div"), march: h("div"), notes: h("div"), manage: h("div", { cls: "stack" }) };
+  const sec = { info: h("div"), members: h("div"), init: h("div"), gm: h("div"), march: h("div"), notes: h("div"), manage: h("div", { cls: "stack" }) };
   let v = null, built = false;
   let busy = new Set(); // my characters playing in other parties
   PARTY.myPartyChars(id).then((b) => { busy = b; if (v) paint(sec.members, drawMembers); });
@@ -310,6 +310,31 @@ function partyBody(panel, go, id, home, sheetCh = null) {
     ])];
   };
 
+  // --- Initiative (0.41): each player rolls for their own character; everyone sees the order; a GM or an admin starts a new fight ---
+  const drawInit = () => {
+    const fight = v.party.fight || 0;
+    const order = initOrder(v.members, fight);
+    const mine = initOf(v.me, fight);
+    const ch = v.me.charId ? getById(v.me.charId) : null;
+    const how = (x) => [x.adv ? t("party.init.adv") : "", x.rr ? t("party.init.rr") : ""].filter(Boolean).join(", ");
+    const roll = () => {
+      const { roll: r, done } = PARTY.rollInit(id, ch, fight);
+      done.catch(fail);
+      toast(t("party.init.rolled", { text: initText(r) }) + (how(r) ? ` · ${how(r)}` : ""));
+    };
+    const parts = [h("h3", { text: t("party.init.title") }), h("p", { cls: "hint", text: t("party.init.hint") })];
+    if (v.me.charId && !mine) parts.push(ch
+      ? btn(t("party.init.roll"), roll, "btn gold wide init-roll", { id: "init-roll" })
+      : h("p", { cls: "small", text: t("party.init.noLocal") }));
+    parts.push(order.length ? h("ol", { cls: "init-order", id: "init-order" }, order.map(({ m, init }) => h("li", { cls: m.uid === v.uid ? "me" : "" }, [
+      h("span", { cls: "init-who", text: m.charName || m.name || "?" }),
+      init ? h("span", { cls: "init-badge", text: "🎲 " + initText(init) + (how(init) ? ` · ${how(init)}` : "") }) : h("span", { cls: "hint", text: t("party.init.waiting") }),
+    ]))) : h("p", { cls: "small", text: t("party.init.empty") }));
+    if (v.me.role === "admin" || v.me.gm) parts.push(h("div", { cls: "row" }, [btn(t("party.init.clear"),
+      () => ask(t("party.init.clearConfirm"), () => PARTY.newFight(id).catch(fail)), "btn ghost", { id: "init-clear", disabled: !order.some((r) => r.init) })]));
+    return [h("section", { cls: "card", id: "party-init" }, parts)];
+  };
+
   // --- marching order: everyone sees it; admins set it ---
   const drawMarch = () => {
     const admin = v.me.role === "admin";
@@ -413,13 +438,14 @@ function partyBody(panel, go, id, home, sheetCh = null) {
   function redraw(force = false) {
     if (!built) {
       built = true;
-      body.replaceChildren(tabs, sec.info, sec.members, sec.gm, sec.march, sec.notes, sec.manage);
+      body.replaceChildren(tabs, sec.info, sec.members, sec.init, sec.gm, sec.march, sec.notes, sec.manage);
     }
     paint(tabs, drawTabs, force);
-    const show = { overview: ["info", "members", "gm", "march"], notes: ["notes"], manage: ["manage"] }[ui.tab];
+    const show = { overview: ["info", "members", "init", "gm", "march"], notes: ["notes"], manage: ["manage"] }[ui.tab];
     for (const k in sec) sec[k].hidden = !show.includes(k);
     paint(sec.info, drawInfo, force);
     paint(sec.members, drawMembers, force);
+    paint(sec.init, drawInit, force);
     paint(sec.gm, drawGm, force);
     paint(sec.march, drawMarch, force);
     paint(sec.notes, drawNotes, force);

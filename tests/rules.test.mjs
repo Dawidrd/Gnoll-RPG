@@ -356,3 +356,27 @@ test("0.37: the character's portrait — only a small picture, written only by t
   await no(bob.update("parties/t1/members/bob", { avatar: 7 }));
   await ok(bob.update("parties/t1/members/bob", { avatar: DELETE() }));
 });
+
+test("0.41: Initiative — each member writes only their own roll; a GM or an admin starts a new fight", async () => {
+  const { alice, bob, carol } = await world();
+  const roll = { total: 15, roll: 12, mod: 3, adv: false, rr: false, fight: 0, at: 5 };
+  await ok(bob.update("parties/t1/members/bob", { init: roll }));
+  await ok(bob.update("parties/t1/members/bob", { init: { ...roll, total: 7, roll: 9, mod: -2, adv: true, rr: true, fight: 4 } }));
+  await no(alice.update("parties/t1/members/bob", { init: roll }), "someone else's roll");
+  await no(bob.update("parties/t1/members/bob", { init: { ...roll, total: 40 } }), "total must be the d20 + the modifier");
+  await no(bob.update("parties/t1/members/bob", { init: { ...roll, roll: 21, total: 24 } }), "a d20 is 1–20");
+  await no(bob.update("parties/t1/members/bob", { init: { ...roll, roll: 0, total: 3 } }));
+  await no(bob.update("parties/t1/members/bob", { init: { ...roll, mod: 31, total: 43 } }));
+  await no(bob.update("parties/t1/members/bob", { init: { ...roll, note: "x" } }), "nothing beyond the roll");
+  await no(bob.update("parties/t1/members/bob", { init: { total: 15, roll: 12, mod: 3 } }), "the whole roll");
+  await ok(bob.update("parties/t1/members/bob", { init: DELETE() }));
+  // a new fight: admins and GMs, not players or strangers
+  await ok(alice.update("parties/t1", { fight: 1 }));
+  await no(bob.update("parties/t1", { fight: 2 }));
+  await no(carol.update("parties/t1", { fight: 2 }));
+  await no(alice.update("parties/t1", { fight: -1 }));
+  await no(alice.update("parties/t1", { fight: "2" }));
+  await ok(alice.update("parties/t1/members/bob", { gm: true }));
+  await ok(bob.update("parties/t1", { fight: 2 }));
+  await no(bob.update("parties/t1", { fight: 3, campaign: "x" }), "a GM who isn't an admin changes only the fight");
+});

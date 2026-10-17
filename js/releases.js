@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.41.0", date: "2026-10-17",
+    points: [
+      { pl: "Rzut na inicjatywę w zakładce Drużyna: przycisk „🎲 Rzuć inicjatywę” rzuca k20 z modyfikatorem z Twojej karty.", en: "Roll Initiative on the Party tab: the “🎲 Roll Initiative” button rolls a d20 with the modifier from your sheet." },
+      { pl: "Cała drużyna widzi wyniki, od najwyższego. MG albo admin czyści je przyciskiem „Nowa walka”.", en: "The whole party sees the results, highest first. The GM or an admin clears them with “New fight”." },
+      { pl: "Champion i Assassin rzucają z przewagą (Assassin wcześniej jej nie dostawał), a feat Survivor sam przerzuca wynik 9 lub niższy.", en: "Champion and Assassin roll with Advantage (Assassin didn't get it before), and the Survivor feat rerolls a 9 or lower by itself." },
+    ],
+  },
+  {
     version: "0.40.2", date: "2026-10-17",
     points: [
       { pl: "Wyłączenie dźwięków (🔇) od razu ucisza też dźwięk, który właśnie gra.", en: "Turning sound off (🔇) now also silences a sound that is already playing." },

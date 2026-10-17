@@ -485,7 +485,7 @@ export function compute(raw) {
     resistances: active.rage ? [...new Set([...spt.resist, "bludgeoning", "piercing", "slashing"])] : spt.resist, active, saveAdvantage: spt.saveAdvantage, speciesMagic: spt.magic, speciesMissing: spt.missing,
     passivePerception: 10 + perception, resources,
     summary: [...(cls.summary ? cls.summary(ctx) : []), ...(subclass?.summary ? subclass.summary(ctx) : []), ...(sp.summary ? sp.summary(ctx) : [])],
-    classOptions: opts.groups, knownClassCantrips, wildShape, forms, attacks, styleIds, initiativeAdv: !!subclass?.initiativeAdv,
+    classOptions: opts.groups, knownClassCantrips, wildShape, forms, attacks, styleIds, initiativeAdv: !!subclass?.initiativeAdv, initiativeReroll: Math.max(0, ...feats.map((f) => f.initiativeReroll || 0)),
     classFeatures: atLevel(cls.features),
     subclassFeatures: subclass ? atLevel(subclass.features) : [],
     speciesFeatures: atLevel(sp.features),
