@@ -26,6 +26,7 @@ import { CONFIG } from "../js/config.js";
 import { pipTarget, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
 import { newSpellCircle } from "../js/rules/magic.js";
 import { fieldOf } from "../js/views/fieldof.js";
+import * as FAM from "../js/rules/familiars.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -637,8 +638,8 @@ test("turn planner: options by class, level, species and spells", () => {
 
 test("import from an old character page: state, picks, equipment, journal, questions, differences", () => {
   const build = wl({ id: "page-x", name: "Test", level: 1, armor: "leather", classOptions: { invocations: ["armor-of-shadows"] }, spellPicks: { cantrips: ["eldritch-blast", "prestidigitation"], prepared: ["hex", "charm-person"] } });
-  const data = { app: "gnoll-rpg-page", version: 1, page: "Test", build, shown: { hpMax: 20, ac: 13 },
-    state: { level: 2, hp: { cur: 7, max: 20, temp: 2 }, death: { ok: 1, fail: 0 }, gold: { gp: "23", sp: 4 }, armor: "mage", conc: "Hex",
+  const data = { app: "gnoll-rpg-page", version: 1, page: "Test", build, familiarKind: "Raven", shown: { hpMax: 20, ac: 13 },
+    state: { level: 2, hp: { cur: 7, max: 20, temp: 2 }, death: { ok: 1, fail: 0 }, gold: { gp: "23", sp: 4 }, armor: "mage", conc: "Hex", fam: { name: "Kra", status: "pocket", hp: { cur: 1, max: 2 } },
       levels: { 2: { hp: 5, cant: ["Eldritch Blast", "Prestidigitation"], prep: ["Hex", "Charm Person", "Hellish Rebuke"], inv: ["armor", "agonizing:Eldritch Blast", "chain"] } },
       res: { pact: { cur: 1, max: 2 }, cunning: { cur: 0, max: 1 }, hd: { cur: 1, max: 2 }, nonsense: { cur: 0, max: 3 } } },
     items: [{ id: "b", name: "Lina", qty: 1, order: 2 }, { id: "a", name: "Sztylet", qty: 2, note: "1d4", order: 1 }],
@@ -654,6 +655,7 @@ test("import from an old character page: state, picks, equipment, journal, quest
   eq(ch.used, { slot1: 1, cunning: 1 }, "page resources mapped, unknown ones skipped");
   eq([ch.gold.gp, ch.gold.sp, ch.concentration, c.active.mageArmor, c.ac.value], [23, 4, "hex", true, 15]);
   eq(ch.items.map((x) => x.name), ["Sztylet", "Lina"]);
+  eq([ch.familiar.name, ch.familiar.form, ch.familiar.status, ch.familiar.hp.cur], ["Kra", "raven", "pocket", 1], "the familiar comes along");
   eq([ch.journal[0].title, ch.journal[0].date], ["Sesja 1", "2026-09-30"]);
   eq(ch.notes.includes("- [x] Kto?\n  Odpowiedź: Jeleń") && ch.notes.includes("- [ ] Gdzie?"), true);
   eq(report.notes.map((n) => [n.key, n.vars]), [["imp.levelChanged", { from: 1, to: 2 }], ["imp.hpDiff", { page: 20, app: 15 }], ["imp.acDiff", { page: 13, app: 15 }]]);
@@ -1544,6 +1546,39 @@ test("resource dots: tapping spends or gives back; spending asks unless switched
   for (const k of ["res.spendAsk", "res.spendYes", "res.back.short", "res.back.long", "res.back.partial", "res.dontAsk", "res.askToggle"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
   const ch = normalize(Object.assign(blankCharacter(), { askSpend: false }));
   eq(ch.askSpend, false, "the setting survives loading");
+});
+
+// --- Familiar (Find Familiar, Pact of the Chain, Wild Companion; stat blocks from PHB appendix B) ---
+test("familiar: every form has full stats in PL and EN; Chain forms only with the pact", () => {
+  eq(Object.keys(FAM.FAMILIARS).length, 23, "11 from the spell, 4 other CR 0 Beasts, 8 Chain forms");
+  for (const f of Object.values(FAM.FAMILIARS)) {
+    eq([f.id, f.scores.length, f.hp > 0, f.ac >= 10, !!f.senses.pl && !!f.senses.en, !!f.actions.pl && !!f.actions.en, FAM.FAMILIAR_GROUPS.includes(f.group)], [f.id, 6, true, true, true, true, true]);
+  }
+  eq([FAM.FAMILIARS.raven.hp, FAM.FAMILIARS.imp.hp, FAM.FAMILIARS.quasit.ac, FAM.FAMILIARS.sprite.ac], [2, 21, 13, 15]);
+  eq([FAM.familiarForms({ chain: false }).some((f) => f.id === "imp"), FAM.familiarForms({ chain: true }).some((f) => f.id === "imp")], [false, true]);
+  eq(FAM.familiarForms({ chain: false }).length, 15);
+});
+test("familiar: who can have one — Find Familiar, Pact of the Chain + Investment, Druid's Wild Companion", () => {
+  const acc = (ch) => FAM.familiarAccess(run(ch));
+  eq(acc(make({ classId: "fighter" })).has, false);
+  const chain = acc(wl({ level: 5, classOptions: { invocations: ["pact-of-the-chain", "investment-of-the-chain-master", "agonizing-blast@eldritch-blast"] }, spellPicks: { cantrips: ["eldritch-blast", "minor-illusion"] } }));
+  eq([chain.has, chain.chain, chain.investment, chain.wildOnly], [true, true, true, false]);
+  eq([acc(make({ classId: "druid", speciesId: "dwarf", level: 1 })).has, acc(make({ classId: "druid", speciesId: "dwarf", level: 2 })).wildOnly], [false, true]);
+  const book = ["magic-missile", "shield", "mage-armor", "detect-magic", "sleep", "find-familiar"];
+  eq(acc(make({ classId: "wizard", spellPicks: { cantrips: ["fire-bolt", "mage-hand", "light"], book, prepared: ["shield"] } })).has, true, "a Ritual from the spellbook");
+});
+test("familiar: old familiars load with their form, place and HP; speed with Investment", () => {
+  const ch = normalize(Object.assign(blankCharacter(), { familiar: { name: "Pazur", kind: "Kruk", hp: { cur: 1, max: 2 }, present: false } }));
+  eq([ch.familiar.form, ch.familiar.status, ch.familiar.hp.cur, ch.familiar.name, "present" in ch.familiar], ["raven", "pocket", 1, "Pazur", false]);
+  const other = normalize(Object.assign(blankCharacter(), { familiar: { name: "", kind: "lis", hp: { cur: 3, max: 4 }, present: true } }));
+  eq([other.familiar.form, other.familiar.kind, other.familiar.status, FAM.familiarHpMax(other.familiar)], ["other", "lis", "here", 4], "a typed form outside the list is kept");
+  eq(normalize(blankCharacter()).familiar.form, "", "no familiar yet");
+  eq([FAM.formFromText("Raven"), FAM.formFromText("jadowity wąż"), FAM.formFromText("smok")], ["raven", "venomous-snake", ""]);
+  eq(FAM.familiarHpMax({ form: "owl", hp: { max: 9 } }), 1, "a listed form's HP comes from its stat block");
+  eq(FAM.familiarSpeed(FAM.FAMILIARS.cat, "fly").en, "40 ft, fly 40 ft, climb 40 ft");
+  eq(FAM.familiarSpeed(FAM.FAMILIARS.owl, "fly").en, "5 ft, fly 60 ft", "a better Fly Speed stays");
+  eq(FAM.familiarSpeed(FAM.FAMILIARS.cat, "").pl, "40 ft, wspinaczka 40 ft");
+  for (const k of ["tab.familiar", "fam.status.here", "fam.status.pocket", "fam.status.gone", "fam.rule5", "fam.invest3", "fam.group.chain"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
 let failed = 0;

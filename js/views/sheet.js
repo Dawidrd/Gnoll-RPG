@@ -20,11 +20,13 @@ import { combatTab, activeCard } from "./combat.js";
 import { attacksBlock } from "./weapons.js";
 import { inventoryTab, journalTab } from "./gear.js";
 import { partyTab } from "./party.js";
+import { familiarTab, hasFamiliar } from "./familiar.js";
+import { familiarAccess } from "../rules/familiars.js";
 import { accountAvailable } from "../sync/cloud.js";
 import { searchSelects } from "./selectsearch.js";
 import { skillGroups } from "./skillgroups.js";
 
-const TABS = ["start", "combat", "character", "spells", "inventory", "party", "levelup", "journal", "notes"];
+const TABS = ["start", "combat", "character", "spells", "familiar", "inventory", "party", "levelup", "journal", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
@@ -36,7 +38,7 @@ export function renderSheet(root, go, id, tab) {
   const ch = getById(id);
   if (!ch) return go("#/");
   let c = compute(ch);
-  const tabsFor = (cc) => TABS.filter((k) => (k !== "spells" || cc.spellSources.length) && (k !== "party" || accountAvailable()));
+  const tabsFor = (cc) => TABS.filter((k) => (k !== "spells" || cc.spellSources.length) && (k !== "party" || accountAvailable()) && (k !== "familiar" || hasFamiliar(ch, cc)));
   if (!tabsFor(c).includes(tab)) tab = "start";
   if (ch.hp.cur == null) { ch.hp.cur = c.hpMax; upsert(ch); }
 
@@ -88,7 +90,7 @@ export function renderSheet(root, go, id, tab) {
 
     if (!tabsFor(c).includes(tab)) tab = "start";
     const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes,
-      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save, draw }), journal: () => journalTab({ ch, save }), party: () => partyTab({ ch, go }) }[tab]();
+      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save, draw }), journal: () => journalTab({ ch, save }), familiar: () => familiarTab({ ch, c, save }), party: () => partyTab({ ch, go }) }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
     searchSelects(root);
@@ -610,8 +612,11 @@ export function renderSheet(root, go, id, tab) {
       else if (r.shortRegain) used[r.id] = Math.max(0, (used[r.id] || 0) - r.shortRegain);
     }
     ch.used = used;
+    // Wild Companion: the Fey familiar leaves when the Druid finishes a long rest.
+    const wildGone = kind === "long" && familiarAccess(compute(ch)).wildOnly && ch.familiar.status !== "gone" && !!ch.familiar.form;
+    if (wildGone) ch.familiar.status = "gone";
     if (kind === "long") { ch.hp.cur = compute(ch).hpMax; ch.hp.temp = 0; ch.death = { ok: 0, fail: 0 }; ch.concentration = null; ch.active = { ...ch.active, rage: false }; }
-    save(); toast(t(kind === "long" ? "res.longDone" : "res.shortDone"));
+    save(); toast(t(kind === "long" ? "res.longDone" : "res.shortDone") + (wildGone ? " " + t("fam.wildGone") : ""));
   }
 
   draw();

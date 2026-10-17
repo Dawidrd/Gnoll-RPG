@@ -24,6 +24,7 @@ import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES, GENDERS, paper
 import { review } from "./checks.js";
 import { startPlan, blankStartGear } from "./equipment.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
+import { normalizeFamiliar } from "./familiars.js";
 
 export const CLASSES = { barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard };
 
@@ -192,6 +193,7 @@ export function normalize(ch) {
   if (!ch.active) ch.active = {};
   if (!Array.isArray(ch.weapons)) ch.weapons = []; // 0.12: weapons carried, for attack rolls
   if (!ch.familiar) ch.familiar = { name: "", kind: "", hp: { cur: null, max: null }, present: true };
+  ch.familiar = normalizeFamiliar(ch.familiar);
   // 0.26: gender (description only). A value from outside the list is kept as the player's own words.
   if (ch.gender == null) ch.gender = "";
   if (ch.gender && !GENDERS[ch.gender]) { ch.genderCustom = String(ch.gender); ch.gender = "other"; }

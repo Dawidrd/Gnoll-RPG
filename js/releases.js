@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.35.0", date: "2026-10-17",
+    points: [
+      { pl: "Postać z chowańcem (czar Find Familiar, Pakt Łańcucha, Wild Companion druida) ma nową zakładkę „Chowaniec”.", en: "A character with a familiar (Find Familiar, Pact of the Chain, the Druid's Wild Companion) has a new “Familiar” tab." },
+      { pl: "Wybierasz formę z listy (np. kruk, sowa, imp) i od razu widzisz jej statystyki: KP, szybkość, cechy, zmysły, akcje.", en: "Pick a form from the list (e.g. raven, owl, imp) and see its stats right away: AC, speed, abilities, senses, actions." },
+      { pl: "HP chowańca w kropkach, przełącznik „przy Tobie / odesłany / zniknął”, przycisk „Przywołaj znowu” i notatki.", en: "The familiar's HP as dots, a “with you / dismissed / gone” switch, a “Summon again” button and notes." },
+    ],
+  },
+  {
     version: "0.34.0", date: "2026-10-17",
     points: [
       { pl: "Przy tworzeniu postaci i przy awansie ramka, w której wszystko jest już wybrane, robi się zielona ze znaczkiem ✓.", en: "When creating a character and when levelling up, a box where everything is already chosen turns green with a ✓." },

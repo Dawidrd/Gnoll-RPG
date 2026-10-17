@@ -7,6 +7,7 @@
 // Hand corrections on the pages (extra HP, typed AC) are not carried over: the app counts by the rules
 // and the import report shows the difference so the player can sort it out with the GM.
 import { compute, normalize } from "./index.js";
+import { normalizeFamiliar } from "./familiars.js";
 import { SPELLS, spellId } from "./spells.js";
 
 /** Short invocation ids used on the pages → ids in this app. */
@@ -89,7 +90,7 @@ export function fromPage(data) {
   if (st.armor === "mage") ch.active = { ...ch.active, mageArmor: true, armorOff: ch.armor !== "none" };
   if (st.armor === "shield") ch.shield = true;
   if (st.armor === "maul") ch.shield = false;
-  if (st.fam) ch.familiar = { name: st.fam.name || "", kind: data.familiarKind || "", hp: { cur: st.fam.hp?.cur ?? null, max: st.fam.hp?.max ?? null }, present: st.fam.status !== "gone" && st.fam.status !== "pocket" };
+  if (st.fam) ch.familiar = normalizeFamiliar({ name: st.fam.name || "", kind: data.familiarKind || "", hp: { cur: st.fam.hp?.cur ?? null, max: st.fam.hp?.max ?? null }, status: st.fam.status === "gone" || st.fam.status === "pocket" ? st.fam.status : "here" });
 
   // Equipment, journal, questions.
   const items = [...(data.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));

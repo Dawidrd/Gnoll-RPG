@@ -8,6 +8,7 @@ import { ARMOR } from "../rules/armor.js";
 import { clamp, signed } from "../rules/core.js";
 import { dmgTag, dmgTags, dmgIcons, typeChip } from "./dmgtag.js";
 import { BEASTS, speedText } from "../rules/beasts.js";
+import { familiarStartBox, hasFamiliar } from "./familiar.js";
 
 const left = (r) => (r ? r.max - r.used : 0);
 const short = (x) => tr(x).split(" (")[0];
@@ -211,30 +212,9 @@ export function activeCard({ ch, c, save }) {
     const wearing = ch.armor !== "none" && !c.active.armorOff;
     toggle("mage-armor", "Mage Armor", c.active.mageArmor, wearing ? t("active.mageArmorWorn") : t("active.mageArmorHint", { ac: 13 + c.mods.dex }), () => set("mageArmor", !c.active.mageArmor));
   }
-  // Find Familiar, also through the Druid's Wild Companion
-  const fam = (c.spellSources || []).some((s) => s.spells.some((x) => x.id === "find-familiar")) || (c.cls.id === "druid" && c.level >= 2);
-  const famBox = fam ? familiarBox({ ch, save }) : null;
+  // Find Familiar, also through the Druid's Wild Companion: a short line here, everything else on the Familiar tab
+  const famBox = hasFamiliar(ch, c) ? familiarStartBox(ch) : null;
   if (!rows.length && !famBox) return null;
   return h("section", { cls: "card", id: "active-card" }, [h("h4", { text: t("active.title") }), h("div", { cls: "res" }, rows), wildBox, famBox,
     h("p", { cls: "hint", text: t("active.acNow", { ac: c.ac.value, note: tr(c.ac.note) }) })]);
-}
-
-function familiarBox({ ch, save }) {
-  const f = ch.familiar;
-  const num = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : null; };
-  const commit = () => save();
-  return h("div", { cls: "stack famcard", id: "familiar" }, [
-    h("div", { cls: "orn", text: t("fam.title") }),
-    h("div", { cls: "row" }, [
-      h("label", {}, [t("fam.name"), h("input", { id: "fam-name", value: f.name || "", onchange: (e) => { f.name = e.target.value.trim(); commit(); } })]),
-      h("label", {}, [t("fam.kind"), h("input", { id: "fam-kind", value: f.kind || "", placeholder: t("fam.kindPh"), onchange: (e) => { f.kind = e.target.value.trim(); commit(); } })]),
-    ]),
-    h("div", { cls: "row" }, [
-      h("label", {}, [t("fam.hp"), h("input", { type: "number", min: 0, id: "fam-hp", value: f.hp?.cur ?? "", onchange: (e) => { f.hp = { ...f.hp, cur: num(e.target.value) }; commit(); } })]),
-      h("label", {}, [t("fam.hpMax"), h("input", { type: "number", min: 1, id: "fam-hpmax", value: f.hp?.max ?? "", onchange: (e) => { f.hp = { ...f.hp, max: num(e.target.value) }; commit(); } })]),
-      h("button", { type: "button", cls: "btn small" + (f.present ? " gold" : ""), id: "fam-present", text: f.present ? t("fam.present") : t("fam.away"),
-        onclick: () => { f.present = !f.present; commit(); } }),
-    ]),
-    h("p", { cls: "hint", text: t("fam.hint") }),
-  ]);
 }
