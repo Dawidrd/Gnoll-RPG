@@ -1,7 +1,7 @@
 // Rules tests. Run with: node tests/run.mjs
 // No dependencies; each test is a name and a function that throws on failure.
 import { compute, blankCharacter, normalize, typedHpRoll } from "../js/rules/index.js";
-import { fitSkills, trimSkills } from "../js/rules/skills.js";
+import { fitSkills, trimSkills, skillsByAbility } from "../js/rules/skills.js";
 import { pointsSpent, paperMethod, paperSig, paperLocked, GENDERS, genderText } from "../js/rules/identity.js";
 import { SPELLS, spellsOf } from "../js/rules/spells.js";
 import { turnOptions, turnTips } from "../js/rules/turn.js";
@@ -235,6 +235,15 @@ test("Rogue knows Thieves' Cant and picks one more language from any table", () 
   const c = run(make({ classId: "rogue" }));
   eq(c.languages.known.includes("thieves-cant"), true);
   eq(fitSkills(["elvish", "dwarvish", "abyssal"], c.languages.slots).ok, true);
+});
+test("skills grouped under their ability, in ability order, empty abilities left out", () => {
+  eq(skillsByAbility(["stealth", "athletics", "perception", "acrobatics"]), [
+    { ab: "str", ids: ["athletics"] }, { ab: "dex", ids: ["acrobatics", "stealth"] }, { ab: "wis", ids: ["perception"] }]);
+  const all = skillsByAbility(["acrobatics", "animal", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation",
+    "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight", "stealth", "survival"]);
+  eq(all.map((g) => g.ab), ["str", "dex", "int", "wis", "cha"], "Constitution has no skills");
+  eq(all.reduce((n, g) => n + g.ids.length, 0), 18);
+  eq(skillsByAbility([]), []);
 });
 test("typical species language is a hint only (PHB Standard Languages table)", () => {
   eq(run(make({ speciesId: "gnome" })).languages.typical, "gnomish");

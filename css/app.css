@@ -97,6 +97,9 @@ label.wide { flex: 1 1 100%; }
 .abfield input { text-align: center; width: 4.5em; }
 .abmod { font: 700 1rem var(--f-ui); color: var(--gold); }
 .checks { display: grid; gap: 6px 14px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.skgroups { display: grid; gap: 10px; }
+.skgroup { border-left: 2px solid var(--seam); padding-left: 10px; }
+.skhead { margin: 0 0 4px; font-family: var(--f-ui); font-size: .85rem; letter-spacing: .04em; color: var(--gold); font-variant-numeric: tabular-nums; }
 .check { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--bone); padding: 4px 6px; border-radius: var(--r); }
 .check.suggested { background: rgba(202,162,79,.1); box-shadow: inset 2px 0 0 var(--gold-dim); }
 .check input { width: 20px; height: 20px; min-height: 0; accent-color: var(--gold); }

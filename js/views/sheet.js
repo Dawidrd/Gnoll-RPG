@@ -22,6 +22,7 @@ import { inventoryTab, journalTab } from "./gear.js";
 import { partyTab } from "./party.js";
 import { accountAvailable } from "../sync/cloud.js";
 import { searchSelects } from "./selectsearch.js";
+import { skillGroups } from "./skillgroups.js";
 
 const TABS = ["start", "combat", "character", "spells", "inventory", "party", "levelup", "journal", "notes"];
 let lastHp = null; // undo snapshot for the open character
@@ -358,11 +359,12 @@ export function renderSheet(root, go, id, tab) {
           const allowed = c.skills.filter((k) => !have.includes(k.id) && newSlots.some((sl) => !sl.from || sl.from.includes(k.id)));
           steps.push(h("div", { cls: "stack" }, [h("h4", { text: newSlots.map((sl) => tr(sl.label)).join(", ") }),
             h("p", { cls: "hint", text: t("lvl.newSkills", { n: total }) + " " + t("form.picked", { n: pending.skills.length, max: total }) }),
-            h("div", { cls: "checks" }, allowed.map((k) => {
+            skillGroups(allowed.map((k) => k.id), c, (sid) => {
+              const k = c.skills.find((x) => x.id === sid);
               const on = pending.skills.includes(k.id);
               return h("label", { cls: "check" + (!on && pending.skills.length >= total ? " blocked" : "") }, [h("input", { type: "checkbox", id: "lvl-skill-" + k.id, checked: on,
                 disabled: !on && pending.skills.length >= total, onchange: (e) => { pending.skills = e.target.checked ? [...pending.skills, k.id] : pending.skills.filter((x) => x !== k.id); draw(); } }), k[lang()]]);
-            }))]));
+            })]));
           ok.push(pending.skills.length === total);
         }
 

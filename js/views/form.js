@@ -26,6 +26,7 @@ import { CATALOG, SHOP_SECTIONS, TRINKETS, RARITIES, priceText, wearStart, apply
 import { WEAPONS } from "../rules/weapons.js";
 import { gearEditor } from "./gear.js";
 import { addSwitch } from "./addmode.js";
+import { skillGroups } from "./skillgroups.js";
 
 const STEPS = [1, 2, 3, 4, 5, 6];
 // Where to scroll when "Next" is blocked by a checks item (anything else: the step's checklist).
@@ -524,7 +525,8 @@ export function renderForm(root, go, id, opts = {}) {
     const fit = c.skillFit;
     const canAdd = (sid) => fitSkills([...chosen, sid], c.slots).ok;
     const classList = cls().skillChoices.from || [];
-    const grid = h("div", { cls: "checks" }, SKILLS.map((s) => {
+    const grid = skillGroups(SKILLS.map((s) => s.id), c, (sid) => {
+      const s = SKILLS.find((k) => k.id === sid);
       const isGranted = granted.includes(s.id);
       const on = isGranted || chosen.includes(s.id);
       const blocked = !on && !canAdd(s.id);
@@ -534,8 +536,8 @@ export function renderForm(root, go, id, opts = {}) {
           ch.skills = e.target.checked ? [...chosen, s.id] : chosen.filter((x) => x !== s.id);
           if (!e.target.checked) ch.expertise = ch.expertise.filter((x) => x !== s.id);
           draw();
-        } }), `${s[lang()]} (${short(s.ab)})`, tag ? h("small", { text: tag }) : null]);
-    }));
+        } }), s[lang()], tag ? h("small", { text: tag }) : null]);
+    });
     const expCount = c.expertiseMax;
     const profSkills = SKILLS.filter((s) => (granted.includes(s.id) || chosen.includes(s.id)) && (!c.expertiseFrom || c.expertiseFrom.includes(s.id)));
     const expert = expCount ? h("div", { cls: "stack" }, [

@@ -1,5 +1,6 @@
 // How many skills a character may choose, and from where.
 // Each source is a "slot" with a count and an optional list of allowed skills (null = any skill).
+import { ABILITIES, SKILLS } from "./core.js";
 
 /** Skills the character gets automatically (background, some subclasses). They can't be unticked. */
 export function grantedSkills({ cls, bg, subclass }) {
@@ -47,4 +48,13 @@ export function trimSkills(chosen, slots) {
   const kept = [];
   for (const s of chosen) if (fitSkills([...kept, s], slots).ok) kept.push(s);
   return kept;
+}
+
+/**
+ * Skill ids grouped under their ability, in ability order (STR, DEX, …); abilities without
+ * any of the given skills are left out. Used to show each skill next to the score it uses (0.28).
+ */
+export function skillsByAbility(ids) {
+  return ABILITIES.map((ab) => ({ ab, ids: SKILLS.filter((s) => s.ab === ab && ids.includes(s.id)).map((s) => s.id) }))
+    .filter((g) => g.ids.length);
 }
