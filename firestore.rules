@@ -164,12 +164,20 @@ service cloud.firestore {
       }
 
       // Party notes: the whole party reads them; each is edited only by its author; admins may remove any.
+      // 0.31: signed with the author's character in this party (char) and GM role (gm), exactly as in their member document.
+      function noteSign(d) {
+        let m = get(memberPath(t, me())).data;
+        return (!('char' in d) || d.char == m.get('charName', '')) && (!('gm' in d) || d.gm == m.get('gm', false));
+      }
       match /notes/{n} {
         allow read: if isMember(t);
-        allow create: if isMember(t) && only(['author', 'name', 'text', 'at']) && request.resource.data.author == me()
-          && text(request.resource.data.name, 100) && name(request.resource.data.text, 4000) && request.resource.data.at is int;
-        allow update: if isMember(t) && resource.data.author == me() && changes(['name', 'text', 'at'])
-          && text(request.resource.data.name, 100) && name(request.resource.data.text, 4000) && request.resource.data.at is int;
+        allow create: if isMember(t) && request.resource.data.keys().hasOnly(['author', 'name', 'char', 'gm', 'text', 'at'])
+          && request.resource.data.keys().hasAll(['author', 'name', 'text', 'at']) && request.resource.data.author == me()
+          && text(request.resource.data.name, 100) && name(request.resource.data.text, 4000) && request.resource.data.at is int
+          && noteSign(request.resource.data);
+        allow update: if isMember(t) && resource.data.author == me() && changes(['name', 'char', 'gm', 'text', 'at'])
+          && text(request.resource.data.name, 100) && name(request.resource.data.text, 4000) && request.resource.data.at is int
+          && noteSign(request.resource.data);
         allow delete: if signedIn() && (resource.data.author == me() || isAdmin(t));
       }
     }

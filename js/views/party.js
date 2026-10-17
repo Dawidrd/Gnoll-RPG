@@ -9,7 +9,7 @@ import { ABILITIES, ABILITY_NAMES, SKILLS, signed } from "../rules/core.js";
 import { account, onAccount, accountAvailable } from "../sync/cloud.js";
 import { accountBox } from "./account.js";
 import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX, NOTE_MAX,
-  sessionWhen, cleanNote, sortNotes, canEditNote, canDeleteNote, marchOrder, marchRows, moveIn,
+  sessionWhen, cleanNote, sortNotes, canEditNote, canDeleteNote, noteSigned, marchOrder, marchRows, moveIn,
   GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar } from "../sync/partylogic.js";
 import * as PARTY from "../sync/party.js";
 import { countEvent } from "../stats.js";
@@ -384,7 +384,7 @@ function partyBody(panel, go, id, home, onSheet = false) {
           h("div", { cls: "row" }, [
             btn(t("party.save"), () => {
               if (!cleanNote(ui.editing.text)) return toast(t("party.notes.empty"));
-              PARTY.editNote(id, n.id, ui.editing.text, priv).catch(fail); ui.editing = null; redraw(true);
+              PARTY.editNote(id, n.id, ui.editing.text, priv, v.me).catch(fail); ui.editing = null; redraw(true);
             }, "btn gold"),
             btn(t("party.cancel"), () => { ui.editing = null; redraw(true); }, "btn ghost"),
           ]),
@@ -393,7 +393,7 @@ function partyBody(panel, go, id, home, onSheet = false) {
       const mayEdit = priv || canEditNote(n, v.uid), mayDelete = priv || canDeleteNote(n, v.me);
       return h("article", { cls: "note" }, [
         h("p", { cls: "note-text", text: n.text }),
-        h("p", { cls: "hint", text: priv ? stamp(n.at) : `${n.name || "?"}${n.author === v.uid ? " " + t("party.you") : ""} · ${stamp(n.at)}` }),
+        h("p", { cls: "hint", text: priv ? stamp(n.at) : `${noteSigned(n, t("party.notes.gmSign"))}${n.author === v.uid ? " " + t("party.you") : ""} · ${stamp(n.at)}` }),
         mayEdit || mayDelete ? h("div", { cls: "row" }, [
           mayEdit ? btn(t("party.notes.edit"), () => { ui.editing = { priv, id: n.id, text: n.text }; redraw(true); }) : null,
           mayDelete ? btn(t("party.notes.delete"), () => ask(t("party.notes.deleteConfirm"), () => PARTY.deleteNote(id, n.id, priv).catch(fail)), "btn small ghost") : null,
@@ -402,7 +402,7 @@ function partyBody(panel, go, id, home, onSheet = false) {
     };
     const add = () => {
       if (!cleanNote(ui.newNote[key])) return toast(t("party.notes.empty"));
-      PARTY.addNote(id, ui.newNote[key], priv).catch(fail);
+      PARTY.addNote(id, ui.newNote[key], priv, v.me).catch(fail);
       ui.newNote[key] = ""; redraw(true);
     };
     return [h("section", { cls: "card" + (priv ? " note-private" : ""), id: priv ? "notes-mine" : "notes-party" }, [

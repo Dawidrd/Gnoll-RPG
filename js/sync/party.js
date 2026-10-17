@@ -6,7 +6,7 @@
 //                                       (sheet: partylogic.js sheetSummary; paperOk: a GM's confirmation of scores from paper, paperConfirmation)
 //   parties/{partyId}/gm/{uid}        = { v, at }   (what the party's GMs see of my character: partylogic.js gmSummary)
 //   parties/{partyId}/requests/{uid}  = { name, charId, charName, code, at }
-//   parties/{partyId}/notes/{id}      = { author, name, text, at }   (party notes)
+//   parties/{partyId}/notes/{id}      = { author, name, char?, gm?, text, at }   (party notes; char/gm since 0.31.0: partylogic.js noteSign)
 //   invites/{code}                 = { party, name }   (read only by its exact code, never listed)
 //   users/{uid}/parties/{partyId}     = { name, state: asked|in, at, charId }   (my own list of parties; one character = one party)
 //   users/{uid}/parties/{partyId}/notes/{id} = { text, at }   (my private notes for that party)
@@ -14,7 +14,7 @@
 import { cloud, onAccount } from "./cloud.js";
 import { onChange, getById, upsert, loadAll } from "../store.js";
 import { compute } from "../rules/index.js";
-import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation } from "./partylogic.js";
+import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign } from "./partylogic.js";
 
 const need = () => { const c = cloud(); if (!c) throw new Error("signed-out"); return c; };
 const charFields = (ch) => ({ charId: ch?.id || "", charName: cleanName(ch?.name, 100) });
@@ -237,15 +237,16 @@ export function saveMarch(partyId, march) {
 // --- D3: notes. Party notes: everyone in the party reads them. Private notes: only their author. ---
 const notesOf = (F, db, uid, partyId, priv) => (priv ? F.collection(db, "users", uid, "parties", partyId, "notes") : F.collection(db, "parties", partyId, "notes"));
 
-export function addNote(partyId, text, priv) {
+// Party notes are signed with my character in this party (or as the GM): me = my member row (noteSign).
+export function addNote(partyId, text, priv, me) {
   const { F, db, uid, name } = need();
   const at = Date.now(), body = cleanNote(text);
-  return F.setDoc(F.doc(notesOf(F, db, uid, partyId, priv)), priv ? { text: body, at } : { author: uid, name: cleanName(name, 100), text: body, at });
+  return F.setDoc(F.doc(notesOf(F, db, uid, partyId, priv)), priv ? { text: body, at } : { author: uid, name: cleanName(name, 100), ...noteSign(me), text: body, at });
 }
-export function editNote(partyId, noteId, text, priv) {
+export function editNote(partyId, noteId, text, priv, me) {
   const { F, db, uid, name } = need();
   const at = Date.now(), body = cleanNote(text);
-  return F.updateDoc(F.doc(notesOf(F, db, uid, partyId, priv), noteId), priv ? { text: body, at } : { name: cleanName(name, 100), text: body, at });
+  return F.updateDoc(F.doc(notesOf(F, db, uid, partyId, priv), noteId), priv ? { text: body, at } : { name: cleanName(name, 100), ...noteSign(me), text: body, at });
 }
 export function deleteNote(partyId, noteId, priv) {
   const { F, db, uid } = need();

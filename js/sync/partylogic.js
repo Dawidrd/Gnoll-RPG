@@ -82,6 +82,18 @@ export const sortNotes = (list) => [...list].sort((a, b) => (b.at || 0) - (a.at 
 /** Admins remove any party note; everyone edits and removes their own. */
 export const canEditNote = (note, uid) => !!uid && note?.author === uid;
 export const canDeleteNote = (note, me) => !!me && (note?.author === me.uid || me.role === "admin");
+/** What a new or edited party note is signed with: my character in this party, and whether I am a GM. me = my member row. */
+export const noteSign = (me) => ({ char: cleanName(me?.charName, 100), gm: me?.gm === true });
+/**
+ * A party note's signature: "Character (player)", or the GM word for a GM without a character, or the player's name.
+ * Notes from before 0.31.0 have no char/gm and keep the player's account name.
+ */
+export function noteSigned(note, gmWord) {
+  const name = note?.name || "", char = note?.char || "";
+  if (char) return name && name !== char ? `${char} (${name})` : char;
+  if (note?.gm === true) return gmWord;
+  return name || "?";
+}
 
 /**
  * Marching order: everyone who plays a character, in the order the admin set.

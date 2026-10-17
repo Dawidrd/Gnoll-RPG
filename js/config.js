@@ -1,7 +1,7 @@
 // Project settings you can change without touching the rest of the code.
 export const CONFIG = {
   name: "Gnoll RPG",
-  version: "0.30.0",
+  version: "0.31.0",
   // Paste your buycoffee.to (or other) link here once the profile exists. Empty = the link is hidden.
   supportUrl: "",
   // GoatCounter site for visit counts (no cookies, see js/stats.js and the Privacy screen). Empty = nothing is counted.

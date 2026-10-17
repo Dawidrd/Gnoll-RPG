@@ -1037,6 +1037,19 @@ test("party: authors edit their notes, admins may also remove others'", () => {
   eq([PARTY.canEditNote(note, "p"), PARTY.canEditNote(note, "a")], [true, false]);
   eq([PARTY.canDeleteNote(note, { uid: "p", role: "player" }), PARTY.canDeleteNote(note, { uid: "a", role: "admin" }), PARTY.canDeleteNote(note, { uid: "q", role: "player" })], [true, true, false]);
 });
+test("party: notes signed with the character, 'GM' for a GM without one, old notes as before", () => {
+  eq(PARTY.noteSign({ charName: "  Grok  ", gm: false }), { char: "Grok", gm: false });
+  eq(PARTY.noteSign({ charName: "", gm: true }), { char: "", gm: true });
+  eq(PARTY.noteSign(null), { char: "", gm: false });
+  eq(PARTY.noteSigned({ name: "Bob", char: "Grok", gm: false }, "MG"), "Grok (Bob)");
+  eq(PARTY.noteSigned({ name: "Grok", char: "Grok" }, "MG"), "Grok");
+  eq(PARTY.noteSigned({ name: "", char: "Grok" }, "MG"), "Grok");
+  eq(PARTY.noteSigned({ name: "Alice", char: "Mira", gm: true }, "MG"), "Mira (Alice)");
+  eq(PARTY.noteSigned({ name: "Alice", char: "", gm: true }, "MG"), "MG");
+  eq(PARTY.noteSigned({ name: "Alice", char: "", gm: false }, "MG"), "Alice");
+  eq(PARTY.noteSigned({ name: "Alice" }, "MG"), "Alice");
+  eq(PARTY.noteSigned({}, "MG"), "?");
+});
 test("party: the party sees only species, class, level, HP and AC", () => {
   const ch = make({ classId: "fighter", speciesId: "dwarf", level: 3, armor: "chain-mail", abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 13, cha: 10 } });
   ch.hp = { cur: 7, temp: 4, maxOverride: null };

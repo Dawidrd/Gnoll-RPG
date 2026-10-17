@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.31.0", date: "2026-10-17",
+    points: [
+      { pl: "Notatki drużyny są podpisane imieniem postaci, np. „Grok (Bartek)”, a MG bez postaci podpisuje się „MG”.", en: "Party notes are signed with the character's name, e.g. “Grok (Bart)”, and a GM without a character signs as “GM”." },
+      { pl: "Starsze notatki zostają z dawnym podpisem; po edycji dostają nowy.", en: "Older notes keep their old signature; editing one gives it the new one." },
+    ],
+  },
+  {
     version: "0.30.0", date: "2026-10-17",
     points: [
       { pl: "Na ekranie głównym jest teraz karta „Co nowego” — krótko o tym, co się zmieniło w aplikacji.", en: "The home screen now has a “What's new” card — a short note on what changed in the app." },

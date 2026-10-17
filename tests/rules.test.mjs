@@ -210,6 +210,24 @@ test("party notes are edited by their author; admins may remove any", async () =
   await ok(alice.delete("parties/t1/notes/n1"));
 });
 
+test("party notes are signed only with your own character and GM role", async () => {
+  const { alice, bob } = await world();
+  // bob plays Grok and is not a GM
+  await ok(bob.set("parties/t1/notes/n1", { author: "bob", name: "Bob", char: "Grok", gm: false, text: "a", at: 1 }));
+  await no(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", char: "Strahd", gm: false, text: "a", at: 1 }));
+  await no(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", char: "Grok", gm: true, text: "a", at: 1 }));
+  await no(bob.set("parties/t1/notes/n2", { author: "bob", name: "Bob", char: "Grok", gm: false, text: "a", at: 1, extra: 1 }));
+  await ok(bob.update("parties/t1/notes/n1", { char: "Grok", gm: false, text: "b", at: 2 }));
+  await no(bob.update("parties/t1/notes/n1", { char: "Strahd", text: "c", at: 3 }));
+  // alice has no character; signs as the GM only once she is one
+  await no(alice.set("parties/t1/notes/n3", { author: "alice", name: "Alice", char: "", gm: true, text: "a", at: 1 }));
+  await ok(alice.update("parties/t1/members/alice", { gm: true }));
+  await ok(alice.set("parties/t1/notes/n3", { author: "alice", name: "Alice", char: "", gm: true, text: "a", at: 1 }));
+  // notes from before 0.31.0 (no signature fields) still edit as they were
+  await ok(bob.set("parties/t1/notes/n4", { author: "bob", name: "Bob", text: "old", at: 1 }));
+  await ok(bob.update("parties/t1/notes/n4", { name: "Bob", text: "old, edited", at: 2 }));
+});
+
 test("private notes are read only by their author, admins included", async () => {
   const { alice, bob } = await world();
   await ok(bob.set("users/bob/parties/t1/notes/p1", { text: "Alice is a vampire", at: 1 }));
