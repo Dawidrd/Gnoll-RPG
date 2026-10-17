@@ -2,6 +2,12 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.41.1", date: "2026-10-17",
+    points: [
+      { pl: "Nowe logo w górnym pasku: gnoll i napis bez tła, wyraźne także na telefonie.", en: "A new logo in the top bar: the gnoll and the title without a background, sharp on phones too." },
+    ],
+  },
+  {
     version: "0.41.0", date: "2026-10-17",
     points: [
       { pl: "Rzut na inicjatywę w zakładce Drużyna: przycisk „🎲 Rzuć inicjatywę” rzuca k20 z modyfikatorem z Twojej karty.", en: "Roll Initiative on the Party tab: the “🎲 Roll Initiative” button rolls a d20 with the modifier from your sheet." },
