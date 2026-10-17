@@ -3,7 +3,7 @@
 // The form redraws from `ch` after each structural change; text fields write straight into `ch`.
 import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
-import { getById, upsert } from "../store.js";
+import { getById, upsert, saveCreatorDraft, loadCreatorDraft, clearCreatorDraft } from "../store.js";
 import {
   CLASSES, PLANNED_CLASSES, SPECIES, SPECIES_SPELLS, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS,
   blankCharacter, normalize, compute, finalAbilities, fixedHp,
@@ -11,7 +11,7 @@ import {
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
 import { POINT_BUY, pointsSpent, PAPER, paperMethod, paperLocked } from "../rules/identity.js";
 import { backgroundBonus } from "../rules/backgrounds.js";
-import { stepBlockers } from "../rules/checks.js";
+import { stepBlockers, saveState } from "../rules/checks.js";
 import { fitSkills, trimSkills } from "../rules/skills.js";
 import { randomName } from "../rules/names.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
@@ -48,15 +48,24 @@ import { msg } from "./msg.js";
 import { countEvent } from "../stats.js";
 import { levelChoiceUI } from "./levelchoice.js";
 
-/** opts.paper: a new character copied from a paper sheet (ch.entry = "paper": steps open in any order, scores typed in, current equipment). */
+/** opts.paper: a new character copied from a paper sheet (ch.entry = "paper": steps open in any order, scores typed in, current equipment).
+ *  A new character in the making is kept on this device until it is saved; opening the creator again picks it up (opts.fresh: start over). */
 export function renderForm(root, go, id, opts = {}) {
   const stored = id ? getById(id) : null;
   if (id && !stored) return go("#/");
-  const ch = stored ? normalize(structuredClone(stored)) : blankCharacter({ paper: !!opts.paper });
   const isNew = !id;
+  const resumed = isNew && !opts.fresh ? loadCreatorDraft() : null;
+  if (resumed && !opts.join && validCode(resumed.join)) opts = { ...opts, join: resumed.join };
+  const ch = stored ? normalize(structuredClone(stored)) : resumed ? normalize(resumed.ch) : blankCharacter({ paper: !!opts.paper });
   if (!validCode(opts.join)) opts = { ...opts, join: null };
   const paper = ch.entry === "paper";
-  let step = 1;
+  let step = resumed && STEPS.includes(resumed.step) ? resumed.step : 1;
+  // Nothing is kept until the player changes something, so just looking at the creator leaves no unfinished character behind.
+  let touched = !!resumed;
+  const keep = (changed) => {
+    if (changed) touched = true;
+    if (isNew && touched) saveCreatorDraft({ ch, step, join: opts.join });
+  };
   const short = (a) => ABILITY_NAMES[a].short[lang()];
   const skillName = (sid) => SKILLS.find((k) => k.id === sid)[lang()];
   const field = (label, input, cls) => h("label", { cls }, [label, input]);
@@ -119,13 +128,16 @@ export function renderForm(root, go, id, opts = {}) {
 
   function draw() {
     tidy();
+    keep(true);
     const scroll = scrollY;
     root.replaceChildren(build());
     searchSelects(root);
     scrollTo(0, scroll);
   }
+  // First drawing: nothing changed yet.
+  function drawFirst() { tidy(); root.replaceChildren(build()); searchSelects(root); }
   // The stepper is sticky, so scrolling it into view does nothing: a new step always opens at the top of the page.
-  const goStep = (n) => { step = n; tidy(); root.replaceChildren(build()); searchSelects(root); scrollTo(0, 0); };
+  const goStep = (n) => { step = n; keep(); tidy(); root.replaceChildren(build()); searchSelects(root); scrollTo(0, 0); };
   // "Next" moves on only when the current step is complete; otherwise it says what's missing and shows where.
   // A character from paper moves on freely: what's missing stays on the "To do" list.
   const goNext = () => {
@@ -133,7 +145,12 @@ export function renderForm(root, go, id, opts = {}) {
     const first = stepBlockers(compute(structuredClone(ch)).review, step)[0];
     if (!first) return goStep(step + 1);
     toast(t("form.nextBlocked", { what: msg(first) }));
-    const el = root.querySelector(FIELD_OF[first.key] || ".checkcard") || root.querySelector(".checkcard");
+    pointAt(first);
+  };
+  /** Show the field a checks item is about, on its own step. */
+  const pointAt = (item) => {
+    if (item.step && item.step !== step) goStep(item.step);
+    const el = root.querySelector(FIELD_OF[item.key] || ".checkcard") || root.querySelector(".checkcard");
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     if (el.matches("input, select")) el.focus({ preventScroll: true });
@@ -160,24 +177,47 @@ export function renderForm(root, go, id, opts = {}) {
       ...notices.filter((x) => x.step === step).map((x) => h("li", { cls: "note", text: msg(x) }))];
     const checklist = here.length ? card(t("form.checklist"), [h("ul", { cls: "checklist" }, here)], { cls: "card stack checkcard" }) : null;
 
+    // A new character is saved on the last step; an existing one from any step.
+    const last = step === STEPS.length;
+    const canSaveHere = last || !isNew;
+    const state = saveState(c.review);
+    const agreeBox = h("div", { cls: "confirm agreebox", id: "f-agree-box", role: "alert" });
+    const askAgree = () => {
+      agreeBox.replaceChildren(h("p", { cls: "small", text: t("form.agreeAsk") }), h("ul", { cls: "checklist" }, todo.map((x) => h("li", { text: msg(x) }))),
+        h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "f-agree-yes", text: t("form.agreeYes"), onclick: () => save(true) }),
+          h("button", { type: "button", cls: "btn ghost", text: t("form.agreeBack"), onclick: () => agreeBox.classList.remove("open") })]));
+      agreeBox.classList.add("open");
+      agreeBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
     const nav = h("div", { cls: "row formnav" }, [
       step > 1 ? h("button", { type: "button", cls: "btn ghost", id: "f-prev", text: "← " + t("form.prev"), onclick: () => goStep(step - 1) }) : null,
-      step < STEPS.length ? h("button", { type: "button", cls: "btn", id: "f-next", text: t("form.next") + " →", onclick: goNext }) : null,
-      h("button", { type: "submit", cls: "btn gold", id: "f-save", text: t("form.save") }),
+      !last ? h("button", { type: "button", cls: isNew ? "btn gold" : "btn", id: "f-next", text: `${t("form.next")}: ${t("step." + (step + 1))} →`, onclick: goNext }) : null,
+      canSaveHere ? h("button", { type: "submit", cls: "btn gold", id: "f-save", text: t("form.saveChar") }) : null,
+      canSaveHere && state === "todo" ? h("button", { type: "button", cls: "btn ghost", id: "f-save-agreed", text: t("form.saveAgreed"), onclick: askAgree }) : null,
     ]);
     const totalTodo = todo.length;
     const status = h("p", { cls: "formstatus" + (errors.length ? " bad" : totalTodo ? "" : " ok"),
       text: errors.length ? t("form.statusErrors", { n: errors.length }) : totalTodo ? t("form.statusTodo", { n: totalTodo }) : t("form.statusDone") });
+    const resumeNote = resumed ? h("div", { cls: "row", id: "f-resumed" }, [h("span", { cls: "hint", text: t("form.resumed") }),
+      h("button", { type: "button", cls: "btn small ghost", id: "f-restart", text: t("form.restart"), onclick: (e) => {
+        e.currentTarget.parentNode.replaceChildren(h("span", { cls: "hint", text: t("form.restartAsk") }),
+          h("button", { type: "button", cls: "btn small gold", id: "f-restart-yes", text: t("sheet.yes"), onclick: () => {
+            clearCreatorDraft(); renderForm(root, go, null, { paper: !!opts.paper, join: opts.join, fresh: true }); scrollTo(0, 0);
+          } }),
+          h("button", { type: "button", cls: "btn small ghost", text: t("sheet.no"), onclick: () => draw() }));
+      } })]) : null;
 
-    return h("form", { cls: "panel cform", novalidate: true, onsubmit: (e) => { e.preventDefault(); save(); } }, [
+    // Enter in a text field: a new character goes on to the next step (it is saved on the last one).
+    return h("form", { cls: "panel cform", novalidate: true, oninput: () => keep(true), onchange: () => keep(true),
+      onsubmit: (e) => { e.preventDefault(); if (canSaveHere) save(); else goNext(); } }, [
       h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? (paper ? "form.titlePaper" : "form.titleNew") : "form.titleEdit") }),
-        h("a", { cls: "btn ghost", href: isNew ? (opts.join ? `#/join/${opts.join}` : "#/") : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status,
+        h("a", { cls: "btn ghost", href: isNew ? (opts.join ? `#/join/${opts.join}` : "#/") : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status, resumeNote,
         isNew && opts.join ? h("p", { cls: "hint", id: "f-join-note", text: t("form.forInvite") }) : null,
         paper ? h("p", { cls: "hint", id: "f-paper-intro", text: t("form.paperIntro") }) : null]),
       stepper,
       h("h3", { cls: "steptitle", text: `${step}. ${t("step." + step + ".title")}` }),
       h("p", { cls: "hint", text: t("step." + step + ".hint") }),
-      ...body, checklist, nav,
+      ...body, checklist, nav, agreeBox,
     ]);
   }
 
@@ -816,11 +856,15 @@ export function renderForm(root, go, id, opts = {}) {
     ])));
   }
 
-  function save() {
+  /** agreed: the player confirmed that what's still missing was agreed with the GM. */
+  function save(agreed = false) {
     const c = compute(structuredClone(ch));
     if (!ch.name.trim()) { toast(t("form.nameRequired")); goStep(4); root.querySelector("#f-name")?.focus(); return; }
     const err = c.review.errors[0];
     if (err) { toast(msg(err)); goStep(err.step); return; }
+    const state = saveState(c.review);
+    if (state === "todo" && !agreed) { toast(t("form.saveBlocked", { what: msg(c.review.todo[0]) })); pointAt(c.review.todo[0]); return; }
+    if (state === "todo") ch.todoAgreed = true; else delete ch.todoAgreed;
     ch.name = ch.name.trim(); ch.player = (ch.player || "").trim();
     ch.size = c.size;
     ch.abilities = finalAbilities(ch);
@@ -832,6 +876,7 @@ export function renderForm(root, go, id, opts = {}) {
     const after = c.hpMax;
     if (ch.hp.cur != null && before != null) ch.hp.cur = Math.max(0, Math.min(after, ch.hp.cur + (after - before)));
     if (!upsert(ch)) { toast(t("app.saveError")); return; }
+    if (isNew) clearCreatorDraft();
     if (isNew) countEvent(paper ? "character/paper" : "character/new", ch.classId);
     // Made for a party invite: back to the invite, with this character picked.
     go(isNew ? afterCreate(ch.id, opts.join) : `#/c/${ch.id}/start`);
@@ -844,5 +889,5 @@ export function renderForm(root, go, id, opts = {}) {
     ch.abilityBase = Object.fromEntries(order.map((a, i) => [a, sorted[i]]));
   }
 
-  draw();
+  drawFirst();
 }

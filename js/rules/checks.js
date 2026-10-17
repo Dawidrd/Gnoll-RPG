@@ -138,4 +138,9 @@ export function stepBlockers(rev, step) {
   return [...rev.errors, ...rev.todo].filter((x) => x.step === step);
 }
 
+/** Can the character be saved? "errors" never; "todo" only once the player confirms the gaps were agreed with the GM; "ready" yes. */
+export function saveState(rev) {
+  return rev.errors.length ? "errors" : rev.todo.length ? "todo" : "ready";
+}
+
 export const skillName =(id, lang) => SKILLS.find((s) => s.id === id)?.[lang] || id;

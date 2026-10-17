@@ -170,6 +170,7 @@ td b { color: #f1e6d1; }
 .good { color: var(--moss); font-weight: 700; font-family: var(--f-ui); }
 .confirm { display: none; gap: 8px; align-items: center; flex-wrap: wrap; }
 .confirm.open { display: flex; }
+.agreebox.open { flex-direction: column; align-items: stretch; padding: 12px; border: 1px solid var(--gold); border-radius: var(--r); background: var(--crypt); }
 
 /* Character tab */
 .abcell { display: grid; justify-items: center; gap: 2px; border: 1px solid var(--seam); background: var(--crypt); border-radius: var(--r); padding: 10px 6px; font-family: var(--f-ui); }

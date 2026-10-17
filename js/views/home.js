@@ -1,7 +1,7 @@
 // Character list: open, export, delete, import.
 import { h, toast } from "../dom.js";
 import { t, tr } from "../i18n.js";
-import { loadAll, remove, exportFile, parseImport, upsert, getById } from "../store.js";
+import { loadAll, remove, exportFile, parseImport, upsert, getById, loadCreatorDraft, clearCreatorDraft } from "../store.js";
 import { CLASSES, SPECIES, compute } from "../rules/index.js";
 import { accountBox } from "./account.js";
 import { accountAvailable } from "../sync/cloud.js";
@@ -38,10 +38,27 @@ export function renderHome(root, go) {
     h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "paste-go", text: t("home.import"), onclick: () => importText(pasteArea.value.trim()) }),
       h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => { pasteBox.hidden = true; } })])]);
 
-  const cards = list.map((ch) => {
+  const metaOf = (ch) => {
     const cls = CLASSES[ch.classId], sp = SPECIES[ch.speciesId];
-    const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(sp.name) : tr(sp?.name).split(" (")[0];
-    const meta = [spName, cls ? tr(cls.name) : ch.classId, `${t("home.levelShort")} ${ch.level}`].join(" · ");
+    const spName = ch.speciesId === "other" ? ch.customSpecies?.name || tr(sp?.name) : tr(sp?.name || { pl: "", en: "" }).split(" (")[0];
+    return [spName, cls ? tr(cls.name) : ch.classId, `${t("home.levelShort")} ${ch.level}`].filter(Boolean).join(" · ");
+  };
+  // A character still in the creator (kept on this device until it is saved).
+  const draft = loadCreatorDraft();
+  const draftCard = draft ? h("article", { cls: "ccard", id: "draft-card" }, [
+    h("a", { cls: "ccard-main", href: (draft.ch.entry === "paper" ? "#/paper" : "#/new") + (draft.join ? `/join/${draft.join}` : "") }, [
+      h("span", { cls: "ccard-name", text: (draft.ch.name || "").trim() || t("home.draftNoName") }),
+      h("span", { cls: "ccard-meta", text: (() => { try { return metaOf(draft.ch); } catch { return ""; } })() }),
+    ]),
+    h("span", { cls: "ccard-todo", text: t("home.draftTitle") }),
+    h("div", { cls: "row" }, [
+      h("a", { cls: "btn gold", id: "draft-resume", href: (draft.ch.entry === "paper" ? "#/paper" : "#/new") + (draft.join ? `/join/${draft.join}` : ""), text: t("home.draftResume") }),
+      h("button", { type: "button", cls: "btn ghost", id: "draft-discard", text: t("home.draftDiscard"), onclick: () => ask(t("home.draftDiscardAsk"), () => { clearCreatorDraft(); go("#/"); }) }),
+    ]),
+  ]) : null;
+
+  const cards = list.map((ch) => {
+    const meta = metaOf(ch);
     const delBtn = h("button", { type: "button", cls: "btn ghost", text: t("home.delete"), onclick: () => {
       ask(t("home.deleteConfirm", { name: ch.name }), () => { remove(ch.id); go("#/"); });
     } });
@@ -62,7 +79,8 @@ export function renderHome(root, go) {
   root.replaceChildren(
     h("section", { cls: "panel" }, [
       h("header", { cls: "stack" }, [h("h2", { text: t("home.title") })]),
-      list.length ? h("div", { cls: "ccards" }, cards) : h("p", { cls: "lead", text: t("home.empty") }),
+      draftCard ? h("div", { cls: "ccards" }, [draftCard]) : null,
+      list.length ? h("div", { cls: "ccards" }, cards) : draftCard ? null : h("p", { cls: "lead", text: t("home.empty") }),
       confirmBox,
       h("div", { cls: "row" }, [
         h("a", { cls: "btn gold", href: "#/new", text: t("home.new") }),

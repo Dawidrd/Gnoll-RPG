@@ -82,6 +82,16 @@ export function forgetAccount(uid, keep) {
   if (owner === uid) setOwner("");
 }
 
+// The character being made in the creator, until it is saved (one per device, never synced).
+const CREATOR = "gnoll.creator.v1";
+/** d: { ch, step, join } */
+export function saveCreatorDraft(d) { return storage.set(CREATOR, JSON.stringify({ ...d, at: Date.now() })); }
+export function loadCreatorDraft() {
+  try { const d = JSON.parse(storage.get(CREATOR) || "null"); return d && d.ch && typeof d.ch === "object" && !Array.isArray(d.ch) ? d : null; }
+  catch { return null; }
+}
+export const clearCreatorDraft = () => storage.del(CREATOR);
+
 export function upsert(ch) {
   const list = loadAll();
   ch.updated = Date.now();

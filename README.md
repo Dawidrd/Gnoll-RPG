@@ -7,7 +7,7 @@
 ## Co już działa / What works
 
 - Kreator w 5 krokach z rozdziału 2 Podręcznika Gracza 2024: klasa → pochodzenie → cechy → charakter → szczegóły
-- Limity z podręcznika wbudowane w kreator (umiejętności, języki, narzędzia, featy, point buy, jeden rzut 4k6); lista „Do uzupełnienia”
+- Limity z podręcznika wbudowane w kreator (umiejętności, języki, narzędzia, featy, point buy, jeden rzut 4k6); lista „Do uzupełnienia”; zapis tylko kompletnej postaci albo „z brakami — ustalone z MG”; niedokończona postać zapamiętywana na urządzeniu („Dokończ tworzenie”)
 - Wszystkie 12 klas z PHB: Barbarzyńca, Bard, Czarnoksiężnik, Czarodziej, Druid, Kleryk, Łowca, Mnich, Łotr, Paladyn, Wojownik, Zaklinacz (poziomy 1–5) z podklasami; 16 teł; wszystkie 10 gatunków z PHB z liniami elfów i gnomów, dziedzictwami tieflingów i przodkami goliatów; czary z gatunku z DC, użyciami i odpornościami na karcie
 - Czary: wszystkie czary z PHB 2024 od sztuczek do 3. kręgu (213), z listami klas sprawdzonymi z podręcznikiem; wybór z listy z limitami (Kleryk, Czarnoksiężnik, Zaklinacz, Arcane Trickster, Magic Initiate, Fey-Touched, Shadow-Touched, Ritual Caster); zakładka Czary z rzucaniem ze slotów, darmowymi użyciami i koncentracją
 - Bard: Bardic Inspiration (k6, k8 od 5. poziomu), Expertise, Jack of All Trades wliczone w umiejętności, 4 kolegia + College of Spirits (Ravenloft); Druid: Primal Order, Wild Shape z 36 formami zwierząt (limit CR, przemiana z KP zwierzęcia i tymczasowymi HP), Wild Companion, 4 kręgi (Krąg Ziemi z wyborem ziemi po odpoczynku); Czarodziej: księga czarów (6 + 2 na poziom), przygotowane czary tylko z księgi, rytuały z księgi, Arcane Recovery, Scholar, 4 szkoły z darmowymi czarami szkoły

@@ -40,7 +40,7 @@ Commity nazywamy `X.Y.Z: krótki opis`, a w treści lista zmian.
 
 ## Silnik postaci
 
-- Limity blokują zapis (błędy, np. za dużo umiejętności, przekroczone złoto); braki nie blokują — postać zapisuje się jako szkic z listą „Do uzupełnienia”.
+- Błędy (np. za dużo umiejętności, przekroczone złoto) zawsze blokują zapis. Braki też blokują (od 0.24.0) — chyba że gracz potwierdzi „Zapisz z brakami — ustalone z MG” (`ch.todoAgreed`); wtedy karta pokazuje „Do uzupełnienia (ustalone z MG)”. Niedokończona nowa postać zapisuje się sama lokalnie (`gnoll.creator.v1`), nigdzie nie jest wysyłana.
 - Stare postacie zawsze muszą się wczytać: zmiany formatu obsługuje `normalize` w `js/rules/index.js`. Niczego nie kasujemy po cichu — wybór, który przestał pasować, zostaje widoczny z błędem albo gracz dostaje komunikat, co usunięto.
 
 ## Gdzie co jest

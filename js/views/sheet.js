@@ -138,7 +138,7 @@ export function renderSheet(root, go, id, tab) {
 
       const { todo, errors } = c.review;
       const banner = todo.length || errors.length ? h("section", { cls: "todobanner", id: "todo-banner" }, [
-        h("h4", { text: `${t("sheet.todoTitle")} (${todo.length + errors.length})` }),
+        h("h4", { text: `${t(ch.todoAgreed && !errors.length ? "sheet.todoTitleAgreed" : "sheet.todoTitle")} (${todo.length + errors.length})` }),
         h("ul", {}, [...errors, ...todo].slice(0, 6).map((x) => h("li", { text: msg(x) }))),
         h("a", { cls: "btn gold", href: `#/edit/${ch.id}`, text: t("sheet.todoFix") }),
       ]) : null;

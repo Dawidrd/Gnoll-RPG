@@ -14,7 +14,7 @@ import { DAMAGE_NAMES } from "../js/rules/species.js";
 import { DAMAGE_TYPES as FEAT_DAMAGE } from "../js/rules/feats-general.js";
 import * as MERGE from "../js/sync/merge.js";
 import * as PARTY from "../js/sync/partylogic.js";
-import { stepBlockers } from "../js/rules/checks.js";
+import { stepBlockers, saveState } from "../js/rules/checks.js";
 import * as EQ from "../js/rules/equipment.js";
 import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS } from "../js/rules/index.js";
 import { inAppBrowser, phoneKind, androidBrowser, installOrder } from "../js/inapp.js";
@@ -1301,6 +1301,39 @@ test("PL: 'Pochodzenie' instead of 'Tło' (background) in Polish texts", () => {
   eq(ALL_BGS.custom.name.pl, "Własne pochodzenie (stara wersja)");
   eq(LANG_PL["step.2"], "Gatunek i pochodzenie");
   eq(LANG_PL["form.featChoose"], "— wybierz feat pochodzenia —");
+});
+
+test("saving: errors never, gaps only once agreed with the GM, a complete character always", () => {
+  eq(saveState({ errors: [{ key: "err.skills" }], todo: [] }), "errors");
+  eq(saveState({ errors: [{ key: "err.skills" }], todo: [{ key: "todo.name" }] }), "errors");
+  eq(saveState({ errors: [], todo: [{ key: "todo.background" }] }), "todo");
+  eq(saveState({ errors: [], todo: [] }), "ready");
+  const blank = run(blankCharacter());
+  eq(saveState(blank.review), "todo", "a new blank character has gaps");
+});
+
+test("creator: the unfinished character is kept on this device until it is saved or discarded", () => {
+  STORE.clearCreatorDraft();
+  eq(STORE.loadCreatorDraft(), null);
+  const ch = blankCharacter(); ch.name = "Grrak";
+  STORE.saveCreatorDraft({ ch, step: 3, join: null });
+  const d = STORE.loadCreatorDraft();
+  eq([d.ch.name, d.step, typeof d.at], ["Grrak", 3, "number"]);
+  eq(normalize(d.ch).name, "Grrak", "it loads like any character");
+  eq(STORE.loadAll().some((x) => x.name === "Grrak"), false, "not on the character list");
+  STORE.clearCreatorDraft();
+  eq(STORE.loadCreatorDraft(), null);
+  localStorage.setItem("gnoll.creator.v1", "{broken");
+  eq(STORE.loadCreatorDraft(), null, "a broken copy is ignored");
+  localStorage.setItem("gnoll.creator.v1", JSON.stringify({ ch: [] }));
+  eq(STORE.loadCreatorDraft(), null);
+  STORE.clearCreatorDraft();
+});
+
+test("texts for saving with gaps exist in both languages", () => {
+  for (const k of ["form.saveChar", "form.saveAgreed", "form.saveBlocked", "form.agreeAsk", "form.agreeYes", "form.agreeBack", "form.resumed", "form.restart",
+    "form.restartAsk", "sheet.todoTitleAgreed", "home.draftTitle", "home.draftNoName", "home.draftResume", "home.draftDiscard", "home.draftDiscardAsk"])
+    eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
 let failed = 0;
