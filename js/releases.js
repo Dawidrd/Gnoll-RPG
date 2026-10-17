@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.39.0", date: "2026-10-17",
+    points: [
+      { pl: "Stuknięcie w kropkę zasobu (np. Szał, sloty czarów) zużywa zawsze dokładnie 1 — nieważne, którą pełną kropkę stukniesz.", en: "Tapping a resource dot (e.g. Rage, spell slots) always uses exactly 1, whichever full dot you tap." },
+      { pl: "Zużytej kropki nie da się już „odklikać”. Zasoby wracają po odpoczynku albo przez „Odzyskaj (zasada lub MG)” pod nazwą zasobu.", en: "A used dot can no longer be tapped back. Resources come back on a rest, or through “Regain (rule or GM)” under the resource's name." },
+      { pl: "Pomyłka? Po zużyciu na dole pojawia się „Cofnij” na kilka sekund.", en: "Tapped by mistake? After using one, “Undo” shows at the bottom for a few seconds." },
+    ],
+  },
+  {
     version: "0.38.0", date: "2026-10-17",
     points: [
       { pl: "Gdy zapiszesz postać z brakami „ustalone z MG”, MG widzi listę tych braków w Widoku MG w drużynie.", en: "When you save a character with gaps “agreed with the GM”, the GM sees the list of those gaps in the party's GM view." },

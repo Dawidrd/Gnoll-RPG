@@ -23,7 +23,7 @@ import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
 import { RELEASES, latest, isUnseen } from "../js/releases.js";
 import { CONFIG } from "../js/config.js";
-import { pipTarget, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
+import { pipTarget, pipSpend, restUsed, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
 import { newSpellCircle } from "../js/rules/magic.js";
 import { fieldOf } from "../js/views/fieldof.js";
 import * as FAM from "../js/rules/familiars.js";
@@ -1563,8 +1563,19 @@ test("level-up: the new spell circle is found (marked New until the Spells tab i
   const ch = normalize(Object.assign(blankCharacter(), { newCircle: 2 }));
   eq(ch.newCircle, 2, "the mark survives loading");
 });
-test("resource dots: tapping spends or gives back; spending asks unless switched off", () => {
-  // 3 of 4 left: tapping dot 2 spends one, dot 1 spends two, dot 3 (the last full one) spends it, dot 4 gives one back
+test("0.39 resource dots: one tap = one use, empty dots do nothing, rests give back the right ones", () => {
+  // 3 of 4 left: any full dot spends exactly one; empty dots are inert
+  eq([pipSpend(3, 0), pipSpend(3, 1), pipSpend(3, 2), pipSpend(3, 3)], [2, 2, 2, null]);
+  eq([pipSpend(1, 0), pipSpend(0, 0)], [0, null], "the last one empties; nothing left = nothing happens");
+  const res = [{ id: "a", recharge: "short" }, { id: "b", recharge: "long" }, { id: "c", recharge: "long", shortRegain: 1 }];
+  const used = { a: 2, b: 1, c: 3, other: 5 };
+  eq(restUsed(res, used, "short"), { a: 0, b: 1, c: 2, other: 5 }, "short rest: short back, long stays, partial gives 1");
+  eq(restUsed(res, used, "long"), { a: 0, b: 0, c: 0, other: 5 }, "long rest: all back");
+  eq(restUsed(res, { c: 0 }, "short").c, 0, "never below zero");
+  for (const k of ["res.spent", "res.undo", "res.undone", "res.regain", "res.regainAsk", "res.regainYes", "res.regained", "res.pipFree", "res.pipUsed"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+});
+test("resource dots: spending asks unless switched off", () => {
+  // Familiar HP dots still set the value "up to this dot"
   eq([pipTarget(3, 1), pipTarget(3, 0), pipTarget(3, 2), pipTarget(3, 3)], [2, 1, 2, 4]);
   eq(pipTarget(1, 0), 0, "the only full dot empties");
   eq([rechargeKey({ recharge: "short" }), rechargeKey({ recharge: "long" }), rechargeKey({ recharge: "long", shortRegain: 1 })], ["short", "long", "partial"]);

@@ -41,6 +41,17 @@ export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 /** Resource dots: how many are left after tapping dot i (0-based) when `left` are left. Tapping the last full dot empties it. */
 export const pipTarget = (left, i) => (left === i + 1 ? i : i + 1);
+/** 0.39: resource dots spend exactly one per tap, whichever full dot is tapped; an empty dot does nothing (null). */
+export const pipSpend = (left, i) => (i < left && left > 0 ? left - 1 : null);
+/** Uses after a rest: a long rest clears all, a short one clears "short" resources and gives back shortRegain of "partial" ones. */
+export function restUsed(resources, used, kind) {
+  const out = { ...used };
+  for (const r of resources) {
+    if (kind === "long" || r.recharge === "short") out[r.id] = 0;
+    else if (r.shortRegain) out[r.id] = Math.max(0, (out[r.id] || 0) - r.shortRegain);
+  }
+  return out;
+}
 /** When a resource comes back: "short", "long", or "partial" (a short rest gives some back, a long rest all). */
 export const rechargeKey = (r) => (r.shortRegain ? "partial" : r.recharge);
 /** 0.32: ask "Use 1× …?" before spending, unless the player switched it off for this character (ch.askSpend === false). */

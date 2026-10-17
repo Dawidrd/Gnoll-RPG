@@ -24,9 +24,12 @@ export const fill = (el, kids) => el.replaceChildren(...[].concat(kids ?? []).fi
 export const $ = (s, el) => (el || document).querySelector(s);
 
 let toastTimer;
-export function toast(msg) {
+/** Short message at the bottom. Optional action ({ label, run }) adds a button, e.g. "Undo"; it works once and stays a bit longer. */
+export function toast(msg, action) {
   let el = $("#toast");
   if (!el) { el = h("div", { id: "toast", cls: "toast", role: "status" }); document.body.appendChild(el); }
-  el.textContent = msg; el.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.hidden = true), 3800);
+  const hide = () => (el.hidden = true);
+  el.replaceChildren(msg, ...(action ? [" · ", h("button", { type: "button", cls: "toastbtn", text: action.label, onclick: () => { hide(); action.run(); } })] : []));
+  el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(hide, action ? 6000 : 3800);
 }

@@ -8,7 +8,7 @@ import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
 import { paperLocked, genderText } from "../rules/identity.js";
 import { avatarPic, avatarEditor } from "./avatar.js";
-import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie, pipTarget, rechargeKey, asksBeforeSpend } from "../rules/core.js";
+import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie, pipSpend, restUsed, rechargeKey, asksBeforeSpend } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
@@ -505,28 +505,47 @@ export function renderSheet(root, go, id, tab) {
     }
 
     // --- pieces -----------------------------------------------------------
-    // Spending asks first (unless switched off for this character); giving a dot back never asks.
+    // 0.39: one tap on any full dot spends exactly 1 (asks first unless switched off); empty dots do nothing.
+    // Uses come back on a rest, or one at a time via "Regain" (a rule like Arcane Recovery, or the GM says so).
     let openAsk = null;
+    let lastTap = 0; // a phone can fire a second tap right after the first; ignore it
     function resRow(r) {
       const left = r.max - r.used;
       const box = h("div", { cls: "confirm spend" });
-      const set = (nowLeft) => { ch.used = { ...ch.used, [r.id]: r.max - nowLeft }; save(); };
-      const ask = (nowLeft) => {
+      const name = tr(r.name);
+      const add = (n) => { ch.used = { ...ch.used, [r.id]: clamp((ch.used?.[r.id] || 0) + n, 0, r.max) }; save(); };
+      const spend = () => {
+        add(1);
+        toast(t("res.spent", { name }), { label: t("res.undo"), run: () => { add(-1); toast(t("res.undone", { name })); } });
+      };
+      const open = (kids) => {
         if (openAsk && openAsk !== box) openAsk.classList.remove("open");
-        const quiet = h("input", { type: "checkbox" });
-        box.replaceChildren(
-          h("span", { cls: "small", text: t("res.spendAsk", { n: left - nowLeft, name: tr(r.name), when: t("res.back." + rechargeKey(r)) }) }),
-          h("button", { type: "button", cls: "btn gold", text: t("res.spendYes"), onclick: () => { if (quiet.checked) ch.askSpend = false; set(nowLeft); } }),
-          h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") }),
-          h("label", { cls: "small check" }, [quiet, " ", t("res.dontAsk")]));
+        box.replaceChildren(...kids);
         box.classList.add("open"); openAsk = box;
       };
+      const ask = () => {
+        const quiet = h("input", { type: "checkbox" });
+        open([h("span", { cls: "small", text: t("res.spendAsk", { n: 1, name, when: t("res.back." + rechargeKey(r)) }) }),
+          h("button", { type: "button", cls: "btn gold", text: t("res.spendYes"), onclick: () => { if (quiet.checked) ch.askSpend = false; spend(); } }),
+          h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") }),
+          h("label", { cls: "small check" }, [quiet, " ", t("res.dontAsk")])]);
+      };
+      const askRegain = () => open([h("span", { cls: "small", text: t("res.regainAsk", { name }) }),
+        h("button", { type: "button", cls: "btn gold", text: t("res.regainYes"), onclick: () => { add(-1); toast(t("res.regained", { name })); } }),
+        h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") })]);
       const pips = h("div", { cls: "pips" }, Array.from({ length: r.max }, (_, i) => h("button", {
-        type: "button", cls: "pip" + (i < left ? " on" : ""), "aria-label": `${tr(r.name)} ${i + 1}/${r.max}`,
-        onclick: () => { const nowLeft = pipTarget(left, i); if (nowLeft < left && asksBeforeSpend(ch)) ask(nowLeft); else set(nowLeft); },
+        type: "button", cls: "pip" + (i < left ? " on" : ""), disabled: i >= left,
+        "aria-label": `${name} ${i + 1}/${r.max}: ${t(i < left ? "res.pipFree" : "res.pipUsed")}`,
+        onclick: () => {
+          const now = Date.now();
+          if (now - lastTap < 400 || pipSpend(left, i) == null) return;
+          lastTap = now;
+          if (asksBeforeSpend(ch)) ask(); else spend();
+        },
       })));
+      const regain = r.used > 0 ? h("button", { type: "button", cls: "regain", text: t("res.regain"), onclick: askRegain }) : null;
       const isNew = r.slot && r.slot === fresh();
-      return h("div", { cls: "resrow" + (isNew ? " fresh" : "") }, [h("span", { cls: "lbl" }, [tr(r.name), ...(isNew ? [" ", newBadge()] : []), h("small", { text: `${left} / ${r.max} · ${t("res.recharge." + rechargeKey(r))}` })]), pips, box]);
+      return h("div", { cls: "resrow" + (isNew ? " fresh" : "") }, [h("span", { cls: "lbl" }, [name, ...(isNew ? [" ", newBadge()] : []), h("small", { text: `${left} / ${r.max} · ${t("res.recharge." + rechargeKey(r))}` }), regain]), pips, box]);
     }
     /** Card setting: ask before spending a resource (on by default). */
     function askToggle() {
@@ -602,13 +621,7 @@ export function renderSheet(root, go, id, tab) {
   }
 
   function rest(kind) {
-    const res = compute(ch).resources;
-    const used = { ...ch.used };
-    for (const r of res) {
-      if (kind === "long" || r.recharge === "short") used[r.id] = 0;
-      else if (r.shortRegain) used[r.id] = Math.max(0, (used[r.id] || 0) - r.shortRegain);
-    }
-    ch.used = used;
+    ch.used = restUsed(compute(ch).resources, ch.used, kind);
     // Wild Companion: the Fey familiar leaves when the Druid finishes a long rest.
     const wildGone = kind === "long" && familiarAccess(compute(ch)).wildOnly && ch.familiar.status !== "gone" && !!ch.familiar.form;
     if (wildGone) ch.familiar.status = "gone";
