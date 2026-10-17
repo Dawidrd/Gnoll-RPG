@@ -1336,6 +1336,52 @@ test("texts for saving with gaps exist in both languages", () => {
     eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
+test("add a character: each creator mode keeps its own unfinished character", () => {
+  STORE.clearCreatorDraft("new"); STORE.clearCreatorDraft("paper");
+  const a = blankCharacter(); a.name = "Nowy";
+  const b = blankCharacter({ paper: true }); b.name = "Z papieru";
+  STORE.saveCreatorDraft({ ch: a, step: 2, join: null });
+  STORE.saveCreatorDraft({ ch: b, step: 4, join: null });
+  eq([STORE.loadCreatorDraft("new").ch.name, STORE.loadCreatorDraft("paper").ch.name], ["Nowy", "Z papieru"], "switching modes loses nothing");
+  eq(STORE.loadCreatorDraft().ch.name, "Nowy", "no kind = new");
+  eq(STORE.creatorDrafts().map((d) => d.ch.name), ["Nowy", "Z papieru"]);
+  STORE.clearCreatorDraft("paper");
+  eq([STORE.loadCreatorDraft("new")?.ch.name, STORE.loadCreatorDraft("paper")], ["Nowy", null], "discarding one keeps the other");
+  STORE.clearCreatorDraft("new");
+  // Before 0.25.0 a character from paper was kept in the one shared place: it moves to its own and is not lost.
+  localStorage.setItem("gnoll.creator.v1", JSON.stringify({ ch: b, step: 3, join: null, at: 1 }));
+  eq(STORE.loadCreatorDraft("new"), null, "an old paper draft does not open as a new character");
+  eq([STORE.loadCreatorDraft("paper").ch.name, STORE.loadCreatorDraft("paper").step], ["Z papieru", 3]);
+  eq(localStorage.getItem("gnoll.creator.v1"), null);
+  STORE.clearCreatorDraft("paper");
+  eq(STORE.creatorDrafts(), []);
+});
+
+test("add a character: routes, screen names and counted events", () => {
+  eq(STATS.screenPath("#/import"), "/import");
+  eq(STATS.screenPath("#/import/join/AbCdEf0123456789xyz"), "/import/join");
+  const src = readFileSync(new URL("../js/views/addmode.js", import.meta.url), "utf8");
+  for (const e of ["dodaj-nowa", "dodaj-karta", "dodaj-plik"]) {
+    eq([e, src.includes(`"${e}"`)], [e, true]);
+    eq([e, /^[a-z0-9-]{1,32}$/.test(e)], [e, true], "a fixed event name");
+  }
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  eq(sw.includes('"./js/views/addmode.js"'), true, "works offline");
+});
+
+test("add a character: texts in both languages, “Paste text” gone", () => {
+  const keys = ["add.title", "add.ask", "add.switchAsk", "add.switchYes", "add.pick", "add.fileHelp", "add.fileHelpP", "add.fileForInvite",
+    "form.toPaper", "home.add", "home.draftTitlePaper",
+    ...["new", "paper", "file"].flatMap((m) => [`add.mode.${m}`, `add.desc.${m}`, `add.card.${m}`, `add.cardText.${m}`])];
+  for (const k of keys) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+  eq(LANG_PL["add.desc.new"], "Stwórz nową postać. Kreator krok po kroku, aplikacja pilnuje zasad z podręcznika.");
+  eq(LANG_PL["add.mode.paper"], "Z karty");
+  for (const k of ["home.paste", "home.pastePh"]) eq([k, LANG_PL[k], LANG_EN[k]], [k, undefined, undefined]);
+  eq(Object.values(LANG_PL).some((v) => /wklej tekst/i.test(v)), false);
+  eq(Object.values(LANG_EN).some((v) => /paste text/i.test(v)), false);
+  for (const lg of [LANG_PL, LANG_EN]) eq(/dodaj|add/i.test(lg["privacy.stats.p"]) || /Z pliku|From file/.test(lg["privacy.stats.p"]), true, "the events are on the Privacy screen");
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

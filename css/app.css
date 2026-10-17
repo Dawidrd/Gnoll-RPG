@@ -449,3 +449,18 @@ summary .dmgs { margin-left: 4px; }
 .row > .selbox { flex: 1 1 220px; }
 .selbox select { width: 100%; }
 .selsearch { font-size: .95rem; min-height: 36px; padding: 6px 10px; }
+/* "Add a character": the New / From sheet / From file switch (three equal parts, fits 320 px) and the cards on an empty home screen */
+.addswitch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--seam); border-radius: var(--r); overflow: hidden; background: var(--crypt); }
+.addswitch button { font: 600 .9rem/1.2 var(--f-ui); background: none; border: 0; border-left: 1px solid var(--seam); color: var(--bone-dim); padding: 8px 4px; min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
+.addswitch button:first-child { border-left: 0; }
+.addswitch button:hover { color: var(--bone); }
+.addswitch button[aria-current="page"] { background: var(--gold); color: #1a130a; }
+.addswitch button:focus-visible { outline-offset: -3px; outline-color: var(--bone); }
+.adddesc { margin: 0; font-family: var(--f-ui); font-size: .95rem; color: var(--bone); }
+.addhead { gap: 8px; }
+.addcards { display: grid; gap: 12px; }
+.addcards h3 { font-family: var(--f-head); font-size: 1.3rem; color: var(--bone); }
+.addcard { text-decoration: none; color: inherit; }
+.addcard:hover { border-color: var(--gold-dim); }
+.addcard .ccard-name { font-size: 1.25rem; }
+#add-file-help p { margin: 6px 0 0; }

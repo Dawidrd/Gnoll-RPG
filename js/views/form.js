@@ -25,6 +25,7 @@ import { weaponEditor } from "./weapons.js";
 import { CATALOG, SHOP_SECTIONS, TRINKETS, RARITIES, priceText, wearStart, applyStartGear } from "../rules/equipment.js";
 import { WEAPONS } from "../rules/weapons.js";
 import { gearEditor } from "./gear.js";
+import { addSwitch } from "./addmode.js";
 
 const STEPS = [1, 2, 3, 4, 5, 6];
 // Where to scroll when "Next" is blocked by a checks item (anything else: the step's checklist).
@@ -49,12 +50,13 @@ import { countEvent } from "../stats.js";
 import { levelChoiceUI } from "./levelchoice.js";
 
 /** opts.paper: a new character copied from a paper sheet (ch.entry = "paper": steps open in any order, scores typed in, current equipment).
- *  A new character in the making is kept on this device until it is saved; opening the creator again picks it up (opts.fresh: start over). */
+ *  A new character in the making is kept on this device until it is saved, one per kind (new / from paper);
+ *  opening the creator again picks it up (opts.fresh: start over). A new character has the "Add a character" switch on top. */
 export function renderForm(root, go, id, opts = {}) {
   const stored = id ? getById(id) : null;
   if (id && !stored) return go("#/");
   const isNew = !id;
-  const resumed = isNew && !opts.fresh ? loadCreatorDraft() : null;
+  const resumed = isNew && !opts.fresh ? loadCreatorDraft(opts.paper ? "paper" : "new") : null;
   if (resumed && !opts.join && validCode(resumed.join)) opts = { ...opts, join: resumed.join };
   const ch = stored ? normalize(structuredClone(stored)) : resumed ? normalize(resumed.ch) : blankCharacter({ paper: !!opts.paper });
   if (!validCode(opts.join)) opts = { ...opts, join: null };
@@ -202,21 +204,27 @@ export function renderForm(root, go, id, opts = {}) {
       h("button", { type: "button", cls: "btn small ghost", id: "f-restart", text: t("form.restart"), onclick: (e) => {
         e.currentTarget.parentNode.replaceChildren(h("span", { cls: "hint", text: t("form.restartAsk") }),
           h("button", { type: "button", cls: "btn small gold", id: "f-restart-yes", text: t("sheet.yes"), onclick: () => {
-            clearCreatorDraft(); renderForm(root, go, null, { paper: !!opts.paper, join: opts.join, fresh: true }); scrollTo(0, 0);
+            clearCreatorDraft(paper ? "paper" : "new"); renderForm(root, go, null, { paper: !!opts.paper, join: opts.join, fresh: true }); scrollTo(0, 0);
           } }),
           h("button", { type: "button", cls: "btn small ghost", text: t("sheet.no"), onclick: () => draw() }));
       } })]) : null;
 
+    // A new character: the switch between the ways of adding one (what was entered here stays kept for this mode).
+    const modes = isNew ? addSwitch(paper ? "paper" : "new", { join: opts.join, go, dirty: () => touched }) : null;
+    // Step 1 of a new character: a way over to copying one from paper.
+    const toPaper = modes && !paper && step === 1 ? h("p", { cls: "hint" }, [h("a", { href: "#/paper", id: "f-to-paper",
+      onclick: (e) => { e.preventDefault(); modes.open("paper"); }, text: t("form.toPaper") })]) : null;
+
     // Enter in a text field: a new character goes on to the next step (it is saved on the last one).
     return h("form", { cls: "panel cform", novalidate: true, oninput: () => keep(true), onchange: () => keep(true),
       onsubmit: (e) => { e.preventDefault(); if (canSaveHere) save(); else goNext(); } }, [
-      h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? (paper ? "form.titlePaper" : "form.titleNew") : "form.titleEdit") }),
-        h("a", { cls: "btn ghost", href: isNew ? (opts.join ? `#/join/${opts.join}` : "#/") : `#/c/${ch.id}/character`, text: t("form.cancel") })]), status, resumeNote,
+      h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? "add.title" : "form.titleEdit") }),
+        h("a", { cls: "btn ghost", href: isNew ? (opts.join ? `#/join/${opts.join}` : "#/") : `#/c/${ch.id}/character`, text: t("form.cancel") })]), modes?.el, status, resumeNote,
         isNew && opts.join ? h("p", { cls: "hint", id: "f-join-note", text: t("form.forInvite") }) : null,
         paper ? h("p", { cls: "hint", id: "f-paper-intro", text: t("form.paperIntro") }) : null]),
       stepper,
       h("h3", { cls: "steptitle", text: `${step}. ${t("step." + step + ".title")}` }),
-      h("p", { cls: "hint", text: t("step." + step + ".hint") }),
+      h("p", { cls: "hint", text: t("step." + step + ".hint") }), toPaper,
       ...body, checklist, nav, agreeBox,
     ]);
   }
@@ -876,7 +884,7 @@ export function renderForm(root, go, id, opts = {}) {
     const after = c.hpMax;
     if (ch.hp.cur != null && before != null) ch.hp.cur = Math.max(0, Math.min(after, ch.hp.cur + (after - before)));
     if (!upsert(ch)) { toast(t("app.saveError")); return; }
-    if (isNew) clearCreatorDraft();
+    if (isNew) clearCreatorDraft(paper ? "paper" : "new");
     if (isNew) countEvent(paper ? "character/paper" : "character/new", ch.classId);
     // Made for a party invite: back to the invite, with this character picked.
     go(isNew ? afterCreate(ch.id, opts.join) : `#/c/${ch.id}/start`);

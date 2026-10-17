@@ -18,6 +18,7 @@ Ten plik jest kopią ustaleń z projektu „DnD” w claude.ai, przygotowaną dl
 - Tryb Ravenloft: Dark Gift można wziąć zamiast featu pochodzenia (za zgodą DM-a); w grze standardowej opcje z Ravenloftu są zablokowane.
 - Czary: baza 213 czarów (sztuczki i kręgi 1–3).
 - Ręczne poprawki (HP, AC, prędkość) nie istnieją: aplikacja liczy według zasad. Przy imporcie ze starych stron karta „Przeniesione ze strony” pokazuje różnice.
+- Dodawanie postaci (0.25.0): jedno wejście „+ Dodaj postać” z trzema trybami — Nowa (kreator), Z karty (przepisanie z papieru), Z pliku (plik z Gnoll RPG albo ze starej strony). Każdy tryb kreatora pamięta swój szkic. Import tylko z pliku — wklejanie tekstu usunięte.
 
 ## D1 · Konta (Firebase)
 Plan całości: `docs/druzyna-synchronizacja.md`.
@@ -25,7 +26,7 @@ Plan całości: `docs/druzyna-synchronizacja.md`.
 - Włączone: logowanie Google (Authentication), baza Firestore (region europe-central2, tryb production), domena autoryzowana `dawidrd.github.io`.
 - Konfiguracja aplikacji (obiekt `firebaseConfig`): konsola Firebase → Project settings → General.
 - Analytics jest w projekcie włączony, ale **aplikacja go nie inicjalizuje**.
-- Liczenie odwiedzin (0.22.0): GoatCounter, https://gnoll-rpg.goatcounter.com (`statsUrl` w `js/config.js`, kod w `js/stats.js`, bez zewnętrznego skryptu). Liczone: ekrany (bez id i kodów), `character/new|paper/<klasa>`, `import/file|old-page`, `party/create`, `party/join-request`, `lang/<pl|en>`, `app/opened-installed`, `app/installed`. Wyłączone lokalnie, przy DNT/GPC i po „Nie licz moich wizyt” (ekran Prywatność).
+- Liczenie odwiedzin (0.22.0): GoatCounter, https://gnoll-rpg.goatcounter.com (`statsUrl` w `js/config.js`, kod w `js/stats.js`, bez zewnętrznego skryptu). Liczone: ekrany (bez id i kodów), `character/new|paper/<klasa>`, `import/file|old-page`, `dodaj-nowa|dodaj-karta|dodaj-plik` (wybór sposobu dodania postaci, od 0.25.0), `party/create`, `party/join-request`, `lang/<pl|en>`, `app/opened-installed`, `app/installed`. Wyłączone lokalnie, przy DNT/GPC i po „Nie licz moich wizyt” (ekran Prywatność).
 - Reguły bezpieczeństwa Firestore przygotowuje Claude Code w D1, a w konsoli wkleja je użytkownik.
 
 **Jak działa (0.13.0):**

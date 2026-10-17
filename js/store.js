@@ -82,15 +82,29 @@ export function forgetAccount(uid, keep) {
   if (owner === uid) setOwner("");
 }
 
-// The character being made in the creator, until it is saved (one per device, never synced).
-const CREATOR = "gnoll.creator.v1";
-/** d: { ch, step, join } */
-export function saveCreatorDraft(d) { return storage.set(CREATOR, JSON.stringify({ ...d, at: Date.now() })); }
-export function loadCreatorDraft() {
-  try { const d = JSON.parse(storage.get(CREATOR) || "null"); return d && d.ch && typeof d.ch === "object" && !Array.isArray(d.ch) ? d : null; }
+// The character being made in the creator, until it is saved: one per way of adding it ("new", or "paper" = from a paper sheet),
+// on this device only, never synced. Switching between the two keeps both.
+const CREATOR = { new: "gnoll.creator.v1", paper: "gnoll.creator.paper.v1" };
+const draftKind = (d) => (d.ch.entry === "paper" ? "paper" : "new");
+function readDraft(key) {
+  try { const d = JSON.parse(storage.get(key) || "null"); return d && d.ch && typeof d.ch === "object" && !Array.isArray(d.ch) ? d : null; }
   catch { return null; }
 }
-export const clearCreatorDraft = () => storage.del(CREATOR);
+// Before 0.25.0 both kinds shared one place: a character from paper kept there moves to its own.
+function moveOldPaperDraft() {
+  const d = readDraft(CREATOR.new);
+  if (d && draftKind(d) === "paper" && !readDraft(CREATOR.paper) && storage.set(CREATOR.paper, storage.get(CREATOR.new))) storage.del(CREATOR.new);
+}
+/** d: { ch, step, join } */
+export function saveCreatorDraft(d) { return storage.set(CREATOR[draftKind(d)], JSON.stringify({ ...d, at: Date.now() })); }
+export function loadCreatorDraft(kind = "new") {
+  moveOldPaperDraft();
+  const d = readDraft(CREATOR[kind] || CREATOR.new);
+  return d && draftKind(d) === (kind === "paper" ? "paper" : "new") ? d : null;
+}
+export const clearCreatorDraft = (kind = "new") => storage.del(CREATOR[kind] || CREATOR.new);
+/** Every unfinished character on this device (at most one of each kind). */
+export const creatorDrafts = () => ["new", "paper"].map(loadCreatorDraft).filter(Boolean);
 
 export function upsert(ch) {
   const list = loadAll();

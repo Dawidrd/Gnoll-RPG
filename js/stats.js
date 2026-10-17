@@ -26,7 +26,7 @@ export const statsOn = () => !!CONFIG.statsUrl && userAllows() && !browserSaysNo
 export function screenPath(hash) {
   const p = (hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
   const tab = (s) => (/^[a-z]{1,16}$/.test(s || "") ? "/" + s : "");
-  if (p[0] === "new" || p[0] === "paper") return "/" + p[0] + (p[1] === "join" ? "/join" : "");
+  if (p[0] === "new" || p[0] === "paper" || p[0] === "import") return "/" + p[0] + (p[1] === "join" ? "/join" : "");
   if (p[0] === "edit") return "/edit";
   if (p[0] === "c") return "/sheet" + tab(p[2]);
   if (p[0] === "party") return p[1] ? "/party/view" : "/party";

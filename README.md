@@ -18,8 +18,9 @@
 - W użyciu: szał, Mage Armor, zdjęta zbroja, tarcza w ręku (AC i odporności liczą się od razu), chowaniec z imieniem i HP
 - Ekwipunek (przedmioty z ilością i notatką, monety PP/GP/EP/SP/CP) i Dziennik sesji
 - Ekwipunek startowy w kreatorze (osobny krok 6 „Ekwipunek”): zestaw albo złoto od klasy i od tła (wszystkie 12 klas i 20 teł, także Ravenloft), zakupy z cennika rozdz. 6 (sprzęt, plecaki rozpakowane na przedmioty, amunicja paczkami, fokusy, narzędzia, broń, zbroje), darmowa błyskotka (z listy albo własna, nie obie), start na wyższym poziomie wg tabeli PHB (złoto od 5. poziomu z wpisanym rzutem k10, magiczne przedmioty od 2. poziomu); zbroja, tarcza i broń tylko z zestawu i zakupów (KP i ataki od razu), przedmioty i monety trafiają do zakładki Ekwipunek po zapisaniu
-- Postać z papierowej karty: przycisk „Wprowadź postać z karty” otwiera kreator do przepisania gotowej postaci — kroki w dowolnej kolejności, cechy z kartki (tablica i point buy rozpoznawane i sprawdzane, rzut na papierze 3–18 ze stałym znaczkiem „Cechy z papieru”, który MG drużyny potwierdza w Widoku MG; po potwierdzeniu wartości są zablokowane), obecne monety i przedmioty zamiast ekwipunku startowego
-- Import ze starych stron postaci: przycisk „Zapisz plik” na stronie, potem Importuj (albo Wklej tekst); przechodzą postać, HP, zasoby, złoto, ekwipunek, dziennik i pytania do GM-a, a różnice względem strony pokazują się na Starcie
+- Jedno wejście „+ Dodaj postać” z trzema trybami: Nowa (kreator), Z karty, Z pliku; przełącznik u góry ekranu, każdy tryb pamięta swój szkic; bez postaci na liście ekran główny od razu pyta „Skąd bierzesz postać?”
+- Postać z papierowej karty: tryb „Z karty” otwiera kreator do przepisania gotowej postaci — kroki w dowolnej kolejności, cechy z kartki (tablica i point buy rozpoznawane i sprawdzane, rzut na papierze 3–18 ze stałym znaczkiem „Cechy z papieru”, który MG drużyny potwierdza w Widoku MG; po potwierdzeniu wartości są zablokowane), obecne monety i przedmioty zamiast ekwipunku startowego
+- Import ze starych stron postaci: przycisk „Zapisz plik” na stronie, potem „+ Dodaj postać” → „Z pliku”; przechodzą postać, HP, zasoby, złoto, ekwipunek, dziennik i pytania do GM-a, a różnice względem strony pokazują się na Starcie
 - Tryb Ravenloft (The Horrors Within): gatunki Dhampir, Hexblood, Lupin, Reborn; tła Haunted One, Investigator, Mist Wanderer, Spirit Medium; featy Sharp Eye i Survivor; 9 Dark Gifts z ceną liczoną na karcie; podklasy Grave Domain, Phantom, Undead Patron, Shadow Sorcery, College of Spirits i Hollow Warden. W grze standardowej te opcje są niedostępne
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
@@ -104,6 +105,7 @@ js/rules/skills.js                        limity wyborów (dopasowanie do źród
 js/rules/checks.js                        „Do uzupełnienia” i błędy blokujące zapis
 js/rules/index.js                         silnik: postać → wszystko, co pokazuje karta
 js/views/{home,form,sheet}.js             ekrany
+js/views/addmode.js                       „Dodaj postać”: przełącznik Nowa / Z karty / Z pliku, wczytywanie pliku
 js/views/levelchoice.js                   wybór: zwiększenie cech albo feat
 js/views/spellpicker.js                   lista czarów z limitem
 js/glossary.js                            podpowiedzi przy terminach

@@ -4,6 +4,7 @@ import { t, lang, setLang, LANGS } from "./i18n.js";
 import { CONFIG } from "./config.js";
 import { renderHome } from "./views/home.js";
 import { renderForm } from "./views/form.js";
+import { renderImport } from "./views/addmode.js";
 import { renderSheet } from "./views/sheet.js";
 import { renderParties, renderParty, renderJoin } from "./views/party.js";
 import { renderPrivacy } from "./views/privacy.js";
@@ -42,10 +43,11 @@ function route() {
   const app = document.getElementById("app");
   stopWatching(); // live party listeners belong to the screen being left
   app.replaceChildren(topbar(), h("div", { cls: "wrap" }, [view]), footer());
-  // #/new/join/<code>: a character made for an invite goes back to that invite once saved.
+  // #/new|paper|import/join/<code>: a character added for an invite goes back to that invite once saved.
   const join = parts[1] === "join" && parts[2] ? parts[2] : null;
   if (parts[0] === "new") renderForm(view, go, null, { join });
   else if (parts[0] === "paper") renderForm(view, go, null, { paper: true, join });
+  else if (parts[0] === "import") renderImport(view, go, join);
   else if (parts[0] === "edit" && parts[1]) renderForm(view, go, parts[1]);
   else if (parts[0] === "c" && parts[1]) renderSheet(view, go, parts[1], parts[2]);
   else if (parts[0] === "party" && parts[1]) renderParty(view, go, parts[1]);
@@ -63,7 +65,7 @@ addEventListener("hashchange", () => { route(); scrollTo(0, 0); countScreen(loca
 // Characters changed on another device: redraw, unless the user is in the middle of typing or editing.
 addEventListener("gnoll:remote", () => {
   const typing = document.activeElement?.matches?.("input, textarea, select");
-  if (!typing && !/^#\/(new|paper|edit|party|join)\b|^#\/c\/[^/]+\/party\b/.test(location.hash)) route();
+  if (!typing && !/^#\/(new|paper|import|edit|party|join)\b|^#\/c\/[^/]+\/party\b/.test(location.hash)) route();
 });
 layout();
 route();
