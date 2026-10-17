@@ -14,6 +14,8 @@ import { showNotice } from "./views/account.js";
 import { startAccount, accountAvailable } from "./sync/cloud.js";
 import { stopWatching, startSharing } from "./sync/party.js";
 import { countScreen, countEvent } from "./stats.js";
+import { openGlossary, glossaryMode } from "./glossary.js";
+import { getById, loadCreatorDraft } from "./store.js";
 
 const view = h("div", { id: "view" });
 
@@ -23,9 +25,19 @@ function topbar() {
       onclick: () => { setLang(code); countEvent("lang", code); route(); } })));
   return h("div", { cls: "topbar" }, [
     h("a", { cls: "brand", href: "#/" }, [h("img", { cls: "brand-logo", src: "logo.png", alt: CONFIG.name, width: 420, height: 241 }), h("span", { cls: "brand-tag", text: t("app.tagline") })]),
-    sw,
+    h("div", { cls: "topctl" }, [
+      h("button", { type: "button", cls: "btn ghost sq glossbtn", id: "gloss-open", text: "?", "aria-label": t("gl.open"), title: t("gl.open"), onclick: () => openGlossary() }),
+      sw,
+    ]),
   ]);
 }
+
+// The rules glossary shows Ravenloft terms only for a Ravenloft character on screen (its sheet, its edit, or the creator's draft).
+glossaryMode(() => {
+  const [where, id] = location.hash.replace(/^#\/?/, "").split("/");
+  const ch = where === "c" || where === "edit" ? getById(id) : where === "new" || where === "paper" ? loadCreatorDraft(where)?.ch : null;
+  return ch?.setting === "ravenloft";
+});
 
 function footer() {
   return h("footer", { cls: "foot" }, [

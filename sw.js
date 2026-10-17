@@ -1,9 +1,9 @@
 // Offline support: keep the app shell and fonts cached. Bump VERSION when files change.
-const VERSION = "gnoll-0.41.1";
+const VERSION = "gnoll-0.42.0";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",
   "./logo.png", "./favicon.png", "./logo192.png", "./logo512.png",
-  "./js/main.js", "./js/rules/avatar.js", "./js/views/avatar.js", "./js/config.js", "./js/dom.js", "./js/i18n.js", "./js/store.js", "./js/glossary.js",
+  "./js/main.js", "./js/rules/avatar.js", "./js/views/avatar.js", "./js/config.js", "./js/dom.js", "./js/i18n.js", "./js/store.js", "./js/glossary.js", "./js/rules/terms.js",
   "./js/lang/pl.js", "./js/lang/en.js",
   "./js/rules/core.js", "./js/rules/index.js", "./js/rules/species.js", "./js/rules/backgrounds.js", "./js/rules/classes/monk.js", "./js/rules/classes/barbarian.js", "./js/rules/classes/rogue.js", "./js/rules/classes/cleric.js", "./js/rules/classes/warlock.js", "./js/rules/classes/sorcerer.js", "./js/rules/classes/bard.js", "./js/rules/classes/druid.js", "./js/rules/classes/wizard.js", "./js/rules/beasts.js", "./js/rules/familiars.js", "./js/rules/classes/fighter.js", "./js/rules/classes/paladin.js", "./js/rules/classes/ranger.js", "./js/rules/weapons.js", "./js/rules/options.js", "./js/rules/turn.js", "./js/rules/pageimport.js", "./js/rules/armor.js", "./js/rules/skills.js", "./js/rules/names.js", "./js/rules/tools.js", "./js/rules/identity.js", "./js/rules/checks.js", "./js/rules/feats-general.js", "./js/rules/feats-ravenloft.js", "./js/rules/spells.js", "./js/rules/spells/cantrips.js", "./js/rules/spells/level1.js", "./js/rules/spells/level2.js", "./js/rules/spells/level3.js", "./js/rules/magic.js", "./js/rules/equipment.js", "./js/rules/damage.js",
   "./js/views/home.js", "./js/views/addmode.js", "./js/views/form.js", "./js/views/sheet.js", "./js/views/levelchoice.js", "./js/views/msg.js", "./js/views/spellpicker.js", "./js/views/classoptions.js", "./js/views/combat.js", "./js/views/gear.js", "./js/views/weapons.js", "./js/views/dmgtag.js", "./js/views/account.js", "./js/views/selectsearch.js", "./js/views/skillgroups.js", "./js/views/fieldof.js", "./js/views/familiar.js", "./js/views/notes.js", "./js/views/live.js", "./js/rules/notes.js", "./js/search.js", "./js/sfx.js", "./js/stats.js", "./js/inapp.js",

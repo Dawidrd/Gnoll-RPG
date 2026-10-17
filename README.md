@@ -29,7 +29,7 @@
 - Awans krok po kroku: HP (rzut albo stała wartość), podklasa na 3. poziomie, na 4. zwiększenie cech (+2 lub +1/+1, maks. 20) albo feat ogólny z wymaganiami; to samo przy tworzeniu postaci od razu na wyższym poziomie
 - Tracker HP z tymczasowymi HP, cofaniem i rzutami przeciw śmierci; zasoby z odpoczynkami
 - Długie listy rozwijane (ponad 12 pozycji) z polem „Szukaj na liście…” — po polsku i angielsku, bez znaczenia polskie znaki
-- Podpowiedzi przy terminach gry; przełącznik PL / EN; działa offline
+- Podpowiedzi przy terminach gry (z linkiem do słowniczka); słowniczek zasad z wyszukiwarką (przycisk „?” w górnym pasku, 77 pojęć: akcje, stany, walka, odpoczynek, magia, zdolności klas, Ravenloft tylko w trybie Ravenloft); przełącznik PL / EN; działa offline
 - „Co nowego” na ekranie głównym: najnowsze zmiany językiem gracza (rozwinięte ze znaczkiem „Nowe”, dopóki gracz nie kliknie „Rozumiem”) i pełna historia zmian pod „Zobacz wcześniejsze zmiany”
 - Instrukcja „Jak zainstalować na telefonie” (iPhone/iPad, Android z Chrome i Samsung Internet) w ramce Konto i pod linkiem na dole strony
 - Konto (nieobowiązkowe): logowanie przez Google; w przeglądarce wbudowanej w Messengera, Facebooka itp. zamiast przycisku instrukcja, jak otworzyć stronę w Safari albo Chrome, i przycisk „Skopiuj adres”; postacie przypisane do konta synchronizują się między urządzeniami, zmiany offline wysyłają się po powrocie sieci; przy pierwszym logowaniu postacie z urządzenia trafiają na konto; przelogowanie na inne konto nie miesza postaci

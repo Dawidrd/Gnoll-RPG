@@ -30,6 +30,7 @@ import * as FAM from "../js/rules/familiars.js";
 import * as NOTES from "../js/rules/notes.js";
 import * as AV from "../js/rules/avatar.js";
 import * as SFX from "../js/sfx.js";
+import { TERMS, TERM_CATS, TERM_LINKS, findTerms, termRegex } from "../js/rules/terms.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1766,6 +1767,43 @@ test("0.41 Initiative from the sheet: Champion and Assassin roll with Advantage,
   eq(run(make({ classId: "rogue", subclass: "thief", level: 3 })).initiativeAdv, false);
   eq(run(rv({ background: "haunted-one", featPicks: { bg: "survivor" } })).initiativeReroll, 9);
   eq(run(make({})).initiativeReroll, 0);
+});
+test("0.42 Glossary: every term has a unique id, a group, a source and PL + EN name and text", () => {
+  eq(new Set(TERMS.map((g) => g.id)).size, TERMS.length, "unique ids");
+  for (const g of TERMS) {
+    eq(TERM_CATS.includes(g.cat), true, g.id + " group");
+    eq(["srd52", "phb2024", "ravenloft"].includes(g.source), true, g.id + " source");
+    eq((g.source === "ravenloft") === (g.cat === "ravenloft"), true, g.id + " Ravenloft group only for Ravenloft terms");
+    for (const l of ["pl", "en"]) eq(!!g.title[l] && !!g.text[l], true, `${g.id} ${l}`);
+  }
+  eq(TERMS.length >= 70, true, "at least 70 terms");
+  for (const c of TERM_CATS) for (const L of [LANG_PL, LANG_EN]) eq(!!L["gl.cat." + c], true, "gl.cat." + c);
+  for (const k of ["gl.open", "gl.title", "gl.search", "gl.close", "gl.count", "gl.none", "gl.more"]) eq(!!LANG_PL[k] && !!LANG_EN[k], true, k);
+  eq(readFileSync(new URL("../sw.js", import.meta.url), "utf8").includes('"./js/rules/terms.js"'), true, "terms.js in SHELL");
+});
+test("0.42 Glossary search: Polish and English names, no Polish letters needed, names before text, Ravenloft only in Ravenloft", () => {
+  const ids = (q, l = "pl", rv = false) => findTerms(q, l, rv).map((g) => g.id);
+  eq(ids("przewaga")[0], "adv");
+  eq(ids("oslona").includes("cover"), true, "without Polish letters");
+  eq(ids("COVER")[0], "cover", "English name, any case");
+  eq(ids("blinded", "en")[0], "blinded");
+  eq(ids("rzuty smierci")[0], "deathsave", "words in any order and form");
+  eq(ids("dark gift"), [], "no Ravenloft terms in a standard game");
+  eq(ids("dark gift", "pl", true), ["darkgift"]);
+  eq(ids("").length, TERMS.length - TERMS.filter((g) => g.source === "ravenloft").length);
+  eq(ids("zzzz"), []);
+});
+test("0.42 Glossary on the sheet: each pattern finds its own name; longer terms win over shorter ones", () => {
+  for (const g of TERM_LINKS) for (const l of ["pl", "en"]) {
+    const re = new RegExp(`(?<![\p{L}\p{N}])(?:${g.re[l]})(?![\p{L}\p{N}])`, "u");
+    eq(re.test(g.title[l]), true, `${g.id} ${l}: ${g.title[l]}`);
+  }
+  const found = (txt, l) => [...txt.matchAll(termRegex(l))].map((m) => TERM_LINKS[+Object.keys(m.groups).find((k) => m.groups[k] !== undefined).slice(1)].id);
+  eq(found("Make a Death Saving Throw, then a saving throw.", "en"), ["deathsave", "save"]);
+  eq(found("Masz rzuty przeciw śmierci i rzut obronny.", "pl"), ["deathsave", "save"]);
+  eq(found("Ritual Caster lets you cast a ritual. Behind Half Cover while Restrained.", "en"), ["ritual", "cover", "restrained"]);
+  eq(found("Za osłoną, w trudnym terenie, z Przewagą.", "pl"), ["cover", "terrain", "adv"]);
+  eq(found("Short Rest or Long Rest", "en"), ["short", "long"]);
 });
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

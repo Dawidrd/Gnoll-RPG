@@ -1,94 +1,16 @@
-// Hover/tap explanations for game terms. Each entry has a pattern per language.
+// Hover/tap explanations for game terms, and the searchable rules glossary panel. The terms are in rules/terms.js.
 import { h } from "./dom.js";
-import { lang, tr } from "./i18n.js";
-
-const L = "\\p{L}*"; // any word ending, for Polish inflection
-const G = [
-  { id: "attack", re: { pl: "\\bAttack\\b", en: "\\bAttack\\b" }, title: { pl: "Attack (Atak)", en: "Attack" },
-    text: { pl: "Akcja: atakujesz bronią albo ciosem. Każdy cios możesz zamienić na chwyt (Grapple) albo pchnięcie (Shove).", en: "Action: attack with a weapon or unarmed strike. Any strike can be replaced with a Grapple or Shove." } },
-  { id: "dash", re: { pl: "\\bDash\\b", en: "\\bDash\\b" }, title: { pl: "Dash (Sprint)", en: "Dash" },
-    text: { pl: "Dodatkowy ruch równy Twojej prędkości, do końca tury.", en: "Extra movement equal to your speed for the rest of the turn." } },
-  { id: "disengage", re: { pl: "\\bDisengage\\b", en: "\\bDisengage\\b" }, title: { pl: "Disengage (Odskok)", en: "Disengage" },
-    text: { pl: "Do końca tury Twój ruch nie prowokuje ataków okazyjnych.", en: "Your movement doesn't provoke opportunity attacks for the rest of the turn." } },
-  { id: "dodge", re: { pl: "\\bDodge\\b", en: "\\bDodge\\b" }, title: { pl: "Dodge (Unik)", en: "Dodge" },
-    text: { pl: "Do Twojej następnej tury ataki na Ciebie mają Utrudnienie, a rzuty ZRĘ masz z Przewagą.", en: "Until your next turn, attacks against you have Disadvantage and you make DEX saves with Advantage." } },
-  { id: "shove", re: { pl: "\\bShove\\b|pchnięci" + L, en: "\\bShove\\b" }, title: { pl: "Shove (Pchnięcie)", en: "Shove" },
-    text: { pl: "Zamiast obrażeń: wróg rzuca SIŁ lub ZRĘ. Porażka = odepchnięty o 5 ft albo powalony.", en: "Instead of damage: the target makes a STR or DEX save. Fail = pushed 5 ft or knocked Prone." } },
-  { id: "grapple", re: { pl: "\\bGrapple\\b|chwyt" + L, en: "\\bGrapple\\b" }, title: { pl: "Grapple (Chwyt)", en: "Grapple" },
-    text: { pl: "Zamiast obrażeń: wróg rzuca SIŁ lub ZRĘ. Porażka = pochwycony, jego prędkość to 0.", en: "Instead of damage: the target makes a STR or DEX save. Fail = Grappled, its speed becomes 0." } },
-  { id: "stunned", re: { pl: "\\bStunned\\b", en: "\\bStunned\\b" }, title: { pl: "Stunned (Ogłuszony)", en: "Stunned" },
-    text: { pl: "Nie działa ani nie reaguje, oblewa rzuty SIŁ i ZRĘ, ataki na niego mają Przewagę.", en: "Can't act or react, fails STR and DEX saves, attacks against it have Advantage." } },
-  { id: "prone", re: { pl: "\\bProne\\b|powalon" + L, en: "\\bProne\\b" }, title: { pl: "Prone (Powalony)", en: "Prone" },
-    text: { pl: "Leży. Ataki wręcz na niego mają Przewagę, jego ataki Utrudnienie. Wstanie kosztuje połowę ruchu.", en: "Lying down. Melee attacks against it have Advantage, its attacks have Disadvantage. Standing up costs half its movement." } },
-  { id: "adv", re: { pl: "[Pp]rzewag" + L, en: "\\b[Aa]dvantage\\b" }, title: { pl: "Przewaga (Advantage)", en: "Advantage" },
-    text: { pl: "Rzucasz dwiema k20 i bierzesz lepszy wynik.", en: "Roll two d20s and take the higher." } },
-  { id: "dis", re: { pl: "[Uu]trudnieni" + L, en: "\\b[Dd]isadvantage\\b" }, title: { pl: "Utrudnienie (Disadvantage)", en: "Disadvantage" },
-    text: { pl: "Rzucasz dwiema k20 i bierzesz gorszy wynik.", en: "Roll two d20s and take the lower." } },
-  { id: "reaction", re: { pl: "[Rr]eakcj" + L, en: "\\b[Rr]eaction\\b" }, title: { pl: "Reakcja (Reaction)", en: "Reaction" },
-    text: { pl: "Jedna na rundę: odpowiedź na zdarzenie, także w turze wroga.", en: "One per round: a response to a trigger, even on an enemy's turn." } },
-  { id: "bonus", re: { pl: "[Aa]kcj" + L + " bonusow" + L, en: "\\b[Bb]onus action\\b" }, title: { pl: "Akcja bonusowa (Bonus Action)", en: "Bonus Action" },
-    text: { pl: "Druga, mniejsza akcja w turze. Masz ją tylko, gdy coś ją daje.", en: "A second, smaller action on your turn. You only have one when something grants it." } },
-  { id: "oa", re: { pl: "[Aa]tak" + L + " okazyjn" + L, en: "\\b[Oo]pportunity attacks?\\b" }, title: { pl: "Atak okazyjny (Opportunity Attack)", en: "Opportunity Attack" },
-    text: { pl: "Gdy wychodzisz z zasięgu wroga, może Cię uderzyć jako Reakcja. Chroni przed tym Disengage.", en: "When you leave an enemy's reach it can strike you as a Reaction. Disengage prevents this." } },
-  { id: "dc", re: { pl: "\\bDC\\b", en: "\\bDC\\b" }, title: { pl: "DC (Stopień trudności)", en: "DC (Difficulty Class)" },
-    text: { pl: "Liczba do pobicia. Wróg rzuca k20 + modyfikator; jeśli wyrzuci mniej, efekt działa.", en: "The number to beat. The target rolls d20 + modifier; below the DC, the effect works." } },
-  { id: "fp", re: { pl: "Focus Points?|\\bFP\\b", en: "Focus Points?|\\bFP\\b" }, title: { pl: "Focus Points (Punkty skupienia)", en: "Focus Points" },
-    text: { pl: "Energia Mnicha na techniki. Tyle, ile poziom. Wracają po krótkim odpoczynku.", en: "A Monk's energy for techniques. Equal to your level, regained on a short rest." } },
-  { id: "flurry", re: { pl: "Flurry of Blows", en: "Flurry of Blows" }, title: { pl: "Flurry of Blows (Grad ciosów)", en: "Flurry of Blows" },
-    text: { pl: "Za 1 FP akcja bonusowa to 2 ciosy zamiast jednego.", en: "For 1 FP your bonus action makes two unarmed strikes instead of one." } },
-  { id: "pd", re: { pl: "Patient Defense", en: "Patient Defense" }, title: { pl: "Patient Defense (Cierpliwa obrona)", en: "Patient Defense" },
-    text: { pl: "Akcja bonusowa: Disengage za darmo; za 1 FP Disengage i Dodge.", en: "Bonus action: free Disengage; for 1 FP, Disengage and Dodge." } },
-  { id: "sotw", re: { pl: "Step of the Wind", en: "Step of the Wind" }, title: { pl: "Step of the Wind (Krok wiatru)", en: "Step of the Wind" },
-    text: { pl: "Akcja bonusowa: Dash za darmo; za 1 FP Dash i Disengage, skok ×2.", en: "Bonus action: free Dash; for 1 FP, Dash and Disengage with doubled jump." } },
-  { id: "hi", re: { pl: "Heroic Inspiration", en: "Heroic Inspiration" }, title: { pl: "Heroic Inspiration (Bohaterska inspiracja)", en: "Heroic Inspiration" },
-    text: { pl: "Raz przerzucasz dowolną k20 i bierzesz nowy wynik.", en: "Reroll one d20 and use the new result." } },
-  { id: "dark", re: { pl: "Darkvision", en: "Darkvision" }, title: { pl: "Darkvision (Widzenie w ciemności)", en: "Darkvision" },
-    text: { pl: "W ciemności widzisz jak w półmroku, bez kolorów.", en: "You see in darkness as if it were dim light, without color." } },
-  { id: "pb", re: { pl: "\\bPB\\b", en: "\\bPB\\b|[Pp]roficiency bonus" }, title: { pl: "PB (Premia z biegłości)", en: "Proficiency Bonus" },
-    text: { pl: "Dodawana do rzeczy, w których postać jest biegła. Rośnie z poziomem.", en: "Added to anything your character is proficient in. Grows with level." } },
-  { id: "rage", re: { pl: "\\bRage\\b|Szał" + L, en: "\\bRage\\b" }, title: { pl: "Rage (Szał)", en: "Rage" },
-    text: { pl: "Barbarzyńca, akcja bonusowa: odporność na obrażenia fizyczne, premia do obrażeń ataków SIŁ, Przewaga na SIŁ. Bez czarów.", en: "Barbarian, bonus action: resistance to physical damage, bonus damage on STR attacks, Advantage on STR. No spells." } },
-  { id: "reckless", re: { pl: "Reckless Attack", en: "Reckless Attack" }, title: { pl: "Reckless Attack (Lekkomyślny atak)", en: "Reckless Attack" },
-    text: { pl: "Przewaga na ataki SIŁ w tej turze, ale ataki na Ciebie też mają Przewagę do Twojej następnej tury.", en: "Advantage on STR attacks this turn, but attacks against you have Advantage until your next turn." } },
-  { id: "sneak", re: { pl: "Sneak Attack", en: "Sneak Attack" }, title: { pl: "Sneak Attack (Atak z zaskoczenia)", en: "Sneak Attack" },
-    text: { pl: "Łotr: raz na turę dodatkowe kości obrażeń, gdy ma Przewagę albo sojusznika obok celu. Broń finezyjna lub dystansowa.", en: "Rogue: extra damage dice once per turn with Advantage or an ally next to the target. Finesse or ranged weapon." } },
-  { id: "cunning", re: { pl: "Cunning Action", en: "Cunning Action" }, title: { pl: "Cunning Action (Przebiegła akcja)", en: "Cunning Action" },
-    text: { pl: "Łotr: Dash, Disengage albo Hide jako akcja bonusowa.", en: "Rogue: Dash, Disengage or Hide as a bonus action." } },
-  { id: "cd", re: { pl: "Channel Divinity", en: "Channel Divinity" }, title: { pl: "Channel Divinity (Boska moc)", en: "Channel Divinity" },
-    text: { pl: "Kleryk: kilka użyć boskiej mocy, np. Divine Spark albo Turn Undead. Krótki odpoczynek oddaje jedno użycie.", en: "Cleric: a few uses of divine power, such as Divine Spark or Turn Undead. A short rest restores one use." } },
-  { id: "turn", re: { pl: "Turn Undead", en: "Turn Undead" }, title: { pl: "Turn Undead (Odpędzenie nieumarłych)", en: "Turn Undead" },
-    text: { pl: "Nieumarli w 30 ft rzucają MĄD; porażka = przestraszeni i obezwładnieni na minutę albo do otrzymania obrażeń.", en: "Undead within 30 ft make a WIS save; on a fail they're Frightened and Incapacitated for a minute or until damaged." } },
-  { id: "mastery", re: { pl: "Weapon Mastery", en: "Weapon Mastery" }, title: { pl: "Weapon Mastery (Mistrzostwo broni)", en: "Weapon Mastery" },
-    text: { pl: "Każda broń ma właściwość mistrzowską (np. Topple, Vex, Push). Używasz jej tylko dla wybranych rodzajów broni.", en: "Each weapon has a mastery property (such as Topple, Vex, Push). You use it only with your chosen kinds of weapons." } },
-  { id: "expertise", re: { pl: "Expertise", en: "Expertise" }, title: { pl: "Expertise (Specjalizacja)", en: "Expertise" },
-    text: { pl: "W wybranej umiejętności premia z biegłości liczy się podwójnie.", en: "Your proficiency bonus is doubled for the chosen skill." } },
-  { id: "rest", re: { pl: "[Kk]rótki" + L + " odpoczyn" + L + "|[Dd]ługi" + L + " odpoczyn" + L, en: "\\b[Ss]hort rest\\b|\\b[Ll]ong rest\\b" },
-    title: { pl: "Odpoczynek", en: "Rest" }, text: { pl: "Krótki: ok. 1 godzina. Długi: ok. 8 godzin, raz na dobę.", en: "Short: about 1 hour. Long: about 8 hours, once per day." } },
-  { id: "resist", re: { pl: "[Oo]dpornoś" + L, en: "\\b[Rr]esistance\\b" }, title: { pl: "Odporność (Resistance)", en: "Resistance" },
-    text: { pl: "Obrażenia tego rodzaju zmniejszasz o połowę (zaokrąglając w dół).", en: "Damage of that type is halved (round down)." } },
-  { id: "conc", re: { pl: "[Kk]oncentracj" + L, en: "\\b[Cc]oncentration\\b" }, title: { pl: "Koncentracja (Concentration)", en: "Concentration" },
-    text: { pl: "Czar trwa, dopóki się skupiasz. Naraz tylko jeden taki czar. Gdy dostaniesz obrażenia, rzut KON (DC 10 albo połowa obrażeń, maks. 30), inaczej czar się kończy.", en: "The spell lasts while you focus. Only one such spell at a time. When you take damage, make a CON save (DC 10 or half the damage, max 30) or the spell ends." } },
-  { id: "thp", re: { pl: "[Tt]ymczasow" + L + " HP", en: "\\b[Tt]emporary (HP|Hit Points)\\b" }, title: { pl: "Tymczasowe HP", en: "Temporary Hit Points" },
-    text: { pl: "Bufor zdejmowany przed zwykłymi HP. Nie sumują się: zostawiasz wyższą wartość. Znikają po długim odpoczynku.", en: "A buffer lost before your real HP. They don't stack: keep the higher amount. Gone after a Long Rest." } },
-  { id: "frightened", re: { pl: "Frightened", en: "Frightened" }, title: { pl: "Frightened (Przestraszony)", en: "Frightened" },
-    text: { pl: "Utrudnienie na testy i ataki, gdy widzi źródło strachu; nie może się do niego zbliżać.", en: "Disadvantage on checks and attacks while it can see the source of fear; can't move closer to it." } },
-  { id: "charmed", re: { pl: "Charmed", en: "Charmed" }, title: { pl: "Charmed (Zauroczony)", en: "Charmed" },
-    text: { pl: "Nie może atakować ani szkodzić temu, kto go zauroczył; ten ma Przewagę na kontakty społeczne z nim.", en: "Can't attack or harm the charmer; the charmer has Advantage on social checks with it." } },
-  { id: "poisoned", re: { pl: "Poisoned", en: "Poisoned" }, title: { pl: "Poisoned (Zatruty)", en: "Poisoned" },
-    text: { pl: "Utrudnienie na ataki i testy cech.", en: "Disadvantage on attack rolls and ability checks." } },
-  { id: "paralyzed", re: { pl: "Paralyzed", en: "Paralyzed" }, title: { pl: "Paralyzed (Sparaliżowany)", en: "Paralyzed" },
-    text: { pl: "Nie działa, nie rusza się ani nie mówi; oblewa rzuty SIŁ i ZRĘ; ataki na niego mają Przewagę, a trafienie z 5 ft jest krytyczne.", en: "Can't act, move or speak; fails STR and DEX saves; attacks against it have Advantage and hits from within 5 ft are critical." } },
-];
+import { lang, t, tr } from "./i18n.js";
+import { TERM_LINKS as G, TERM_CATS, findTerms, termRegex } from "./rules/terms.js";
 
 let compiled = { lang: null, re: null };
 function regex() {
   if (compiled.lang === lang()) return compiled.re;
-  const parts = G.map((g, i) => `(?<g${i}>${g.re[lang()]})`);
-  compiled = { lang: lang(), re: new RegExp(`(?<![\\p{L}\\p{N}])(?:${parts.join("|")})(?![\\p{L}\\p{N}])`, "gu") };
+  compiled = { lang: lang(), re: termRegex(lang()) };
   return compiled.re;
 }
 
-const SKIP = "button,input,textarea,select,label,script,style,.term,h1,h2,h3,h4,th,nav,svg,#tip";
+const SKIP = "button,input,textarea,select,label,script,style,.term,h1,h2,h3,h4,th,nav,svg,#tip,#gloss";
 
 /** Wrap known terms inside `scope` once per block. */
 export function glossify(scope) {
@@ -120,7 +42,8 @@ let open = null;
 function showTip(el) {
   const g = G[+el.dataset.g]; let tip = document.getElementById("tip");
   if (!tip) { tip = h("div", { id: "tip", role: "tooltip" }); document.body.appendChild(tip); }
-  tip.replaceChildren(h("b", { text: tr(g.title) }), document.createTextNode(tr(g.text)));
+  tip.replaceChildren(h("b", { text: tr(g.title) }), document.createTextNode(tr(g.text)),
+    h("button", { type: "button", cls: "tip-more", "data-id": g.id, text: t("gl.more") }));
   tip.hidden = false;
   const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let x = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), innerWidth - tw - 12);
@@ -131,8 +54,75 @@ function showTip(el) {
 }
 function hideTip() { const tip = document.getElementById("tip"); if (tip) tip.hidden = true; if (open) open.setAttribute("aria-expanded", "false"); open = null; }
 
-document.addEventListener("click", (e) => { const t = e.target.closest(".term"); if (t) { if (open === t) hideTip(); else showTip(t); } else hideTip(); });
-document.addEventListener("mouseover", (e) => { const t = e.target.closest(".term"); if (t && matchMedia("(hover:hover)").matches) showTip(t); });
-document.addEventListener("mouseout", (e) => { if (e.target.closest(".term") && matchMedia("(hover:hover)").matches) hideTip(); });
-document.addEventListener("keydown", (e) => { const t = e.target.closest?.(".term"); if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showTip(t); } if (e.key === "Escape") hideTip(); });
+const hover = () => matchMedia("(hover:hover)").matches;
+document.addEventListener("click", (e) => {
+  const more = e.target.closest(".tip-more");
+  if (more) { hideTip(); openGlossary({ id: more.dataset.id }); return; }
+  const t = e.target.closest(".term"); if (t) { if (open === t) hideTip(); else showTip(t); } else if (!e.target.closest("#tip")) hideTip();
+});
+document.addEventListener("mouseover", (e) => { const t = e.target.closest(".term"); if (t && hover()) showTip(t); });
+// Moving from a term onto its tooltip keeps it open, so "More in the glossary" can be clicked.
+document.addEventListener("mouseout", (e) => { if (e.target.closest(".term, #tip") && hover() && !e.relatedTarget?.closest?.(".term, #tip")) hideTip(); });
+document.addEventListener("keydown", (e) => {
+  const t = e.target.closest?.(".term"); if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showTip(t); }
+  if (e.key === "Escape") { hideTip(); if (panel) closeGlossary(); }
+});
 addEventListener("scroll", hideTip, { passive: true });
+
+// --- Glossary panel --------------------------------------------------------
+// Opens over the current screen (nothing under it is redrawn), so closing it leaves the player exactly where they were.
+// Phone "back" and Esc close it: opening adds a history entry with the same address, which the router ignores.
+
+let panel = null, opener = null;
+let ravenloftNow = () => false;
+/** Tell the panel how to know whether the screen shows a Ravenloft character (Ravenloft terms only then). */
+export const glossaryMode = (fn) => { ravenloftNow = fn; };
+
+export function openGlossary({ id = null } = {}) {
+  if (panel) return;
+  opener = document.activeElement;
+  const ravenloft = !!ravenloftNow();
+  const input = h("input", { type: "search", id: "gloss-q", placeholder: t("gl.search"), "aria-label": t("gl.search"), autocomplete: "off", enterkeyhint: "search" });
+  const count = h("p", { cls: "gloss-count", "aria-live": "polite" });
+  const list = h("div", { cls: "gloss-list", id: "gloss-list" });
+  const item = (g) => h("details", { cls: "gl-item", id: "gl-" + g.id, open: g.id === id }, [
+    h("summary", { text: tr(g.title) }), h("p", { text: tr(g.text) })]);
+  const paint = () => {
+    const q = input.value, hits = findTerms(q, lang(), ravenloft);
+    count.textContent = hits.length ? t("gl.count", { n: hits.length }) : t("gl.none");
+    // Without a query: grouped by kind. With one: best matches first.
+    list.replaceChildren(...(q.trim() ? hits.map(item)
+      : TERM_CATS.flatMap((c) => { const in_ = hits.filter((g) => g.cat === c); return in_.length ? [h("h3", { text: t("gl.cat." + c) }), ...in_.map(item)] : []; })));
+  };
+  input.addEventListener("input", paint);
+  const close = h("button", { type: "button", cls: "btn", id: "gloss-close", text: t("gl.close"), onclick: () => closeGlossary() });
+  panel = h("div", { id: "gloss", cls: "gloss", role: "dialog", "aria-modal": "true", "aria-labelledby": "gloss-h" }, [
+    h("div", { cls: "gloss-back", onclick: () => closeGlossary() }),
+    h("section", { cls: "gloss-box" }, [
+      h("div", { cls: "gloss-top" }, [
+        h("div", { cls: "gloss-head" }, [h("h2", { id: "gloss-h", text: t("gl.title") }), close]),
+        input, count,
+      ]),
+      list,
+    ]),
+  ]);
+  paint();
+  document.body.appendChild(panel);
+  document.body.classList.add("gloss-open");
+  history.pushState({ gloss: 1 }, "");
+  const target = id && document.getElementById("gl-" + id);
+  if (target) { target.scrollIntoView({ block: "start" }); target.querySelector("summary").focus(); }
+  else input.focus();
+}
+
+/** Close the panel; `quiet` = its history entry is already gone (phone "back"). */
+export function closeGlossary(quiet = false) {
+  if (!panel) return;
+  panel.remove(); panel = null;
+  document.body.classList.remove("gloss-open");
+  if (!quiet && history.state?.gloss) history.back();
+  if (opener?.isConnected) opener.focus({ preventScroll: true });
+  opener = null;
+}
+
+addEventListener("popstate", () => { if (panel) closeGlossary(true); });

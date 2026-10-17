@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.42.0", date: "2026-10-17",
+    points: [
+      { pl: "Słowniczek zasad: przycisk „?” w górnym pasku otwiera ponad 70 pojęć gry (akcje, stany, walka, odpoczynek, magia) z wyszukiwarką po polsku i po angielsku.", en: "Rules glossary: the “?” button in the top bar opens over 70 game terms (actions, conditions, combat, resting, magic) with a search box." },
+      { pl: "Słowniczek otwiera się nad kartą: po zamknięciu (przycisk, Esc albo „wstecz” w telefonie) jesteś dokładnie tam, gdzie byłeś.", en: "The glossary opens on top of your sheet: close it (button, Esc or your phone's “back”) and you're right where you were." },
+      { pl: "Podpowiedzi przy podkreślonych słowach na karcie mają link „Więcej w słowniczku” i znają więcej pojęć, np. Blinded, Restrained, Cover czy rzuty przeciw śmierci.", en: "Tips on underlined words on the sheet have a “More in the glossary” link and know more terms, such as Blinded, Restrained, Cover or Death Saving Throws." },
+    ],
+  },
+  {
     version: "0.41.1", date: "2026-10-17",
     points: [
       { pl: "Nowe logo w górnym pasku: gnoll i napis bez tła, wyraźne także na telefonie.", en: "A new logo in the top bar: the gnoll and the title without a background, sharp on phones too." },
