@@ -31,7 +31,7 @@ Commity nazywamy `X.Y.Z: krótki opis`, a w treści lista zmian.
 
 - Opisy reguł, zdolności, czarów i featów piszemy **własnymi słowami** (parafraza, nie kopiujemy tekstu z podręczników) — wymóg Fan Content Policy.
 - Zawsze w **dwóch językach**: treść reguł jako obiekty `{ pl, en }`; teksty interfejsu jako klucze w `js/lang/pl.js` i `js/lang/en.js` (oba pliki naraz).
-- Nazwy w polskiej wersji w stylu istniejącego kodu: nazwa angielska + polskie tłumaczenie w nawiasie, np. `"Hand of Harm (Dłoń krzywdy)"`.
+- W polskiej wersji tłumaczymy wszystko, co nie jest nazwą własną. Nazwy zdolności klas, podklas, gatunków, czarów i featów zostają po angielsku (z polskim tłumaczeniem w nawiasie w nagłówku, np. `"Hand of Harm (Dłoń krzywdy)"`). Pojęcia zasad — akcje, stany, zmysły, rozmiary, typy istot, właściwości broni, umiejętności — są po polsku: na przyciskach i w nagłówkach polska nazwa + angielska w nawiasie (`"Odskok (Disengage)"`), w zwykłym tekście tylko po polsku („Sprint, Odskok albo Ukrycie jako akcja bonusowa”). Pilnuje tego test „0.42.1 Polish texts” w `tests/run.mjs`. W EN nazewnictwo jak w podręczniku.
 - Każdy wpis ma pole `source`: `srd52`, `phb2024` albo `ravenloft`. Treści Ravenloft muszą być niedostępne w grze standardowej.
 
 ## Dodawanie klasy

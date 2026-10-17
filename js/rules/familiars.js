@@ -5,7 +5,7 @@
 const L = (pl, en) => ({ pl, en });
 
 export const FAMILIAR_GROUPS = ["basic", "beast", "chain"];
-export const FAMILIAR_TYPES = { celestial: L("Celestial (Niebianin)", "Celestial"), fey: L("Fey (Istota czarodziejska)", "Fey"), fiend: L("Fiend (Czart)", "Fiend") };
+export const FAMILIAR_TYPES = { celestial: L("Niebianin (Celestial)", "Celestial"), fey: L("Istota czarodziejska (Fey)", "Fey"), fiend: L("Czart (Fiend)", "Fiend") };
 const SIZE = { tiny: L("Drobny", "Tiny"), small: L("Mały", "Small"), medium: L("Średni", "Medium") };
 const KIND = { beast: L("Zwierzę", "Beast"), fiend: L("Czart", "Fiend"), dragon: L("Smok", "Dragon"), undead: L("Nieumarły", "Undead"),
   aberration: L("Aberracja", "Aberration"), celestial: L("Niebianin", "Celestial"), fey: L("Istota czarodziejska", "Fey") };

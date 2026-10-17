@@ -15,7 +15,7 @@ const atk = (c) => c.mods.wis + c.pb;
 const COMPANIONS = {
   land: (c) => L(`Bestia lądu (Średnia): KP ${13 + c.mods.wis}, HP ${5 + 5 * c.level}, prędkość 40 ft, wspinaczka 40 ft, widzenie w ciemności 60 ft. Cios bestii: ${signed(atk(c))}, 1k8 ${signed(2 + c.mods.wis)} obuchowe, kłute albo cięte; po szarży 20 ft +1k6 i cel Duży lub mniejszy pada.`,
     `Beast of the Land (Medium): AC ${13 + c.mods.wis}, HP ${5 + 5 * c.level}, Speed 40 ft, Climb 40 ft, Darkvision 60 ft. Beast's Strike: ${signed(atk(c))}, 1d8 ${signed(2 + c.mods.wis)} Bludgeoning, Piercing or Slashing; after a 20-ft charge +1d6 and a Large or smaller target falls Prone.`),
-  sea: (c) => L(`Bestia morza (Średnia): KP ${13 + c.mods.wis}, HP ${5 + 5 * c.level}, prędkość 5 ft, pływanie 60 ft, widzenie w ciemności 90 ft, oddycha w wodzie. Cios bestii: ${signed(atk(c))}, 1k6 ${signed(2 + c.mods.wis)} obuchowe albo kłute, a cel jest Grappled (ucieczka DC ${dc(c)}).`,
+  sea: (c) => L(`Bestia morza (Średnia): KP ${13 + c.mods.wis}, HP ${5 + 5 * c.level}, prędkość 5 ft, pływanie 60 ft, widzenie w ciemności 90 ft, oddycha w wodzie. Cios bestii: ${signed(atk(c))}, 1k6 ${signed(2 + c.mods.wis)} obuchowe albo kłute, a cel jest pochwycony (ucieczka DC ${dc(c)}).`,
     `Beast of the Sea (Medium): AC ${13 + c.mods.wis}, HP ${5 + 5 * c.level}, Speed 5 ft, Swim 60 ft, Darkvision 90 ft, breathes water. Beast's Strike: ${signed(atk(c))}, 1d6 ${signed(2 + c.mods.wis)} Bludgeoning or Piercing, and the target is Grappled (escape DC ${dc(c)}).`),
   sky: (c) => L(`Bestia nieba (Mała): KP ${13 + c.mods.wis}, HP ${4 + 4 * c.level}, prędkość 10 ft, latanie 60 ft, widzenie w ciemności 60 ft, odlatując nie prowokuje ataków okazyjnych. Cios bestii: ${signed(atk(c))}, 1k4 ${signed(3 + c.mods.wis)} cięte.`,
     `Beast of the Sky (Small): AC ${13 + c.mods.wis}, HP ${4 + 4 * c.level}, Speed 10 ft, Fly 60 ft, Darkvision 60 ft, doesn't provoke Opportunity Attacks when flying away. Beast's Strike: ${signed(atk(c))}, 1d4 ${signed(3 + c.mods.wis)} Slashing.`),
@@ -77,7 +77,7 @@ export const ranger = {
     { lv: 1, id: "weapon-mastery", name: L("Weapon Mastery (Mistrzostwo broni)", "Weapon Mastery"),
       desc: () => L("Używasz właściwości mistrzowskich 2 rodzajów broni (wybór w kroku 5). Po długim odpoczynku możesz je zmienić.", "You use the mastery properties of 2 kinds of weapons (pick them in step 5). After a long rest you can change them.") },
     { lv: 2, id: "deft-explorer", name: L("Deft Explorer (Zręczny odkrywca)", "Deft Explorer"),
-      desc: () => L("Expertise w jednej umiejętności, w której masz biegłość, i dwa nowe języki z tabel języków.", "Expertise in one skill you're proficient in, and two more languages from the language tables.") },
+      desc: () => L("Specjalizacja w jednej umiejętności, w której masz biegłość, i dwa nowe języki z tabel języków.", "Expertise in one skill you're proficient in, and two more languages from the language tables.") },
     { lv: 2, id: "fighting-style", name: L("Fighting Style (Styl walki)", "Fighting Style"),
       desc: () => L("Feat stylu walki albo Druidic Warrior: dwie sztuczki druida na MĄD (polecane Guidance i Starry Wisp). Wybór w kroku 5.", "A Fighting Style feat, or Druidic Warrior: two Druid cantrips using WIS (Guidance and Starry Wisp are recommended). Pick it in step 5.") },
     { lv: 3, id: "subclass", name: L("Podklasa (Ranger Subclass)", "Ranger Subclass"),
@@ -85,7 +85,7 @@ export const ranger = {
     { lv: 4, id: "asi", name: L("Feat albo +2 do cech (ASI)", "Feat or Ability Score Improvement"),
       desc: () => L("Wybierasz feat albo +2 do jednej cechy (lub +1 do dwóch) na zakładce Awans.", "Pick a feat or +2 to one ability (or +1 to two) on the Level up tab.") },
     { lv: 5, id: "extra-attack", name: L("Extra Attack (Dodatkowy atak)", "Extra Attack"),
-      desc: () => L("Akcją Attack atakujesz dwa razy.", "You attack twice when you take the Attack action.") },
+      desc: () => L("Akcją Atak atakujesz dwa razy.", "You attack twice when you take the Attack action.") },
   ],
 
   subclassLevel: 3,
@@ -94,7 +94,7 @@ export const ranger = {
       source: "phb2024", name: L("Beast Master (Władca zwierząt)", "Beast Master"),
       features: [
         { lv: 3, id: "primal-companion", name: L("Primal Companion (Pierwotny towarzysz)", "Primal Companion"),
-          desc: (c) => L(`Przyzywasz pierwotną bestię, przyjazną Tobie i drużynie. Działa w Twojej turze: rusza się i używa reakcji sama, ale bez rozkazu tylko robi Dodge. Akcją bonusową każesz jej użyć akcji (np. Cios bestii); możesz też oddać jeden swój atak z akcji Attack, by uderzyła. Dodaje Twój PB do swoich testów i rzutów obronnych. Zmarłą w ciągu godziny ożywisz akcją Magic za slot. ${COMPANIONS[c.classChoices.companion || "land"](c).pl}`,
+          desc: (c) => L(`Przyzywasz pierwotną bestię, przyjazną Tobie i drużynie. Działa w Twojej turze: rusza się i używa reakcji sama, ale bez rozkazu robi tylko Unik. Akcją bonusową każesz jej użyć akcji (np. Cios bestii); możesz też oddać jeden swój atak z akcji Atak, by uderzyła. Dodaje Twój PB do swoich testów i rzutów obronnych. Zmarłą w ciągu godziny ożywisz akcją Magia za slot. ${COMPANIONS[c.classChoices.companion || "land"](c).pl}`,
             `You summon a primal beast, friendly to you and your party. It acts on your turn: it moves and uses its Reaction on its own, but without orders it only takes the Dodge action. As a Bonus Action you command it to take an action (e.g. Beast's Strike); you can also give up one of your Attack-action attacks to have it strike. It adds your PB to its checks and saves. If it died within the hour, revive it with a Magic action and a spell slot. ${COMPANIONS[c.classChoices.companion || "land"](c).en}`) },
       ],
     },
@@ -142,14 +142,14 @@ export const ranger = {
       domainSpells: list({ 3: ["Wrathful Smite"], 5: ["Alter Self"] }),
       features: [
         { lv: 3, id: "wrath-of-the-wild", name: L("Wrath of the Wild (Gniew dziczy)", "Wrath of the Wild"),
-          desc: (c) => L(`Akcja bonusowa, za użycie Favored Enemy: na minutę zmieniasz się w upiorną postać. +1 do KP; zaraz gdy istota w 5 ft zrani Ciebie albo sojusznika, możesz zaatakować ją atakiem okazyjnym; przy przemianie i na początku każdej tury wybrane istoty w 10 ft rzucają MĄD (DC ${dc(c)}) albo są Frightened do początku Twojej tury.`,
+          desc: (c) => L(`Akcja bonusowa, za użycie Favored Enemy: na minutę zmieniasz się w upiorną postać. +1 do KP; zaraz gdy istota w 5 ft zrani Ciebie albo sojusznika, możesz zaatakować ją atakiem okazyjnym; przy przemianie i na początku każdej tury wybrane istoty w 10 ft rzucają MĄD (DC ${dc(c)}) albo są przestraszone do początku Twojej tury.`,
             `Bonus Action, spend a use of Favored Enemy: for a minute you take a ghastly form. +1 AC; right after a creature within 5 ft damages you or an ally, you can make an Opportunity Attack against it; when you transform and at the start of each turn, chosen creatures within 10 ft make a WIS save (DC ${dc(c)}) or are Frightened until the start of your turn.`) },
       ],
     },
   },
 
   nextLevel: {
-    2: { pl: ["Deft Explorer: Expertise i 2 języki", "Fighting Style", "3 przygotowane czary"], en: ["Deft Explorer: Expertise and 2 languages", "Fighting Style", "3 prepared spells"] },
+    2: { pl: ["Deft Explorer: specjalizacja i 2 języki", "Fighting Style", "3 przygotowane czary"], en: ["Deft Explorer: Expertise and 2 languages", "Fighting Style", "3 prepared spells"] },
     3: { pl: ["Wybór podklasy", "3 sloty 1. kręgu, 4 przygotowane czary"], en: ["Choose a subclass", "3 level 1 slots, 4 prepared spells"] },
     4: { pl: ["Feat albo +2 do cech", "5 przygotowanych czarów"], en: ["Feat or ability score increase", "5 prepared spells"] },
     5: { pl: ["Extra Attack: 2 ataki", "Favored Enemy: 3 użycia", "Czary 2. kręgu: 2 sloty", "6 przygotowanych czarów", "PB +3"], en: ["Extra Attack: 2 attacks", "Favored Enemy: 3 uses", "Level 2 spells: 2 slots", "6 prepared spells", "Proficiency bonus +3"] },

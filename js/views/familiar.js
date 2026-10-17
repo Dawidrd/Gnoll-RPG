@@ -105,7 +105,7 @@ export function familiarTab({ ch, c, save }) {
   // --- stat block ----------------------------------------------------------
   const stats = form ? h("section", { cls: "card stack", id: "fam-stats" }, [
     h("h4", { text: tr(form.name) }),
-    h("p", { cls: "small", text: t("fam.sizeType", { size: tr(form.size), type: f.type ? tr(FAMILIAR_TYPES[f.type]).split(" (")[0] : access.wildOnly ? "Fey" : t("fam.typeOpen"), kind: tr(form.kind) }) }),
+    h("p", { cls: "small", text: t("fam.sizeType", { size: tr(form.size), type: f.type ? tr(FAMILIAR_TYPES[f.type]).split(" (")[0] : access.wildOnly ? tr(FAMILIAR_TYPES.fey).split(" (")[0] : t("fam.typeOpen"), kind: tr(form.kind) }) }),
     h("div", { cls: "row" }, [
       h("span", { cls: "vit" }, [h("span", { cls: "k", text: "AC" }), h("span", { cls: "v", text: form.ac })]),
       h("span", { cls: "vit" }, [h("span", { cls: "k", text: t("sum.speed") }), h("span", { cls: "v small", text: tr(familiarSpeed(form, access.investment ? f.move : "")) })]),

@@ -43,13 +43,13 @@ export const paladin = {
   ],
 
   summary: (c) => [
-    { label: L("Lay on Hands", "Lay on Hands"), value: L(`${5 * c.level} HP`, `${5 * c.level} HP`), note: L("akcja bonusowa, dotyk; 5 HP z puli usuwa Poisoned", "Bonus Action, touch; 5 HP from the pool removes Poisoned") },
+    { label: L("Lay on Hands", "Lay on Hands"), value: L(`${5 * c.level} HP`, `${5 * c.level} HP`), note: L("akcja bonusowa, dotyk; 5 HP z puli usuwa zatrucie", "Bonus Action, touch; 5 HP from the pool removes Poisoned") },
     ...(c.level >= 2 ? [{ label: L("Divine Smite", "Divine Smite"), value: L("2k8 + 1k8/krąg", "2d8 + 1d8/level"), note: L("akcja bonusowa po trafieniu; +1k8 w nieumarłego lub biesa", "Bonus Action after a hit; +1d8 against Undead or Fiends") }] : []),
   ],
 
   features: [
     { lv: 1, id: "lay-on-hands", name: L("Lay on Hands (Nałożenie rąk)", "Lay on Hands"),
-      desc: (c) => L(`Pula ${5 * c.level} HP (5 × poziom), wraca po długim odpoczynku. Akcja bonusowa: dotykasz istotę (albo siebie) i oddajesz jej dowolną liczbę HP z puli. 5 HP z puli może zamiast tego usunąć stan Poisoned.`,
+      desc: (c) => L(`Pula ${5 * c.level} HP (5 × poziom), wraca po długim odpoczynku. Akcja bonusowa: dotykasz istotę (albo siebie) i oddajesz jej dowolną liczbę HP z puli. 5 HP z puli może zamiast tego usunąć zatrucie.`,
         `A pool of ${5 * c.level} HP (5 × level), refilled on a long rest. Bonus Action: touch a creature (or yourself) and restore any number of HP from the pool. 5 HP from the pool can instead remove the Poisoned condition.`) },
     { lv: 1, id: "spellcasting", name: L("Spellcasting (Czary)", "Spellcasting"),
       desc: (c) => L(`Czary paladyna na CHA, bez sztuczek. ${HALF_PREPARED[c.level]} przygotowane czary; po długim odpoczynku możesz wymienić jeden. Fokus: święty symbol.`,
@@ -69,7 +69,7 @@ export const paladin = {
     { lv: 4, id: "asi", name: L("Feat albo +2 do cech (ASI)", "Feat or Ability Score Improvement"),
       desc: () => L("Wybierasz feat albo +2 do jednej cechy (lub +1 do dwóch) na zakładce Awans.", "Pick a feat or +2 to one ability (or +1 to two) on the Level up tab.") },
     { lv: 5, id: "extra-attack", name: L("Extra Attack (Dodatkowy atak)", "Extra Attack"),
-      desc: () => L("Akcją Attack atakujesz dwa razy.", "You attack twice when you take the Attack action.") },
+      desc: () => L("Akcją Atak atakujesz dwa razy.", "You attack twice when you take the Attack action.") },
     { lv: 5, id: "faithful-steed", name: L("Faithful Steed (Wierny wierzchowiec)", "Faithful Steed"),
       desc: () => L("Find Steed masz zawsze przygotowany i raz na długi odpoczynek rzucasz go bez slotu.", "Find Steed is always prepared, and once per long rest you cast it without a slot.") },
   ],
@@ -81,7 +81,7 @@ export const paladin = {
       domainSpells: list({ 3: ["Protection from Evil and Good", "Shield of Faith"], 5: ["Aid", "Zone of Truth"] }),
       features: [
         { lv: 3, id: "sacred-weapon", name: L("Sacred Weapon (Święta broń)", "Sacred Weapon"),
-          desc: (c) => L(`Przy akcji Attack, za Channel Divinity: broń wręcz w ręku na 10 minut dostaje +${atLeast1(c.mods.cha)} do ataku (CHA), może zadawać obrażenia promieniste i świeci (jasne światło 20 ft).`,
+          desc: (c) => L(`Przy akcji Atak, za Channel Divinity: broń wręcz w ręku na 10 minut dostaje +${atLeast1(c.mods.cha)} do ataku (CHA), może zadawać obrażenia promieniste i świeci (jasne światło 20 ft).`,
             `When you take the Attack action, spend Channel Divinity: a melee weapon you hold gets +${atLeast1(c.mods.cha)} to hit (CHA) for 10 minutes, can deal Radiant damage, and shines (Bright Light 20 ft).`) },
       ],
     },
@@ -100,7 +100,7 @@ export const paladin = {
       domainSpells: list({ 3: ["Ensnaring Strike", "Speak with Animals"], 5: ["Misty Step", "Moonbeam"] }),
       features: [
         { lv: 3, id: "natures-wrath", name: L("Nature's Wrath (Gniew natury)", "Nature's Wrath"),
-          desc: (c) => L(`Akcja Magic, za Channel Divinity: wybrane istoty w 15 ft rzucają SIŁ (DC ${dc(c)}) albo są Restrained na minutę (ponawiają rzut na końcu swoich tur).`, `Magic action, spend Channel Divinity: chosen creatures within 15 ft make a STR save (DC ${dc(c)}) or are Restrained for a minute (repeating the save at the end of their turns).`) },
+          desc: (c) => L(`Akcja Magia, za Channel Divinity: wybrane istoty w 15 ft rzucają SIŁ (DC ${dc(c)}) albo są unieruchomione na minutę (ponawiają rzut na końcu swoich tur).`, `Magic action, spend Channel Divinity: chosen creatures within 15 ft make a STR save (DC ${dc(c)}) or are Restrained for a minute (repeating the save at the end of their turns).`) },
       ],
     },
     vengeance: {
@@ -108,7 +108,7 @@ export const paladin = {
       domainSpells: list({ 3: ["Bane", "Hunter's Mark"], 5: ["Hold Person", "Misty Step"] }),
       features: [
         { lv: 3, id: "vow-of-enmity", name: L("Vow of Enmity (Ślubowanie wrogości)", "Vow of Enmity"),
-          desc: () => L("Przy akcji Attack, za Channel Divinity: wybierasz istotę w 30 ft; przez minutę masz Przewagę na ataki w nią. Gdy spadnie do 0 HP, możesz przenieść ślubowanie na inną w 30 ft.", "When you take the Attack action, spend Channel Divinity: pick a creature within 30 ft; for a minute you have Advantage on attacks against it. If it drops to 0 HP, you can move the vow to another creature within 30 ft.") },
+          desc: () => L("Przy akcji Atak, za Channel Divinity: wybierasz istotę w 30 ft; przez minutę masz Przewagę na ataki w nią. Gdy spadnie do 0 HP, możesz przenieść ślubowanie na inną w 30 ft.", "When you take the Attack action, spend Channel Divinity: pick a creature within 30 ft; for a minute you have Advantage on attacks against it. If it drops to 0 HP, you can move the vow to another creature within 30 ft.") },
       ],
     },
   },

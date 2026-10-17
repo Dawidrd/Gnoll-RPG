@@ -51,7 +51,7 @@ export const wizard = {
     { lv: 1, id: "arcane-recovery", name: L("Arcane Recovery (Magiczne odnowienie)", "Arcane Recovery"),
       desc: (c) => L(`Po krótkim odpoczynku odzyskujesz zużyte sloty o łącznym kręgu do ${Math.ceil(c.level / 2)} (połowa poziomu w górę, bez slotów 6.+). Raz na długi odpoczynek.`, `After a short rest regain expended slots with a combined level of up to ${Math.ceil(c.level / 2)} (half your level, rounded up; none level 6+). Once per long rest.`) },
     { lv: 2, id: "scholar", name: L("Scholar (Uczony)", "Scholar"),
-      desc: () => L("Expertise w jednej umiejętności, w której masz biegłość: Arcana, Historia, Śledztwo, Medycyna, Natura albo Religia (wybór w kroku 5).", "Expertise in one skill you're proficient in: Arcana, History, Investigation, Medicine, Nature or Religion (pick it in step 5).") },
+      desc: () => L("Specjalizacja w jednej umiejętności, w której masz biegłość: Wiedza tajemna, Historia, Śledztwo, Medycyna, Przyroda albo Religia (wybór w kroku 5).", "Expertise in one skill you're proficient in: Arcana, History, Investigation, Medicine, Nature or Religion (pick it in step 5).") },
     { lv: 3, id: "subclass", name: L("Szkoła (Wizard Subclass)", "Wizard Subclass"),
       desc: () => L("Wybierasz szkołę magii. Jej zdolności pojawią się niżej.", "Choose your school of magic. Its features appear below.") },
     { lv: 4, id: "asi", name: L("Feat albo +2 do cech (ASI)", "Feat or Ability Score Improvement"),
@@ -107,7 +107,7 @@ export const wizard = {
   },
 
   nextLevel: {
-    2: { pl: ["Scholar: Expertise w jednej umiejętności", "+2 czary w księdze", "5 przygotowanych czarów, 3 sloty 1. kręgu"], en: ["Scholar: Expertise in one skill", "+2 spells in your book", "5 prepared spells, 3 level 1 slots"] },
+    2: { pl: ["Scholar: specjalizacja w jednej umiejętności", "+2 czary w księdze", "5 przygotowanych czarów, 3 sloty 1. kręgu"], en: ["Scholar: Expertise in one skill", "+2 spells in your book", "5 prepared spells, 3 level 1 slots"] },
     3: { pl: ["Wybór szkoły (2 darmowe czary do księgi)", "+2 czary w księdze", "Czary 2. kręgu: 2 sloty", "6 przygotowanych czarów"], en: ["Choose a school (2 free spells for your book)", "+2 spells in your book", "Level 2 spells: 2 slots", "6 prepared spells"] },
     4: { pl: ["Feat albo +2 do cech", "Dodatkowa sztuczka", "+2 czary w księdze", "7 przygotowanych czarów"], en: ["Feat or ability score increase", "One more cantrip", "+2 spells in your book", "7 prepared spells"] },
     5: { pl: ["Memorize Spell", "+2 czary w księdze (i darmowy czar szkoły)", "Czary 3. kręgu: 2 sloty", "9 przygotowanych czarów", "PB +3"], en: ["Memorize Spell", "+2 spells in your book (and a free school spell)", "Level 3 spells: 2 slots", "9 prepared spells", "Proficiency bonus +3"] },

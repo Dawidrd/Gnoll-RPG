@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.42.1", date: "2026-10-17",
+    points: [
+      { pl: "Polska wersja mówi po polsku: akcje w zakładce Walka (Sprint, Odskok, Unik, Ukrycie…), stany (powalony, pochwycony, przestraszony…) i zmysły (widzenie w ciemności) mają polskie nazwy, a angielska zostaje w nawiasie na przyciskach i w słowniczku.", en: "The Polish version now uses Polish names for actions, conditions and senses, with the English name in brackets on buttons and in the glossary." },
+      { pl: "Nazwy zdolności klas, czarów i featów zostają po angielsku, tak jak w podręczniku.", en: "Class feature, spell and feat names stay in English, as in the rulebook." },
+    ],
+  },
+  {
     version: "0.42.0", date: "2026-10-17",
     points: [
       { pl: "Słowniczek zasad: przycisk „?” w górnym pasku otwiera ponad 70 pojęć gry (akcje, stany, walka, odpoczynek, magia) z wyszukiwarką po polsku i po angielsku.", en: "Rules glossary: the “?” button in the top bar opens over 70 game terms (actions, conditions, combat, resting, magic) with a search box." },

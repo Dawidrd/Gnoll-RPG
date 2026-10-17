@@ -20,8 +20,8 @@ const SPIRITS = [
   ["Renegade (Odszczepieniec)", "Renegade", "cel od razu reakcją teleportuje się do 30 ft", "the target can teleport up to 30 ft with its Reaction"],
   ["Fortune Teller (Wróżbita)", "Fortune Teller", "cel ma Przewagę na testy k20 do początku Twojej następnej tury", "the target has Advantage on D20 Tests until the start of your next turn"],
   ["Wayfarer (Wędrowiec)", "Wayfarer", "cel dostaje kość inspiracji + Twój poziom Barda tymczasowych HP i, dopóki je ma, +10 ft prędkości", "the target gains Inspiration die + Bard level Temporary HP and +10 ft Speed while they last"],
-  ["Trickster (Kuglarz)", "Trickster", "cel rzuca MĄD: porażka = 2 kości inspiracji obrażeń psychicznych i Charmed do początku Twojej tury, sukces = połowa", "the target makes a WIS save: on a fail 2 Inspiration dice Psychic and Charmed until the start of your turn, half on a success"],
-  ["Shade (Cień)", "Shade", "cel jest Invisible do końca swojej tury albo do ataku, obrażeń lub czaru; potem istoty w 5 ft rzucają KON albo dostają 2 kości inspiracji nekrotycznych", "the target is Invisible until the end of its turn or until it attacks, deals damage or casts; then creatures within 5 ft make a CON save or take 2 Inspiration dice Necrotic"],
+  ["Trickster (Kuglarz)", "Trickster", "cel rzuca MĄD: porażka = 2 kości inspiracji obrażeń psychicznych i zauroczenie do początku Twojej tury, sukces = połowa", "the target makes a WIS save: on a fail 2 Inspiration dice Psychic and Charmed until the start of your turn, half on a success"],
+  ["Shade (Cień)", "Shade", "cel jest niewidzialny do końca swojej tury albo do ataku, obrażeń lub czaru; potem istoty w 5 ft rzucają KON albo dostają 2 kości inspiracji nekrotycznych", "the target is Invisible until the end of its turn or until it attacks, deals damage or casts; then creatures within 5 ft make a CON save or take 2 Inspiration dice Necrotic"],
 ];
 
 export const bard = {
@@ -94,7 +94,7 @@ export const bard = {
       resources: () => [{ id: "beguiling-magic", max: 1, recharge: "long", name: L("Beguiling Magic (Zwodnicza magia)", "Beguiling Magic") }],
       features: [
         { lv: 3, id: "beguiling-magic", name: L("Beguiling Magic (Zwodnicza magia)", "Beguiling Magic"),
-          desc: (c) => L(`Charm Person i Mirror Image masz zawsze przygotowane. Zaraz po rzuceniu czaru zauroczenia lub iluzji ze slotu istota w 60 ft rzuca MĄD przeciw DC ${8 + c.mods.cha + c.pb}: porażka = Charmed albo Frightened (Ty wybierasz) na minutę, z rzutem na końcu każdej jej tury. Raz na długi odpoczynek albo za jedno użycie Bardic Inspiration.`,
+          desc: (c) => L(`Charm Person i Mirror Image masz zawsze przygotowane. Zaraz po rzuceniu czaru zauroczenia lub iluzji ze slotu istota w 60 ft rzuca MĄD przeciw DC ${8 + c.mods.cha + c.pb}: porażka = zauroczenie albo przestraszenie (Ty wybierasz) na minutę, z rzutem na końcu każdej jej tury. Raz na długi odpoczynek albo za jedno użycie Bardic Inspiration.`,
             `Charm Person and Mirror Image are always prepared. Right after you cast an Enchantment or Illusion spell with a slot, a creature within 60 ft makes a WIS save against DC ${8 + c.mods.cha + c.pb}: on a fail it's Charmed or Frightened (your choice) for a minute, repeating the save at the end of each of its turns. Once per long rest, or restore it with a use of Bardic Inspiration.`) },
         { lv: 3, id: "mantle-of-inspiration", name: L("Mantle of Inspiration (Płaszcz inspiracji)", "Mantle of Inspiration"),
           desc: (c) => L(`Akcja bonusowa, za Bardic Inspiration: rzucasz kością; do ${atLeast1(c.mods.cha)} innych istot w 60 ft dostaje po 2 × wynik tymczasowych HP i może reakcją przejść swoją prędkość bez ataków okazyjnych.`,
@@ -131,13 +131,13 @@ export const bard = {
       bonusCantrips: () => ["guidance"],
       toolsFixed: ["cards"],
       features: [
-        { lv: 3, id: "channeler", name: L("Channeler (Medium)", "Channeler"),
+        { lv: 3, id: "channeler", name: L("Channeler (Medium spirytystyczne)", "Channeler"),
           desc: () => L("Znasz sztuczkę Guidance (poza limitem sztuczek), z zasięgiem 60 ft. Masz talię kart i biegłość w niej; karty, kryształowa kula, świeca albo pióro mogą być fokusem Twoich czarów barda.",
             "You know the Guidance cantrip (outside your cantrip limit), with a range of 60 ft. You have a deck of playing cards and proficiency with it; the cards, a crystal or orb, a candle or an ink pen can be your Bard spellcasting focus.") },
         { lv: 3, id: "spirits-from-beyond", name: L("Spirits from Beyond (Duchy z zaświatów)", "Spirits from Beyond"),
           desc: (c) => {
             const n = bardicDie(c.level);
-            return L(`Gdy akcją bonusową dajesz komuś Bardic Inspiration, przywołujesz losowego ducha (rzut kością ${die(c.level, "pl")}). Albo akcją bonusową, za Bardic Inspiration, wybierasz ducha o numerze do ${n}. Duch czeka do krótkiego lub długiego odpoczynku; uwalniasz go akcją Magic na widoczną istotę w 30 ft (rzuty przeciw DC ${8 + c.mods.cha + c.pb}). ${SPIRITS.slice(0, n).map((s, i) => `${i + 1}. ${s[0]}: ${s[2]}`).join("; ")}.`,
+            return L(`Gdy akcją bonusową dajesz komuś Bardic Inspiration, przywołujesz losowego ducha (rzut kością ${die(c.level, "pl")}). Albo akcją bonusową, za Bardic Inspiration, wybierasz ducha o numerze do ${n}. Duch czeka do krótkiego lub długiego odpoczynku; uwalniasz go akcją Magia na widoczną istotę w 30 ft (rzuty przeciw DC ${8 + c.mods.cha + c.pb}). ${SPIRITS.slice(0, n).map((s, i) => `${i + 1}. ${s[0]}: ${s[2]}`).join("; ")}.`,
               `When you give Bardic Inspiration as a Bonus Action, you call a random spirit (roll the d${n}). Or, as a Bonus Action spending Bardic Inspiration, pick a spirit numbered up to ${n}. It stays until a short or long rest; unleash it with a Magic action on a creature you can see within 30 ft (saves against DC ${8 + c.mods.cha + c.pb}). ${SPIRITS.slice(0, n).map((s, i) => `${i + 1}. ${s[1]}: ${s[3]}`).join("; ")}.`);
           } },
       ],
@@ -145,7 +145,7 @@ export const bard = {
   },
 
   nextLevel: {
-    2: { pl: ["Expertise w 2 umiejętnościach", "Jack of All Trades", "5 przygotowanych czarów, 3 sloty 1. kręgu"], en: ["Expertise in 2 skills", "Jack of All Trades", "5 prepared spells, 3 level 1 slots"] },
+    2: { pl: ["Expertise: specjalizacja w 2 umiejętnościach", "Jack of All Trades", "5 przygotowanych czarów, 3 sloty 1. kręgu"], en: ["Expertise in 2 skills", "Jack of All Trades", "5 prepared spells, 3 level 1 slots"] },
     3: { pl: ["Wybór kolegium", "Czary 2. kręgu: 2 sloty", "6 przygotowanych czarów"], en: ["Choose a college", "Level 2 spells: 2 slots", "6 prepared spells"] },
     4: { pl: ["Feat albo +2 do cech", "Dodatkowa sztuczka", "7 przygotowanych czarów"], en: ["Feat or ability score increase", "One more cantrip", "7 prepared spells"] },
     5: { pl: ["Kość inspiracji k8", "Font of Inspiration: inspiracja wraca po krótkim odpoczynku", "Czary 3. kręgu: 2 sloty", "9 przygotowanych czarów", "PB +3"], en: ["Inspiration die d8", "Font of Inspiration: Inspiration returns on a short rest", "Level 3 spells: 2 slots", "9 prepared spells", "Proficiency bonus +3"] },

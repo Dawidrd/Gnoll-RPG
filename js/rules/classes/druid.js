@@ -94,12 +94,12 @@ export const druid = {
           `Druid spells using WIS. ${s.cantrips} cantrips, ${s.prepared} prepared spells; change the list after a long rest. When you gain a level you can swap one cantrip. Focus: a Druidic Focus.`);
       } },
     { lv: 1, id: "druidic", name: L("Druidic (Druidzki)", "Druidic"),
-      desc: () => L("Znasz tajny język druidów i zostawiasz w nim ukryte wiadomości (inni zauważą je testem INT (Investigation) DC 15, ale nie odczytają bez magii). Speak with Animals masz zawsze przygotowany.",
+      desc: () => L("Znasz tajny język druidów i zostawiasz w nim ukryte wiadomości (inni zauważą je testem INT (Śledztwo) DC 15, ale nie odczytają bez magii). Speak with Animals masz zawsze przygotowany.",
         "You know the Druids' secret language and can leave hidden messages in it (others spot them with a DC 15 INT (Investigation) check but can't read them without magic). Speak with Animals is always prepared.") },
     { lv: 1, id: "primal-order", name: L("Primal Order (Pierwotny porządek)", "Primal Order"),
       desc: (c) => (c.classChoices.order === "warden"
         ? L("Warden: biegłość w broni wojennej i średnich zbrojach.", "Warden: proficiency with Martial weapons and Medium armor training.")
-        : L(`Magician: jedna sztuczka więcej i +${atLeast1(c.mods.wis)} do testów INT (Arcana, Nature). Już wliczone.`, `Magician: one extra cantrip and +${atLeast1(c.mods.wis)} to INT (Arcana, Nature) checks. Already included.`)) },
+        : L(`Magician: jedna sztuczka więcej i +${atLeast1(c.mods.wis)} do testów INT (Wiedza tajemna, Przyroda). Już wliczone.`, `Magician: one extra cantrip and +${atLeast1(c.mods.wis)} to INT (Arcana, Nature) checks. Already included.`)) },
     { lv: 2, id: "wild-shape", name: L("Wild Shape (Dziki kształt)", "Wild Shape"),
       desc: (c) => {
         const moon = c.subclassId === "moon";
@@ -107,7 +107,7 @@ export const druid = {
           `Bonus Action: turn into a known Beast (${knownForms(c.level)} forms, CR up to ${crText(maxCr(c.level, moon))}, no flying) for ${Math.floor(c.level / 2)} hours. You gain ${moon ? 3 * c.level : c.level} Temporary HP. You keep your HP, INT, WIS, CHA, proficiencies and features but use the Beast's AC, Speed, STR, DEX, CON and attacks. You can't cast spells${moon ? " (except circle spells)" : ""}, though Concentration continues. Leave as a Bonus Action. ${wildShapeUses(c.level)} uses; a short rest restores one. After a long rest you can swap one known form.`);
       } },
     { lv: 2, id: "wild-companion", name: L("Wild Companion (Dziki towarzysz)", "Wild Companion"),
-      desc: () => L("Akcja Magic: za slot albo użycie Wild Shape rzucasz Find Familiar bez komponentów materialnych. Chowaniec jest Fey i znika po długim odpoczynku.",
+      desc: () => L("Akcja Magia: za slot albo użycie Wild Shape rzucasz Find Familiar bez komponentów materialnych. Chowaniec jest istotą czarodziejską i znika po długim odpoczynku.",
         "Magic action: spend a spell slot or a use of Wild Shape to cast Find Familiar without Material components. The familiar is Fey and vanishes when you finish a long rest.") },
     { lv: 3, id: "subclass", name: L("Krąg (Druid Subclass)", "Druid Subclass"),
       desc: () => L("Wybierasz krąg druidów. Jego zdolności i czary zawsze przygotowane pojawią się niżej.", "Choose your druid circle. Its features and always-prepared spells appear below.") },
@@ -128,7 +128,7 @@ export const druid = {
           desc: (c) => L(`Po każdym długim odpoczynku wybierasz ziemię: pustynną, polarną, umiarkowaną albo tropikalną. Jej czary masz zawsze przygotowane (teraz: ${{ arid: "pustynna", polar: "polarna", temperate: "umiarkowana", tropical: "tropikalna" }[c.classChoices.land]}). Zmienisz ją na zakładce Czary.`,
             `After each long rest choose a land: arid, polar, temperate or tropical. Its spells are always prepared (now: ${c.classChoices.land}). Change it on the Spells tab.`) },
         { lv: 3, id: "lands-aid", name: L("Land's Aid (Pomoc ziemi)", "Land's Aid"),
-          desc: (c) => L(`Akcja Magic, za użycie Wild Shape: kula o promieniu 10 ft w punkcie do 60 ft. Wybrane istoty rzucają KON przeciw DC ${8 + c.mods.wis + c.pb} — 2k6 nekrotycznych, połowa przy sukcesie. Jedna wybrana istota w kuli odzyskuje 2k6 HP.`,
+          desc: (c) => L(`Akcja Magia, za użycie Wild Shape: kula o promieniu 10 ft w punkcie do 60 ft. Wybrane istoty rzucają KON przeciw DC ${8 + c.mods.wis + c.pb} — 2k6 nekrotycznych, połowa przy sukcesie. Jedna wybrana istota w kuli odzyskuje 2k6 HP.`,
             `Magic action, spend a use of Wild Shape: a 10-ft-radius Sphere at a point within 60 ft. Chosen creatures make a CON save against DC ${8 + c.mods.wis + c.pb} — 2d6 Necrotic, half on a success. One chosen creature in it regains 2d6 HP.`) },
       ],
     },

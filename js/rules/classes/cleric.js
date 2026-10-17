@@ -66,11 +66,11 @@ export const cleric = {
       } },
     { lv: 1, id: "divine-order", name: { pl: "Divine Order (Boski porządek)", en: "Divine Order" },
       desc: (c) => (c.classChoices.order === "thaumaturge"
-        ? { pl: `Thaumaturge: jedna sztuczka więcej i +${atLeast1(c.mods.wis)} do testów INT (Arcana, Religion). Już wliczone.`, en: `Thaumaturge: one extra cantrip and +${atLeast1(c.mods.wis)} to INT (Arcana, Religion) checks. Already included.` }
+        ? { pl: `Thaumaturge: jedna sztuczka więcej i +${atLeast1(c.mods.wis)} do testów INT (Wiedza tajemna, Religia). Już wliczone.`, en: `Thaumaturge: one extra cantrip and +${atLeast1(c.mods.wis)} to INT (Arcana, Religion) checks. Already included.` }
         : { pl: "Protector: biegłość w broni wojennej i ciężkich zbrojach.", en: "Protector: proficiency with martial weapons and heavy armor." }) },
     { lv: 2, id: "channel", name: { pl: "Channel Divinity (Boska moc)", en: "Channel Divinity" },
       desc: (c) => ({
-        pl: `${cdUses(c.level)} użycia, krótki odpoczynek oddaje jedno. Divine Spark (akcja Magic): istota w 30 ft — leczenie 1k8 ${signed(c.mods.wis)} albo tyle obrażeń promienistych lub nekrotycznych (rzut KON na połowę). Turn Undead (akcja Magic): nieumarli w 30 ft rzucają MĄD; porażka = przestraszeni i obezwładnieni na minutę albo do otrzymania obrażeń.`,
+        pl: `${cdUses(c.level)} użycia, krótki odpoczynek oddaje jedno. Divine Spark (akcja Magia): istota w 30 ft — leczenie 1k8 ${signed(c.mods.wis)} albo tyle obrażeń promienistych lub nekrotycznych (rzut KON na połowę). Turn Undead (akcja Magia): nieumarli w 30 ft rzucają MĄD; porażka = przestraszeni i obezwładnieni na minutę albo do otrzymania obrażeń.`,
         en: `${cdUses(c.level)} uses; a short rest restores one. Divine Spark (Magic action): a creature within 30 ft — heal 1d8 ${signed(c.mods.wis)}, or deal that much radiant or necrotic damage (CON save for half). Turn Undead (Magic action): undead within 30 ft make a WIS save; on a fail they're Frightened and Incapacitated for a minute or until damaged.`,
       }) },
     { lv: 3, id: "subclass", name: { pl: "Domena (Cleric Subclass)", en: "Cleric Subclass" },
@@ -90,7 +90,7 @@ export const cleric = {
         { lv: 3, id: "disciple", name: { pl: "Disciple of Life (Uczeń życia)", en: "Disciple of Life" },
           desc: () => ({ pl: "Czar leczący rzucony ze slotu leczy dodatkowo 2 + krąg slotu.", en: "A healing spell cast with a slot heals an extra 2 + the slot's level." }) },
         { lv: 3, id: "preserve", name: { pl: "Preserve Life (Ochrona życia)", en: "Preserve Life" },
-          desc: (c) => ({ pl: `Channel Divinity (akcja Magic): rozdzielasz ${5 * c.level} HP między ranne (Bloodied) istoty w 30 ft, każdej najwyżej do połowy jej maksymalnych HP.`,
+          desc: (c) => ({ pl: `Channel Divinity (akcja Magia): rozdzielasz ${5 * c.level} HP między zakrwawione istoty (z połową HP lub mniej) w 30 ft, każdej najwyżej do połowy jej maksymalnych HP.`,
             en: `Channel Divinity (Magic action): split ${5 * c.level} HP among Bloodied creatures within 30 ft, each up to half its maximum HP.` }) },
       ],
     },
@@ -100,7 +100,7 @@ export const cleric = {
       resources: (c) => [{ id: "flare", max: atLeast1(c.mods.wis), recharge: "long", name: { pl: "Warding Flare", en: "Warding Flare" } }],
       features: [
         { lv: 3, id: "dawn", name: { pl: "Radiance of the Dawn (Blask świtu)", en: "Radiance of the Dawn" },
-          desc: (c) => ({ pl: `Channel Divinity (akcja Magic): rozpraszasz magiczną ciemność w 30 ft, a wybrani wrogowie rzucają KON: 2k10 + ${c.level} obrażeń promienistych, połowa przy sukcesie.`,
+          desc: (c) => ({ pl: `Channel Divinity (akcja Magia): rozpraszasz magiczną ciemność w 30 ft, a wybrani wrogowie rzucają KON: 2k10 + ${c.level} obrażeń promienistych, połowa przy sukcesie.`,
             en: `Channel Divinity (Magic action): dispel magical darkness within 30 ft; chosen enemies make a CON save, taking 2d10 + ${c.level} radiant damage, half on a success.` }) },
         { lv: 3, id: "flare", name: { pl: "Warding Flare (Ochronny błysk)", en: "Warding Flare" },
           desc: (c) => ({ pl: `Reakcja, gdy ktoś w 30 ft atakuje Ciebie albo sojusznika: atak ma Utrudnienie. ${atLeast1(c.mods.wis)}× na długi odpoczynek.`,
@@ -112,7 +112,7 @@ export const cleric = {
       domainSpells: domain({ 3: ["Charm Person", "Disguise Self", "Invisibility", "Pass without Trace"], 5: ["Hypnotic Pattern", "Nondetection"] }),
       features: [
         { lv: 3, id: "blessing", name: { pl: "Blessing of the Trickster", en: "Blessing of the Trickster" },
-          desc: () => ({ pl: "Akcja Magic: Ty albo chętna istota w 30 ft macie Przewagę na Skradanie do Twojego długiego odpoczynku.", en: "Magic action: you or a willing creature within 30 ft gets Advantage on Stealth until your next long rest." }) },
+          desc: () => ({ pl: "Akcja Magia: Ty albo chętna istota w 30 ft macie Przewagę na Skradanie do Twojego długiego odpoczynku.", en: "Magic action: you or a willing creature within 30 ft gets Advantage on Stealth until your next long rest." }) },
         { lv: 3, id: "duplicity", name: { pl: "Invoke Duplicity (Sobowtór)", en: "Invoke Duplicity" },
           desc: () => ({ pl: "Channel Divinity (akcja bonusowa): iluzja Ciebie na minutę. Możesz rzucać czary z jej miejsca i masz Przewagę na ataki we wrogów obok niej; przesuwasz ją akcją bonusową.",
             en: "Channel Divinity (bonus action): an illusion of you for a minute. You can cast spells from its space and have Advantage on attacks against enemies next to it; move it with a bonus action." }) },

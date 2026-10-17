@@ -34,7 +34,7 @@ const spell = (id, at = 1, uses = at === 1 && SPECIES_SPELLS[id].circle === 0 ? 
 
 export const ELF_LINEAGES = {
   drow: { ...L("Drow", "Drow"), darkvision: 120, spells: [spell("dancing-lights"), spell("faerie-fire", 3), spell("darkness", 5)],
-    text: L("Darkvision 120 ft i sztuczka Dancing Lights; Faerie Fire od 3. poziomu, Darkness od 5.", "Darkvision 120 ft and the Dancing Lights cantrip; Faerie Fire from level 3, Darkness from level 5.") },
+    text: L("Widzenie w ciemności 120 ft i sztuczka Dancing Lights; Faerie Fire od 3. poziomu, Darkness od 5.", "Darkvision 120 ft and the Dancing Lights cantrip; Faerie Fire from level 3, Darkness from level 5.") },
   high: { ...L("Wysoki elf (High Elf)", "High Elf"), spells: [spell("prestidigitation"), spell("detect-magic", 3), spell("misty-step", 5)],
     text: L("Sztuczka Prestidigitation; po długim odpoczynku możesz ją zamienić na inną sztuczkę z listy Czarodzieja. Detect Magic od 3. poziomu, Misty Step od 5.", "The Prestidigitation cantrip; after a Long Rest you may swap it for another Wizard cantrip. Detect Magic from level 3, Misty Step from level 5.") },
   wood: { ...L("Leśny elf (Wood Elf)", "Wood Elf"), speed: 35, spells: [spell("druidcraft"), spell("longstrider", 3), spell("pass-without-trace", 5)],
@@ -65,7 +65,7 @@ export const GIANT_ANCESTRIES = {
   frost: { ...L("Mroźny olbrzym: Frost's Chill", "Frost Giant: Frost's Chill"),
     text: L("Gdy trafisz atakiem i zadasz obrażenia: +1d6 od zimna, a cel ma −10 ft szybkości do początku Twojej następnej tury.", "When you hit with an attack roll and deal damage: +1d6 cold damage and the target's Speed drops by 10 ft until the start of your next turn.") },
   hill: { ...L("Wzgórzowy olbrzym: Hill's Tumble", "Hill Giant: Hill's Tumble"),
-    text: L("Gdy trafisz atakiem istotę Large lub mniejszą i zadasz obrażenia: przewracasz ją (Prone).", "When you hit a Large or smaller creature with an attack roll and deal damage: knock it Prone.") },
+    text: L("Gdy trafisz atakiem istotę Dużą lub mniejszą i zadasz obrażenia: powalasz ją.", "When you hit a Large or smaller creature with an attack roll and deal damage: knock it Prone.") },
   stone: { ...L("Kamienny olbrzym: Stone's Endurance", "Stone Giant: Stone's Endurance"),
     text: (c) => L(`Reakcja, gdy dostajesz obrażenia: zmniejszasz je o 1d12 + KON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}).`, `Reaction when you take damage: reduce it by 1d12 + CON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}).`) },
   storm: { ...L("Burzowy olbrzym: Storm's Thunder", "Storm Giant: Storm's Thunder"),
@@ -73,7 +73,7 @@ export const GIANT_ANCESTRIES = {
 };
 
 const pickOf = (sp, c, key) => sp.choices?.find((x) => x.key === key)?.options[c.choice?.[key]] || null;
-const darkvisionFeature = (ft) => ({ lv: 1, id: "darkvision", name: L("Darkvision (Widzenie w ciemności)", "Darkvision"), desc: () => L(`${ft} ft.`, `${ft} ft.`) });
+const darkvisionFeature = (ft) => ({ lv: 1, id: "darkvision", name: L("Widzenie w ciemności (Darkvision)", "Darkvision"), desc: () => L(`${ft} ft.`, `${ft} ft.`) });
 const textOf = (x, c) => (typeof x === "function" ? x(c) : x);
 
 // language: the standard language that came from this species (PHB 2024, Standard Languages table) — only a hint, never required.
@@ -88,7 +88,7 @@ export const SPECIES = {
       { id: "revelation", max: c.level >= 3 ? 1 : 0, recharge: "long", name: L("Celestial Revelation (Niebiańskie objawienie)", "Celestial Revelation") },
     ],
     summary: (c) => [
-      { label: L("Healing Hands", "Healing Hands"), value: `${c.pb}d4 HP`, note: L("akcja Magic, dotyk; raz na długi odpoczynek", "Magic action, touch; once per long rest") },
+      { label: L("Healing Hands", "Healing Hands"), value: `${c.pb}d4 HP`, note: L("akcja Magia, dotyk; raz na długi odpoczynek", "Magic action, touch; once per long rest") },
       ...(c.level >= 3 ? [{ label: L("Celestial Revelation", "Celestial Revelation"), value: `+${c.pb}`,
         note: L("akcja bonusowa, 1 minuta: raz na turę +PB obrażeń; raz na długi odpoczynek", "Bonus Action, 1 minute: once per turn +PB damage; once per long rest") }] : []),
     ],
@@ -97,11 +97,11 @@ export const SPECIES = {
         desc: () => L("Odporność na obrażenia nekrotyczne i promieniste.", "Resistance to Necrotic and Radiant damage.") },
       darkvisionFeature(60),
       { lv: 1, id: "healing-hands", name: L("Healing Hands (Uzdrawiające dłonie)", "Healing Hands"),
-        desc: (c) => L(`Akcja Magic: dotykasz istoty, która odzyskuje ${c.pb}d4 HP (tyle k4, ile wynosi PB). Raz na długi odpoczynek.`, `Magic action: touch a creature, it regains ${c.pb}d4 HP (d4s equal to your PB). Once per long rest.`) },
+        desc: (c) => L(`Akcja Magia: dotykasz istoty, która odzyskuje ${c.pb}d4 HP (tyle k4, ile wynosi PB). Raz na długi odpoczynek.`, `Magic action: touch a creature, it regains ${c.pb}d4 HP (d4s equal to your PB). Once per long rest.`) },
       { lv: 1, id: "light-bearer", name: L("Light Bearer (Niosący światło)", "Light Bearer"),
         desc: () => L("Znasz sztuczkę Light (cecha czarowania: CHA).", "You know the Light cantrip (Charisma is your spellcasting ability for it).") },
       { lv: 3, id: "revelation", name: L("Celestial Revelation (Niebiańskie objawienie)", "Celestial Revelation"),
-        desc: (c) => L(`Akcja bonusowa: przemiana na 1 minutę, raz na długi odpoczynek. Raz na każdą swoją turę zadajesz jednemu celowi +${c.pb} obrażeń (atakiem lub czarem). Wybierasz przy każdej przemianie: Heavenly Wings — latasz z prędkością równą szybkości (+${c.pb} promieniste); Inner Radiance — świecisz 10 ft i na końcu każdej tury zadajesz ${c.pb} promienistych istotom w promieniu 10 ft; Necrotic Shroud — wrogowie w promieniu 10 ft rzucają CHA przeciw DC ${8 + c.mods.cha + c.pb} albo są Frightened do końca Twojej następnej tury (+${c.pb} nekrotyczne).`,
+        desc: (c) => L(`Akcja bonusowa: przemiana na 1 minutę, raz na długi odpoczynek. Raz na każdą swoją turę zadajesz jednemu celowi +${c.pb} obrażeń (atakiem lub czarem). Wybierasz przy każdej przemianie: Heavenly Wings — latasz z prędkością równą szybkości (+${c.pb} promieniste); Inner Radiance — świecisz 10 ft i na końcu każdej tury zadajesz ${c.pb} promienistych istotom w promieniu 10 ft; Necrotic Shroud — wrogowie w promieniu 10 ft rzucają CHA przeciw DC ${8 + c.mods.cha + c.pb} albo są przestraszeni do końca Twojej następnej tury (+${c.pb} nekrotyczne).`,
           `Bonus Action: transform for 1 minute, once per long rest. Once on each of your turns deal +${c.pb} damage to one target (attack or spell). Choose each time: Heavenly Wings — fly speed equal to your Speed (+${c.pb} radiant); Inner Radiance — shed light 10 ft and deal ${c.pb} radiant to each creature within 10 ft at the end of each of your turns; Necrotic Shroud — creatures other than allies within 10 ft make a CHA save against DC ${8 + c.mods.cha + c.pb} or are Frightened until the end of your next turn (+${c.pb} necrotic).`) },
     ],
   },
@@ -121,7 +121,7 @@ export const SPECIES = {
     },
     features: [
       { lv: 1, id: "breath", name: L("Zionięcie (Breath Weapon)", "Breath Weapon"),
-        desc: (c) => L(`Zamiast jednego ataku z akcji Attack ziejesz: stożek 15 ft albo linia 30 ft. Wrogowie rzucają ZRĘ przeciw DC ${8 + c.mods.con + c.pb}: porażka = ${breathDice(c.level)}, sukces = połowa. ${c.pb}× na długi odpoczynek.`,
+        desc: (c) => L(`Zamiast jednego ataku z akcji Atak ziejesz: stożek 15 ft albo linia 30 ft. Wrogowie rzucają ZRĘ przeciw DC ${8 + c.mods.con + c.pb}: porażka = ${breathDice(c.level)}, sukces = połowa. ${c.pb}× na długi odpoczynek.`,
           `In place of one attack of the Attack action you exhale a 15-ft cone or 30-ft line. Targets make a DEX save against DC ${8 + c.mods.con + c.pb}: ${breathDice(c.level)} on a fail, half on a success. ${c.pb}× per long rest.`) },
       { lv: 1, id: "resist", name: L("Odporność smoczego przodka", "Damage Resistance"),
         desc: (c) => { const a = ANCESTRIES[c.choice.ancestry]; return a ? L(`Odporność na obrażenia: ${DAMAGE_NAMES[a.dmg].pl}.`, `Resistance to ${DAMAGE_NAMES[a.dmg].en} damage.`) : L("Odporność zależna od smoczego przodka (wybierz go w kreatorze).", "Resistance set by your draconic ancestry (pick it in the creator)."); } },
@@ -137,11 +137,11 @@ export const SPECIES = {
     features: [
       darkvisionFeature(120),
       { lv: 1, id: "resilience", name: L("Dwarven Resilience", "Dwarven Resilience"),
-        desc: () => L("Odporność na truciznę i Przewaga na rzuty przeciw zatruciu (Poisoned).", "Resistance to poison damage and Advantage on saves to avoid or end being Poisoned.") },
+        desc: () => L("Odporność na truciznę i Przewaga na rzuty przeciw zatruciu.", "Resistance to poison damage and Advantage on saves to avoid or end being Poisoned.") },
       { lv: 1, id: "toughness", name: L("Dwarven Toughness", "Dwarven Toughness"),
         desc: (c) => L(`+1 HP na poziom (teraz +${c.level}). Już wliczone w maksymalne HP.`, `+1 HP per level (now +${c.level}). Already included in your maximum HP.`) },
       { lv: 1, id: "stonecunning", name: L("Stonecunning", "Stonecunning"),
-        desc: (c) => L(`Akcja bonusowa: Tremorsense 60 ft na 10 minut, gdy stoisz na kamieniu lub go dotykasz. ${c.pb}× na długi odpoczynek.`, `Bonus action: Tremorsense 60 ft for 10 minutes while on or touching stone. ${c.pb}× per long rest.`) },
+        desc: (c) => L(`Akcja bonusowa: wyczucie drgań 60 ft na 10 minut, gdy stoisz na kamieniu lub go dotykasz. ${c.pb}× na długi odpoczynek.`, `Bonus action: Tremorsense 60 ft for 10 minutes while on or touching stone. ${c.pb}× per long rest.`) },
     ],
   },
   elf: {
@@ -153,14 +153,14 @@ export const SPECIES = {
     spells: (c) => ELF_LINEAGES[c.choice.lineage]?.spells || [],
     skillChoice: { id: "species", label: L("Elf: Keen Senses", "Elf: Keen Senses"), count: 1, from: ["insight", "perception", "survival"] },
     features: [
-      { lv: 1, id: "darkvision", name: L("Darkvision (Widzenie w ciemności)", "Darkvision"),
+      { lv: 1, id: "darkvision", name: L("Widzenie w ciemności (Darkvision)", "Darkvision"),
         desc: (c) => L(`${c.choice.lineage === "drow" ? 120 : 60} ft.`, `${c.choice.lineage === "drow" ? 120 : 60} ft.`) },
       { lv: 1, id: "lineage", name: L("Elven Lineage (Linia elfów)", "Elven Lineage"),
         desc: (c) => { const l = ELF_LINEAGES[c.choice.lineage]; return l ? L(`${l.pl}: ${l.text.pl} Czary z poziomów 3 i 5 masz zawsze przygotowane; raz na długi odpoczynek rzucasz każdy bez slotu.`, `${l.en}: ${l.text.en} Level 3 and 5 spells are always prepared; cast each once per long rest without a slot.`) : L("Wybierz linię: Drow, Wysoki elf albo Leśny elf.", "Pick a lineage: Drow, High Elf or Wood Elf."); } },
       { lv: 1, id: "fey", name: L("Fey Ancestry", "Fey Ancestry"),
-        desc: () => L("Przewaga na rzuty, by uniknąć lub zakończyć zauroczenie (Charmed).", "Advantage on saves to avoid or end being Charmed.") },
+        desc: () => L("Przewaga na rzuty, by uniknąć lub zakończyć zauroczenie.", "Advantage on saves to avoid or end being Charmed.") },
       { lv: 1, id: "senses", name: L("Keen Senses", "Keen Senses"),
-        desc: () => L("Biegłość w Insight, Perception albo Survival.", "Proficiency in Insight, Perception or Survival.") },
+        desc: () => L("Biegłość w jednej z umiejętności: Wnikliwość, Percepcja albo Przetrwanie.", "Proficiency in Insight, Perception or Survival.") },
       { lv: 1, id: "trance", name: L("Trance", "Trance"),
         desc: () => L("Nie śpisz, magia nie może Cię uśpić. Długi odpoczynek zajmuje 4 godziny medytacji.", "You don't sleep and magic can't put you to sleep. A Long Rest takes 4 hours of meditation.") },
     ],
@@ -197,30 +197,30 @@ export const SPECIES = {
       { lv: 1, id: "giant", name: L("Giant Ancestry (Przodek olbrzym)", "Giant Ancestry"),
         desc: (c) => { const g = GIANT_ANCESTRIES[c.choice.giant]; return g ? L(`${g.pl}. ${textOf(g.text, c).pl} ${c.pb}× na długi odpoczynek.`, `${g.en}. ${textOf(g.text, c).en} ${c.pb}× per long rest.`) : L("Wybierz dar jednego z olbrzymów.", "Pick one giant's boon."); } },
       { lv: 1, id: "powerful-build", name: L("Powerful Build (Potężna budowa)", "Powerful Build"),
-        desc: () => L("Przewaga na rzuty, by zakończyć pochwycenie (Grappled). Udźwig liczysz jak istota o rozmiar większa.", "Advantage on saves to end being Grappled. You count as one size larger for carrying capacity.") },
+        desc: () => L("Przewaga na rzuty, by zakończyć pochwycenie. Udźwig liczysz jak istota o rozmiar większa.", "Advantage on saves to end being Grappled. You count as one size larger for carrying capacity.") },
       { lv: 5, id: "large-form", name: L("Large Form (Wielka postać)", "Large Form"),
-        desc: () => L("Akcja bonusowa: przez 10 minut jesteś Large (jeśli jest miejsce), masz Przewagę na testy SIŁ i +10 ft szybkości. Raz na długi odpoczynek.", "Bonus Action: for 10 minutes you are Large (if there's room), with Advantage on STR checks and +10 ft Speed. Once per long rest.") },
+        desc: () => L("Akcja bonusowa: przez 10 minut jesteś Duży (jeśli jest miejsce), masz Przewagę na testy SIŁ i +10 ft szybkości. Raz na długi odpoczynek.", "Bonus Action: for 10 minutes you are Large (if there's room), with Advantage on STR checks and +10 ft Speed. Once per long rest.") },
     ],
   },
   halfling: {
     source: "srd52", name: L("Niziołek (Halfling)", "Halfling"), speed: 30, darkvision: 0, sizes: ["small"], type: "humanoid", language: "halfling",
     features: [
-      { lv: 1, id: "brave", name: L("Brave", "Brave"), desc: () => L("Przewaga na rzuty, by uniknąć lub zakończyć strach (Frightened).", "Advantage on saves to avoid or end being Frightened.") },
+      { lv: 1, id: "brave", name: L("Brave", "Brave"), desc: () => L("Przewaga na rzuty, by uniknąć lub zakończyć przestraszenie.", "Advantage on saves to avoid or end being Frightened.") },
       { lv: 1, id: "nimble", name: L("Halfling Nimbleness", "Halfling Nimbleness"),
         desc: () => L("Możesz przechodzić przez pole istoty o rozmiar większej, ale nie możesz się w nim zatrzymać.", "You can move through the space of a creature a size larger than you, but can't stop there.") },
       { lv: 1, id: "luck", name: L("Luck", "Luck"), desc: () => L("Wyrzucone 1 na k20 w teście k20 przerzucasz i bierzesz nowy wynik.", "When you roll a 1 on a d20 Test, reroll it and use the new roll.") },
       { lv: 1, id: "stealthy", name: L("Naturally Stealthy", "Naturally Stealthy"),
-        desc: () => L("Możesz się ukryć (Hide) za istotą co najmniej o rozmiar większą.", "You can take the Hide action when obscured only by a creature at least one size larger.") },
+        desc: () => L("Możesz wykonać Ukrycie, gdy zasłania Cię tylko istota co najmniej o rozmiar większa.", "You can take the Hide action when obscured only by a creature at least one size larger.") },
     ],
   },
   human: {
     source: "srd52", name: L("Człowiek (Human)", "Human"), speed: 30, darkvision: 0, sizes: ["medium", "small"], type: "humanoid",
     skillChoice: { id: "species", label: L("Człowiek: Skillful", "Human: Skillful"), count: 1, from: null },
     featSlot: { id: "versatile", category: "origin", label: L("Człowiek: Versatile (feat pochodzenia)", "Human: Versatile (origin feat)") },
-    resources: () => [{ id: "inspiration", max: 1, recharge: "long", name: L("Heroic Inspiration", "Heroic Inspiration") }],
+    resources: () => [{ id: "inspiration", max: 1, recharge: "long", name: L("Bohaterska inspiracja (Heroic Inspiration)", "Heroic Inspiration") }],
     features: [
       { lv: 1, id: "resourceful", name: L("Resourceful (Zaradność)", "Resourceful"),
-        desc: () => L("Po każdym długim odpoczynku dostajesz Heroic Inspiration: raz przerzucasz dowolną kość k20.", "You gain Heroic Inspiration after every long rest: reroll any one d20.") },
+        desc: () => L("Po każdym długim odpoczynku dostajesz bohaterską inspirację: raz przerzucasz dowolną kość k20.", "You gain Heroic Inspiration after every long rest: reroll any one d20.") },
       { lv: 1, id: "skillful", name: L("Skillful (Wszechstronność)", "Skillful"),
         desc: () => L("Biegłość w jednej dodatkowej umiejętności.", "Proficiency in one extra skill.") },
       { lv: 1, id: "versatile", name: L("Versatile", "Versatile"),
@@ -236,7 +236,7 @@ export const SPECIES = {
     features: [
       darkvisionFeature(120),
       { lv: 1, id: "adrenaline", name: L("Adrenaline Rush", "Adrenaline Rush"),
-        desc: (c) => L(`Dash jako akcja bonusowa i ${c.pb} tymczasowych HP. ${c.pb}× na krótki lub długi odpoczynek.`, `Dash as a bonus action and gain ${c.pb} temporary HP. ${c.pb}× per short or long rest.`) },
+        desc: (c) => L(`Sprint jako akcja bonusowa i ${c.pb} tymczasowych HP. ${c.pb}× na krótki lub długi odpoczynek.`, `Dash as a bonus action and gain ${c.pb} temporary HP. ${c.pb}× per short or long rest.`) },
       { lv: 1, id: "endurance", name: L("Relentless Endurance", "Relentless Endurance"),
         desc: () => L("Raz na długi odpoczynek zamiast spaść do 0 HP zostajesz z 1 HP.", "Once per long rest, drop to 1 HP instead of 0.") },
     ],
@@ -289,7 +289,7 @@ Object.assign(SPECIES, {
       { lv: 1, id: "trace", name: L("Trace of Undeath (Ślad nieżycia)", "Trace of Undeath"),
         desc: () => L("Odporność na obrażenia nekrotyczne.", "Resistance to Necrotic damage.") },
       { lv: 1, id: "bite", name: L("Vampiric Bite (Wampirze ugryzienie)", "Vampiric Bite"),
-        desc: (c) => L(`Gdy trafiasz ciosem (Unarmed Strike) i zadajesz obrażenia, możesz ugryźć: 1k4 + KON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}) kłutych zamiast zwykłych. Jeśli cel nie jest Constructem ani Undeadem, możesz się wzmocnić (${c.pb}× na długi odpoczynek): Drain — odzyskujesz tyle HP, ile zadałeś; Strengthen — premia równa tym obrażeniom do następnego testu cechy lub ataku w ciągu minuty.`,
+        desc: (c) => L(`Gdy trafiasz ciosem bez broni i zadajesz obrażenia, możesz ugryźć: 1k4 + KON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}) kłutych zamiast zwykłych. Jeśli cel nie jest konstruktem ani nieumarłym, możesz się wzmocnić (${c.pb}× na długi odpoczynek): Drain — odzyskujesz tyle HP, ile zadałeś; Strengthen — premia równa tym obrażeniom do następnego testu cechy lub ataku w ciągu minuty.`,
           `When you deal damage with an Unarmed Strike you can bite: 1d4 + CON (${c.mods.con >= 0 ? "+" : ""}${c.mods.con}) piercing instead of the normal damage. If the target isn't a Construct or Undead you can empower yourself (${c.pb}× per long rest): Drain — regain HP equal to the damage; Strengthen — that much bonus to your next ability check or attack roll within a minute.`) },
     ],
   },
@@ -300,11 +300,11 @@ Object.assign(SPECIES, {
     spells: () => [spell("disguise-self", 1, "long"), spell("hex", 1, "long")],
     resources: () => [{ id: "eerie-token", max: 1, recharge: "long", name: L("Eerie Token (Upiorny żeton)", "Eerie Token") }],
     features: [
-      { lv: 1, id: "fey-type", name: L("Typ istoty: Fey", "Creature type: Fey"),
-        desc: () => L("Jesteś istotą typu Fey, nie Humanoid. Czary działające tylko na humanoidy (np. Charm Person, Hold Person) Cię nie dotyczą, a te na Fey — tak.", "You are a Fey, not a Humanoid. Spells that affect only Humanoids (such as Charm Person or Hold Person) don't affect you; those that target Fey do.") },
+      { lv: 1, id: "fey-type", name: L("Typ istoty: istota czarodziejska (Fey)", "Creature type: Fey"),
+        desc: () => L("Jesteś istotą czarodziejską, nie humanoidem. Czary działające tylko na humanoidy (np. Charm Person, Hold Person) Cię nie dotyczą, a te na istoty czarodziejskie — tak.", "You are a Fey, not a Humanoid. Spells that affect only Humanoids (such as Charm Person or Hold Person) don't affect you; those that target Fey do.") },
       darkvisionFeature(60),
       { lv: 1, id: "eerie-token", name: L("Eerie Token (Upiorny żeton)", "Eerie Token"),
-        desc: () => L("Akcja bonusowa: tworzysz żeton (kosmyk włosów, paznokieć). Dopóki istnieje (do długiego odpoczynku), w zasięgu 10 mil możesz akcją Magic: wysłać telepatycznie do 25 słów temu, kto go trzyma, albo przez minutę widzieć i słyszeć z miejsca żetonu (potem żeton znika). Raz na długi odpoczynek.",
+        desc: () => L("Akcja bonusowa: tworzysz żeton (kosmyk włosów, paznokieć). Dopóki istnieje (do długiego odpoczynku), w zasięgu 10 mil możesz akcją Magia: wysłać telepatycznie do 25 słów temu, kto go trzyma, albo przez minutę widzieć i słyszeć z miejsca żetonu (potem żeton znika). Raz na długi odpoczynek.",
           "Bonus Action: make a token (a lock of hair, a nail). While it lasts (until a long rest), within 10 miles you can take a Magic action to send a telepathic message of up to 25 words to whoever holds it, or see and hear from the token for 1 minute (then it crumbles). Once per long rest.") },
       { lv: 1, id: "hex-magic", name: L("Hex Magic (Magia klątw)", "Hex Magic"),
         desc: () => L("Disguise Self i Hex masz zawsze przygotowane; każdy rzucasz raz na długi odpoczynek bez slotu (albo ze slotów).", "Disguise Self and Hex are always prepared; cast each once per long rest without a slot (or with your slots).") },
@@ -320,12 +320,12 @@ Object.assign(SPECIES, {
     features: [
       darkvisionFeature(60),
       { lv: 1, id: "pounce", name: L("Feral Pounce (Dziki skok)", "Feral Pounce"),
-        desc: () => L("Twoje ciosy (Unarmed Strike) zadają obrażenia cięte zamiast obuchowych. Raz na turę, gdy trafisz ciosem w akcji Attack, możesz jednocześnie zadać obrażenia i pchnąć (Damage i Shove).", "Your Unarmed Strikes deal Slashing damage instead of Bludgeoning. Once per turn, when you hit with an Unarmed Strike as part of the Attack action, you can use both the Damage and the Shove options.") },
+        desc: () => L("Twoje ciosy bez broni zadają obrażenia cięte zamiast obuchowych. Raz na turę, gdy trafisz ciosem w akcji Atak, możesz jednocześnie zadać obrażenia i pchnąć cel.", "Your Unarmed Strikes deal Slashing damage instead of Bludgeoning. Once per turn, when you hit with an Unarmed Strike as part of the Attack action, you can use both the Damage and the Shove options.") },
       { lv: 1, id: "howl", name: L("Howl (Wycie)", "Howl"),
         desc: (c) => L(`Akcja bonusowa: wybrane istoty w promieniu 15 ft rzucają MĄD przeciw DC ${8 + c.mods.con + c.pb}; porażka = Utrudnienie na ataki i rzuty obronne do początku Twojej następnej tury. ${c.pb}× na długi odpoczynek.`,
           `Bonus Action: creatures you choose within 15 ft make a WIS save against DC ${8 + c.mods.con + c.pb} or have Disadvantage on attack rolls and saving throws until the start of your next turn. ${c.pb}× per long rest.`) },
       { lv: 1, id: "instincts", name: L("Werewolf Instincts (Wilcze instynkty)", "Werewolf Instincts"),
-        desc: () => L("Biegłość w Perception, Stealth albo Survival.", "Proficiency in Perception, Stealth or Survival.") },
+        desc: () => L("Biegłość w jednej z umiejętności: Percepcja, Skradanie albo Przetrwanie.", "Proficiency in Perception, Stealth or Survival.") },
     ],
   },
   reborn: {
@@ -339,7 +339,7 @@ Object.assign(SPECIES, {
       { lv: 1, id: "escaped-death", name: L("Escaped Death (Ucieczka przed śmiercią)", "Escaped Death"),
         desc: () => L("Przewaga na rzuty przeciw śmierci.", "Advantage on Death Saving Throws.") },
       { lv: 1, id: "everlasting", name: L("Everlasting (Wieczny)", "Everlasting"),
-        desc: () => L("Brak Exhaustion od głodu, pragnienia i duszenia się. Nie śpisz, magia Cię nie uśpi; długi odpoczynek to 4 godziny bezruchu w pełnej świadomości.", "No Exhaustion from hunger, thirst or suffocation. You don't sleep and magic can't put you to sleep; a Long Rest is 4 hours of motionless stillness, fully aware.") },
+        desc: () => L("Głód, pragnienie i duszenie się nie powodują u Ciebie wyczerpania. Nie śpisz, magia Cię nie uśpi; długi odpoczynek to 4 godziny bezruchu w pełnej świadomości.", "No Exhaustion from hunger, thirst or suffocation. You don't sleep and magic can't put you to sleep; a Long Rest is 4 hours of motionless stillness, fully aware.") },
       { lv: 1, id: "past-life", name: L("Knowledge from a Past Life (Wiedza z poprzedniego życia)", "Knowledge from a Past Life"),
         desc: (c) => L(`Biegłość w jednej dowolnej umiejętności. Gdy oblejesz test cechy, możesz dodać 1k6 do k20 — ${c.pb}× na długi odpoczynek.`, `Proficiency in one skill of your choice. When you fail an ability check you can add 1d6 to the d20 — ${c.pb}× per long rest.`) },
       { lv: 1, id: "endurance", name: L("Strange Endurance (Dziwna wytrzymałość)", "Strange Endurance"),
@@ -348,7 +348,7 @@ Object.assign(SPECIES, {
   },
 });
 
-export const CREATURE_TYPES = { humanoid: L("Humanoid (humanoid)", "Humanoid"), fey: L("Fey (istota baśniowa)", "Fey") };
+export const CREATURE_TYPES = { humanoid: L("Humanoid", "Humanoid"), fey: L("Istota czarodziejska (Fey)", "Fey") };
 
 /** Species details for the chosen options: speed, darkvision, resistances, spells with their uses. */
 export function speciesTraits(sp, c) {

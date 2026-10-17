@@ -44,7 +44,7 @@ export const barbarian = {
       { label: { pl: "Weapon Mastery", en: "Weapon Mastery" }, value: String(mastery(c.level)),
         note: { pl: "rodzaje broni z mistrzostwem", en: "kinds of weapons with mastery" } },
     ];
-    if (c.level >= 5) rows.push({ label: { pl: "Ataki w akcji Attack", en: "Attacks per Attack action" }, value: "2", note: { pl: "Extra Attack", en: "Extra Attack" } });
+    if (c.level >= 5) rows.push({ label: { pl: "Ataki w akcji Atak", en: "Attacks per Attack action" }, value: "2", note: { pl: "Extra Attack", en: "Extra Attack" } });
     return rows;
   },
 
@@ -60,7 +60,7 @@ export const barbarian = {
       desc: (c) => ({ pl: `Używasz właściwości mistrzowskich ${mastery(c.level)} rodzajów broni do walki wręcz (wybór w kroku 5). Po długim odpoczynku możesz zmienić jeden wybór.`,
         en: `You use the mastery properties of ${mastery(c.level)} kinds of melee weapons. After a long rest you can swap one choice.` }) },
     { lv: 2, id: "danger-sense", name: { pl: "Danger Sense (Wyczucie zagrożenia)", en: "Danger Sense" },
-      desc: () => ({ pl: "Przewaga na rzuty obronne ZRĘ, chyba że jesteś Incapacitated.", en: "Advantage on DEX saving throws unless you're Incapacitated." }) },
+      desc: () => ({ pl: "Przewaga na rzuty obronne ZRĘ, chyba że jesteś obezwładniony.", en: "Advantage on DEX saving throws unless you're Incapacitated." }) },
     { lv: 2, id: "reckless", name: { pl: "Reckless Attack (Lekkomyślny atak)", en: "Reckless Attack" },
       desc: () => ({ pl: "Przy pierwszym ataku w turze decydujesz: do początku Twojej następnej tury masz Przewagę na ataki SIŁ, ale ataki na Ciebie też mają Przewagę.",
         en: "On your first attack of the turn, decide: until your next turn you have Advantage on STR attacks, but attacks against you have Advantage too." }) },
@@ -72,7 +72,7 @@ export const barbarian = {
     { lv: 4, id: "asi", name: { pl: "Feat albo +2 do cech (ASI)", en: "Feat or Ability Score Improvement" },
       desc: () => ({ pl: "Wybierasz feat albo +2 do jednej cechy (lub +1 do dwóch). Zmień cechy w edycji.", en: "Pick a feat or +2 to one ability (or +1 to two). Update scores in the editor." }) },
     { lv: 5, id: "extra-attack", name: { pl: "Extra Attack (Dodatkowy atak)", en: "Extra Attack" },
-      desc: () => ({ pl: "Akcja Attack daje 2 ataki zamiast jednego.", en: "The Attack action gives you two attacks instead of one." }) },
+      desc: () => ({ pl: "Akcja Atak daje 2 ataki zamiast jednego.", en: "The Attack action gives you two attacks instead of one." }) },
     { lv: 5, id: "fast-movement", name: { pl: "Fast Movement (Szybki ruch)", en: "Fast Movement" },
       desc: () => ({ pl: "+10 ft prędkości, gdy nie nosisz ciężkiej zbroi.", en: "+10 ft speed while not wearing heavy armor." }) },
   ],
@@ -93,7 +93,7 @@ export const barbarian = {
         { lv: 3, id: "animal-speaker", name: { pl: "Animal Speaker", en: "Animal Speaker" },
           desc: () => ({ pl: "Rzucasz Beast Sense i Speak with Animals jako rytuały (na MĄD).", en: "You cast Beast Sense and Speak with Animals as rituals (WIS)." }) },
         { lv: 3, id: "rage-wilds", name: { pl: "Rage of the Wilds (Szał dziczy)", en: "Rage of the Wilds" },
-          desc: () => ({ pl: "Przy każdym Szale wybierasz: Niedźwiedź (odporność na wszystko poza mocą, nekrotycznymi, psychicznymi i promienistymi), Orzeł (Dash i Disengage w tej samej akcji bonusowej, potem oba jako akcja bonusowa), Wilk (sojusznicy mają Przewagę na ataki we wrogów obok Ciebie).",
+          desc: () => ({ pl: "Przy każdym Szale wybierasz: Niedźwiedź (odporność na wszystko poza mocą, nekrotycznymi, psychicznymi i promienistymi), Orzeł (Sprint i Odskok w tej samej akcji bonusowej, potem oba jako akcja bonusowa), Wilk (sojusznicy mają Przewagę na ataki we wrogów obok Ciebie).",
             en: "Each time you rage, pick: Bear (resist everything but force, necrotic, psychic and radiant), Eagle (Dash and Disengage with that bonus action, then both as a bonus action), Wolf (allies have Advantage on attacks against enemies next to you)." }) },
       ],
     },

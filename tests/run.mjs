@@ -16,7 +16,7 @@ import * as MERGE from "../js/sync/merge.js";
 import * as PARTY from "../js/sync/partylogic.js";
 import { stepBlockers, saveState } from "../js/rules/checks.js";
 import * as EQ from "../js/rules/equipment.js";
-import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS } from "../js/rules/index.js";
+import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS, SPECIES as ALL_SPECIES } from "../js/rules/index.js";
 import { inAppBrowser, phoneKind, androidBrowser, installOrder } from "../js/inapp.js";
 import { readFileSync, existsSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
@@ -1804,6 +1804,35 @@ test("0.42 Glossary on the sheet: each pattern finds its own name; longer terms 
   eq(found("Ritual Caster lets you cast a ritual. Behind Half Cover while Restrained.", "en"), ["ritual", "cover", "restrained"]);
   eq(found("Za osłoną, w trudnym terenie, z Przewagą.", "pl"), ["cover", "terrain", "adv"]);
   eq(found("Short Rest or Long Rest", "en"), ["short", "long"]);
+});
+test("0.42.1 Polish texts: actions, conditions and senses in Polish; English only as a name in brackets", () => {
+  // English game terms that must not appear in Polish text (outside brackets). Feature names stay English.
+  const EN = /\b(Attack|Dash|Disengage|Dodge|Help|Hide|Influence|Ready|Search|Study|Utilize|Grapple|Shove|Unarmed Strikes?|Blinded|Charmed|Deafened|Exhaustion|Frightened|Grappled|Incapacitated|Invisible|Paralyzed|Petrified|Poisoned|Prone|Restrained|Stunned|Unconscious|Bloodied|Darkvision|Blindsight|Truesight|Tremorsense|Heroic Inspiration|Large|Huge|Finesse|Loading)\b/;
+  const NAMES = /\b(Sneak|Reckless|Extra|Opportunity|Uncanny|Steady|Cunning|Patient|Large Form|Healing Light|Shadow|Light Domain|Psychic|Magic)\b ?\w*/g; // parts of English feature names
+  const bad = new Set();
+  const check = (where, s) => { const bare = s.replace(/\([^()]*\)/g, "").replace(NAMES, ""); if (EN.test(bare)) bad.add(`${where}: ${s.slice(0, 90)}`); };
+  const walk = (where, x, seen = new Set()) => {
+    if (!x || typeof x !== "object" || seen.has(x)) return;
+    seen.add(x);
+    if (typeof x.pl === "string") check(where, x.pl);
+    if (Array.isArray(x.pl)) x.pl.forEach((s) => typeof s === "string" && check(where, s));
+    for (const v of Object.values(x)) walk(where, v, seen);
+  };
+  for (const [cls, def] of Object.entries(ALL_CLASSES)) for (const sub of ["", ...Object.keys(def.subclasses || {})]) {
+    const ch = make({ classId: cls, level: 5, subclass: sub });
+    const c = run(ch);
+    for (const k of ["classFeatures", "subclassFeatures", "summary", "resources"]) walk(`${cls}/${sub} ${k}`, c[k]);
+    walk(`${cls}/${sub} turn`, turnOptions(c, ch));
+  }
+  for (const sp of Object.keys(ALL_SPECIES)) { const c = run(make({ speciesId: sp, classId: "fighter", level: 5 })); walk(`${sp} species`, c.speciesFeatures); }
+  for (const g of TERMS) { check(`term ${g.id}`, g.text.pl); }
+  for (const [k, v] of Object.entries(LANG_PL)) if (typeof v === "string") check(`pl.js ${k}`, v);
+  eq([...bad], []);
+  // Glossary titles of actions and conditions: Polish name first, English in brackets.
+  for (const g of TERMS.filter((g) => g.cat === "action" || g.cat === "condition")) eq(/^\p{Lu}[\p{Ll} ]+ \([A-Z][A-Za-z ]+\)$/u.test(g.title.pl), true, g.title.pl);
+  const found = (txt) => [...txt.matchAll(termRegex("pl"))].map((m) => TERM_LINKS[+Object.keys(m.groups).find((k) => m.groups[k] !== undefined).slice(1)].id);
+  eq(found("Sprint, Odskok albo Ukrycie jako akcja bonusowa."), ["dash", "disengage", "hide", "bonus"]);
+  eq(found("Cel zostaje powalony, a potem jest pochwycony i zauroczony."), ["prone", "grappled", "charmed"]);
 });
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

@@ -8,21 +8,21 @@ export const DAMAGE = { b: L("obuchowe", "Bludgeoning"), p: L("kłute", "Piercin
 
 /** Mastery properties (usable only with a feature such as Weapon Mastery). */
 export const MASTERY = {
-  cleave: { name: L("Cleave (Rozpłatanie)", "Cleave"),
+  cleave: { name: L("Rozpłatanie (Cleave)", "Cleave"),
     desc: (dc) => L("Po trafieniu atakiem wręcz atakujesz drugą istotę w 5 ft od pierwszej i w zasięgu; przy trafieniu obrażenia bez modyfikatora cechy (chyba że ujemny). Raz na turę.", "After a melee hit, attack a second creature within 5 ft of the first and in reach; on a hit it takes the weapon's damage without your ability modifier (unless negative). Once per turn.") },
-  graze: { name: L("Graze (Draśnięcie)", "Graze"),
+  graze: { name: L("Draśnięcie (Graze)", "Graze"),
     desc: () => L("Gdy chybisz, cel i tak dostaje obrażenia równe modyfikatorowi cechy użytej do ataku.", "When you miss, the target still takes damage equal to the ability modifier you attacked with.") },
-  nick: { name: L("Nick (Nacięcie)", "Nick"),
-    desc: () => L("Dodatkowy atak bronią lekką wykonujesz w ramach akcji Attack, a nie akcją bonusową (raz na turę).", "Make the extra Light-weapon attack as part of the Attack action instead of a Bonus Action (once per turn).") },
-  push: { name: L("Push (Odepchnięcie)", "Push"),
+  nick: { name: L("Nacięcie (Nick)", "Nick"),
+    desc: () => L("Dodatkowy atak bronią lekką wykonujesz w ramach akcji Atak, a nie akcją bonusową (raz na turę).", "Make the extra Light-weapon attack as part of the Attack action instead of a Bonus Action (once per turn).") },
+  push: { name: L("Odepchnięcie (Push)", "Push"),
     desc: () => L("Po trafieniu odpychasz cel Duży lub mniejszy o 10 ft od siebie.", "On a hit, push a Large or smaller target 10 ft straight away from you.") },
-  sap: { name: L("Sap (Osłabienie)", "Sap"),
+  sap: { name: L("Osłabienie (Sap)", "Sap"),
     desc: () => L("Po trafieniu cel ma Utrudnienie na swój następny atak przed Twoją kolejną turą.", "On a hit, the target has Disadvantage on its next attack roll before your next turn.") },
-  slow: { name: L("Slow (Spowolnienie)", "Slow"),
+  slow: { name: L("Spowolnienie (Slow)", "Slow"),
     desc: () => L("Po trafieniu z obrażeniami prędkość celu spada o 10 ft do początku Twojej tury (nie więcej niż 10 ft łącznie).", "On a damaging hit, the target's Speed drops by 10 ft until the start of your next turn (10 ft at most in total).") },
-  topple: { name: L("Topple (Przewrócenie)", "Topple"),
-    desc: (dc) => L(`Po trafieniu cel rzuca KON przeciw DC ${dc} albo pada (Prone).`, `On a hit, the target makes a CON save against DC ${dc} or falls Prone.`) },
-  vex: { name: L("Vex (Nękanie)", "Vex"),
+  topple: { name: L("Przewrócenie (Topple)", "Topple"),
+    desc: (dc) => L(`Po trafieniu cel rzuca KON przeciw DC ${dc} albo zostaje powalony.`, `On a hit, the target makes a CON save against DC ${dc} or falls Prone.`) },
+  vex: { name: L("Nękanie (Vex)", "Vex"),
     desc: () => L("Po trafieniu z obrażeniami masz Przewagę na następny atak w ten cel przed końcem Twojej następnej tury.", "On a damaging hit, you have Advantage on your next attack against that target before the end of your next turn.") },
 };
 

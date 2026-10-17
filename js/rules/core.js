@@ -106,7 +106,7 @@ export const FEATS = {
   musician: {
     source: "phb2024", category: "origin", name: { pl: "Musician (Muzyk)", en: "Musician" },
     toolPicks: { count: 3, from: ["instrument"] },
-    desc: { pl: "Biegłość w 3 instrumentach. Po odpoczynku możesz zagrać i dać Heroic Inspiration tylu sojusznikom, ile wynosi premia z biegłości.",
+    desc: { pl: "Biegłość w 3 instrumentach. Po odpoczynku możesz zagrać i dać bohaterską inspirację tylu sojusznikom, ile wynosi premia z biegłości.",
       en: "Proficiency with 3 instruments. After a rest you can play and give Heroic Inspiration to allies equal to your proficiency bonus." },
   },
   "savage-attacker": {

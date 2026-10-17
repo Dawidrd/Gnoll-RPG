@@ -25,17 +25,17 @@ export const monk = {
           desc: (c) => ({ pl: `Raz na turę po trafieniu ciosem, za 1 FP: dodatkowe 1${martialDie(c.level)} ${signed(c.mods.wis)} obrażeń nekrotycznych.`,
             en: `Once per turn after an unarmed hit, spend 1 FP: an extra 1${martialDie(c.level)} ${signed(c.mods.wis)} necrotic damage.` }) },
         { lv: 3, id: "hand-of-healing", name: { pl: "Hand of Healing (Dłoń uzdrowienia)", en: "Hand of Healing" },
-          desc: (c) => ({ pl: `Akcja Magic za 1 FP: leczysz istotę, której dotykasz, o 1${martialDie(c.level)} ${signed(c.mods.wis)} HP. Możesz też zastąpić tym jeden cios z Flurry of Blows.`,
+          desc: (c) => ({ pl: `Akcja Magia za 1 FP: leczysz istotę, której dotykasz, o 1${martialDie(c.level)} ${signed(c.mods.wis)} HP. Możesz też zastąpić tym jeden cios z Flurry of Blows.`,
             en: `Magic action, 1 FP: heal a creature you touch for 1${martialDie(c.level)} ${signed(c.mods.wis)} HP. You can also swap one Flurry of Blows strike for this.` }) },
         { lv: 3, id: "implements", name: { pl: "Implements of Mercy (Narzędzia miłosierdzia)", en: "Implements of Mercy" },
-          desc: () => ({ pl: "Biegłość w Insight i Medicine oraz w zestawie zielarskim.", en: "Proficiency in Insight, Medicine and the Herbalism Kit." }) },
+          desc: () => ({ pl: "Biegłość we Wnikliwości i Medycynie oraz w zestawie zielarskim.", en: "Proficiency in Insight, Medicine and the Herbalism Kit." }) },
       ],
     },
     shadow: {
       source: "phb2024", name: { pl: "Warrior of Shadow (Wojownik Cienia)", en: "Warrior of Shadow" },
       features: [
         { lv: 3, id: "shadow-arts", name: { pl: "Shadow Arts (Sztuki cienia)", en: "Shadow Arts" },
-          desc: () => ({ pl: "Za 1 FP rzucasz czar Darkness bez komponentów; widzisz przez tę ciemność i możesz ją przesuwać. Dostajesz Darkvision 60 ft (lub +60 ft) i sztuczkę Minor Illusion.",
+          desc: () => ({ pl: "Za 1 FP rzucasz czar Darkness bez komponentów; widzisz przez tę ciemność i możesz ją przesuwać. Dostajesz widzenie w ciemności 60 ft (lub +60 ft) i sztuczkę Minor Illusion.",
             en: "Spend 1 FP to cast Darkness without components; you see through it and can move it. You gain Darkvision 60 ft (or +60 ft) and the Minor Illusion cantrip." }) },
       ],
     },
@@ -89,7 +89,7 @@ export const monk = {
         note: c.unarmed ? { pl: `${c.unarmed.pl[0].toUpperCase() + c.unarmed.pl.slice(1)}; także jako akcja bonusowa`, en: `${c.unarmed.en[0].toUpperCase() + c.unarmed.en.slice(1)}; also as a bonus action` }
           : { pl: "Obuchowe; także jako akcja bonusowa", en: "Bludgeoning; also as a bonus action" } },
     ];
-    if (c.level >= 5) rows.push({ label: { pl: "Ataki w akcji Attack", en: "Attacks per Attack action" }, value: "2", note: { pl: "Extra Attack", en: "Extra Attack" } });
+    if (c.level >= 5) rows.push({ label: { pl: "Ataki w akcji Atak", en: "Attacks per Attack action" }, value: "2", note: { pl: "Extra Attack", en: "Extra Attack" } });
     if (c.level >= 2) rows.push({ label: { pl: "DC technik", en: "Focus save DC" }, value: String(dc),
       note: { pl: "Rzuty obronne przeciw Twoim technikom", en: "Saves against your Focus techniques" } });
     return rows;
@@ -98,14 +98,14 @@ export const monk = {
   features: [
     { lv: 1, id: "martial-arts", name: { pl: "Martial Arts (Sztuki walki)", en: "Martial Arts" },
       desc: (c) => ({
-        pl: `Ciosy bez broni i bronie mnisze używają ZRĘ zamiast SIŁ, a obrażenia to kość ${martialDie(c.level)}. Po akcji Attack możesz wyprowadzić dodatkowy cios jako akcję bonusową. Działa bez zbroi i tarczy.`,
+        pl: `Ciosy bez broni i bronie mnisze używają ZRĘ zamiast SIŁ, a obrażenia to kość ${martialDie(c.level)}. Po akcji Atak możesz wyprowadzić dodatkowy cios jako akcję bonusową. Działa bez zbroi i tarczy.`,
         en: `Unarmed strikes and Monk weapons can use DEX instead of STR and deal a ${martialDie(c.level)} die. After the Attack action you can make one extra unarmed strike as a bonus action. Works without armor or shield.`,
       }) },
     { lv: 1, id: "unarmored-defense", name: { pl: "Unarmored Defense (Obrona bez zbroi)", en: "Unarmored Defense" },
       desc: () => ({ pl: "Bez zbroi i tarczy AC = 10 + ZRĘ + MĄD.", en: "Without armor or a shield your AC equals 10 + DEX + WIS." }) },
     { lv: 2, id: "focus", name: { pl: "Monk's Focus (Skupienie)", en: "Monk's Focus" },
       desc: (c) => ({
-        pl: `Masz ${c.level} Focus Points; wracają po krótkim odpoczynku. Flurry of Blows: za 1 FP dwa ciosy jako akcja bonusowa. Patient Defense: Disengage jako akcja bonusowa za darmo, a za 1 FP także Dodge. Step of the Wind: Dash jako akcja bonusowa za darmo, a za 1 FP także Disengage i dwa razy dłuższy skok.`,
+        pl: `Masz ${c.level} Focus Points; wracają po krótkim odpoczynku. Flurry of Blows: za 1 FP dwa ciosy jako akcja bonusowa. Patient Defense: Odskok jako akcja bonusowa za darmo, a za 1 FP także Unik. Step of the Wind: Sprint jako akcja bonusowa za darmo, a za 1 FP także Odskok i dwa razy dłuższy skok.`,
         en: `You have ${c.level} Focus Points, regained on a short rest. Flurry of Blows: 1 FP for two unarmed strikes as a bonus action. Patient Defense: free Disengage as a bonus action, or Disengage and Dodge for 1 FP. Step of the Wind: free Dash as a bonus action, or Dash and Disengage with doubled jump distance for 1 FP.`,
       }) },
     { lv: 2, id: "unarmored-movement", name: { pl: "Unarmored Movement (Ruch bez zbroi)", en: "Unarmored Movement" },
@@ -127,10 +127,10 @@ export const monk = {
     { lv: 4, id: "slow-fall", name: { pl: "Slow Fall (Powolny upadek)", en: "Slow Fall" },
       desc: (c) => ({ pl: `Reakcja przy upadku: obrażenia mniejsze o ${5 * c.level}.`, en: `Reaction when you fall: reduce the damage by ${5 * c.level}.` }) },
     { lv: 5, id: "extra-attack", name: { pl: "Extra Attack (Dodatkowy atak)", en: "Extra Attack" },
-      desc: () => ({ pl: "Akcja Attack daje 2 ataki zamiast jednego.", en: "The Attack action gives you two attacks instead of one." }) },
+      desc: () => ({ pl: "Akcja Atak daje 2 ataki zamiast jednego.", en: "The Attack action gives you two attacks instead of one." }) },
     { lv: 5, id: "stunning-strike", name: { pl: "Stunning Strike (Ogłuszający cios)", en: "Stunning Strike" },
       desc: (c) => ({
-        pl: `Raz na turę po trafieniu, za 1 FP: wróg rzuca KON przeciw DC ${8 + c.mods.wis + c.pb}. Porażka = Stunned do początku Twojej następnej tury. Sukces = połowa prędkości i Przewaga na następny atak w niego.`,
+        pl: `Raz na turę po trafieniu, za 1 FP: wróg rzuca KON przeciw DC ${8 + c.mods.wis + c.pb}. Porażka = ogłuszony do początku Twojej następnej tury. Sukces = połowa prędkości i Przewaga na następny atak w niego.`,
         en: `Once per turn after a hit, spend 1 FP: the target makes a CON save against DC ${8 + c.mods.wis + c.pb}. Fail = Stunned until the start of your next turn. Success = half speed and Advantage on the next attack against it.`,
       }) },
   ],
