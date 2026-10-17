@@ -39,6 +39,13 @@ export const profBonus = (level) => Math.ceil(level / 4) + 1;
 export const signed = (n) => (n < 0 ? "−" + Math.abs(n) : "+" + n);
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
+/** Resource dots: how many are left after tapping dot i (0-based) when `left` are left. Tapping the last full dot empties it. */
+export const pipTarget = (left, i) => (left === i + 1 ? i : i + 1);
+/** When a resource comes back: "short", "long", or "partial" (a short rest gives some back, a long rest all). */
+export const rechargeKey = (r) => (r.shortRegain ? "partial" : r.recharge);
+/** 0.32: ask "Use 1× …?" before spending, unless the player switched it off for this character (ch.askSpend === false). */
+export const asksBeforeSpend = (ch) => ch?.askSpend !== false;
+
 /** Average hit points: full die at level 1, then the rounded-up average per level. */
 export function averageHp(hitDie, level, conMod, extraPerLevel = 0) {
   const first = hitDie + conMod;

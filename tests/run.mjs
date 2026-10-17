@@ -23,6 +23,7 @@ import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
 import { RELEASES, latest, isUnseen } from "../js/releases.js";
 import { CONFIG } from "../js/config.js";
+import { pipTarget, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1498,6 +1499,16 @@ test("news: the card opens for returning players until they saw this version", (
   eq(STATS.screenPath("#/news"), "/news");
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   eq([sw.includes("./js/releases.js"), sw.includes("./js/views/news.js")], [true, true], "offline");
+});
+test("resource dots: tapping spends or gives back; spending asks unless switched off", () => {
+  // 3 of 4 left: tapping dot 2 spends one, dot 1 spends two, dot 3 (the last full one) spends it, dot 4 gives one back
+  eq([pipTarget(3, 1), pipTarget(3, 0), pipTarget(3, 2), pipTarget(3, 3)], [2, 1, 2, 4]);
+  eq(pipTarget(1, 0), 0, "the only full dot empties");
+  eq([rechargeKey({ recharge: "short" }), rechargeKey({ recharge: "long" }), rechargeKey({ recharge: "long", shortRegain: 1 })], ["short", "long", "partial"]);
+  eq([asksBeforeSpend({}), asksBeforeSpend({ askSpend: true }), asksBeforeSpend({ askSpend: false })], [true, true, false], "old characters ask");
+  for (const k of ["res.spendAsk", "res.spendYes", "res.back.short", "res.back.long", "res.back.partial", "res.dontAsk", "res.askToggle"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+  const ch = normalize(Object.assign(blankCharacter(), { askSpend: false }));
+  eq(ch.askSpend, false, "the setting survives loading");
 });
 
 let failed = 0;

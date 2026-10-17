@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.32.0", date: "2026-10-17",
+    points: [
+      { pl: "Kliknięcie kropki zasobu (np. Bardic Inspiration, miejsca na czary) najpierw pyta „Użyć 1×…?” i przypomina, kiedy zasób wraca.", en: "Tapping a resource dot (e.g. Bardic Inspiration, spell slots) first asks “Use 1×…?” and reminds you when it comes back." },
+      { pl: "Oddanie kropki działa od razu, bez pytania.", en: "Giving a dot back works at once, without asking." },
+      { pl: "Pytanie można wyłączyć dla postaci: „Nie pytaj więcej” albo przełącznik pod zasobami.", en: "You can switch the question off for a character: “Don't ask again” or the switch under resources." },
+    ],
+  },
+  {
     version: "0.31.0", date: "2026-10-17",
     points: [
       { pl: "Notatki drużyny są podpisane imieniem postaci, np. „Grok (Bartek)”, a MG bez postaci podpisuje się „MG”.", en: "Party notes are signed with the character's name, e.g. “Grok (Bart)”, and a GM without a character signs as “GM”." },

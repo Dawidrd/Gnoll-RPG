@@ -172,6 +172,7 @@ td b { color: #f1e6d1; }
 .resrow .lbl { font-family: var(--f-ui); font-size: .95rem; }
 .resrow .lbl small { display: block; color: var(--ash); font-size: .8rem; }
 .pips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.resrow .confirm.spend { grid-column: 1 / -1; padding: 8px 10px; border: 1px solid var(--gold-dim); border-radius: var(--r); }
 .pip { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--gold-dim); background: transparent; padding: 0; cursor: pointer; }
 .pip.on { background: radial-gradient(circle at 40% 35%, #f0cf82, var(--gold) 55%, var(--gold-dim)); border-color: var(--gold); }
 .death { display: grid; gap: 8px; border: 1px dashed var(--blood); padding: 10px 12px; border-radius: var(--r); }

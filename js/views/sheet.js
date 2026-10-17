@@ -7,7 +7,7 @@ import { msg } from "./msg.js";
 import { levelChoiceUI, levelChoiceDone } from "./levelchoice.js";
 import { trimSkills } from "../rules/skills.js";
 import { paperLocked, genderText } from "../rules/identity.js";
-import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie } from "../rules/core.js";
+import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie, pipTarget, rechargeKey, asksBeforeSpend } from "../rules/core.js";
 import { glossify } from "../glossary.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
@@ -116,6 +116,7 @@ export function renderSheet(root, go, id, tab) {
       const resCard = h("section", { cls: "card" }, [
         h("h4", { text: t("res.title") }),
         c.resources.length ? h("div", { cls: "res" }, c.resources.map(resRow)) : h("p", { cls: "hint", text: t("res.none") }),
+        c.resources.length ? askToggle() : null,
         restControls(),
       ]);
 
@@ -494,13 +495,33 @@ export function renderSheet(root, go, id, tab) {
     }
 
     // --- pieces -----------------------------------------------------------
+    // Spending asks first (unless switched off for this character); giving a dot back never asks.
+    let openAsk = null;
     function resRow(r) {
       const left = r.max - r.used;
+      const box = h("div", { cls: "confirm spend" });
+      const set = (nowLeft) => { ch.used = { ...ch.used, [r.id]: r.max - nowLeft }; save(); };
+      const ask = (nowLeft) => {
+        if (openAsk && openAsk !== box) openAsk.classList.remove("open");
+        const quiet = h("input", { type: "checkbox" });
+        box.replaceChildren(
+          h("span", { cls: "small", text: t("res.spendAsk", { n: left - nowLeft, name: tr(r.name), when: t("res.back." + rechargeKey(r)) }) }),
+          h("button", { type: "button", cls: "btn gold", text: t("res.spendYes"), onclick: () => { if (quiet.checked) ch.askSpend = false; set(nowLeft); } }),
+          h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") }),
+          h("label", { cls: "small check" }, [quiet, " ", t("res.dontAsk")]));
+        box.classList.add("open"); openAsk = box;
+      };
       const pips = h("div", { cls: "pips" }, Array.from({ length: r.max }, (_, i) => h("button", {
         type: "button", cls: "pip" + (i < left ? " on" : ""), "aria-label": `${tr(r.name)} ${i + 1}/${r.max}`,
-        onclick: () => { const nowLeft = left === i + 1 ? i : i + 1; ch.used = { ...ch.used, [r.id]: r.max - nowLeft }; save(); },
+        onclick: () => { const nowLeft = pipTarget(left, i); if (nowLeft < left && asksBeforeSpend(ch)) ask(nowLeft); else set(nowLeft); },
       })));
-      return h("div", { cls: "resrow" }, [h("span", { cls: "lbl" }, [tr(r.name), h("small", { text: `${left} / ${r.max} · ${t(r.shortRegain ? "res.recharge.partial" : "res.recharge." + r.recharge)}` })]), pips]);
+      return h("div", { cls: "resrow" }, [h("span", { cls: "lbl" }, [tr(r.name), h("small", { text: `${left} / ${r.max} · ${t("res.recharge." + rechargeKey(r))}` })]), pips, box]);
+    }
+    /** Card setting: ask before spending a resource (on by default). */
+    function askToggle() {
+      return h("label", { cls: "small check" }, [
+        h("input", { type: "checkbox", checked: asksBeforeSpend(ch), onchange: (e) => { ch.askSpend = e.target.checked; save(); } }),
+        " ", t("res.askToggle")]);
     }
 
     function restControls() {
