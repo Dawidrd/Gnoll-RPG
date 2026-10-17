@@ -30,11 +30,20 @@ export const sfxOn = () => on;
 let ctx = null;
 const buffers = new Map(); // name -> AudioBuffer, or null when the file is missing
 const playing = new Set();
+const live = new Map(); // name -> stop(), for sounds that are playing right now
+
+/** Silence everything at once (0.40.2): switching sound off stops what is playing, not just what comes next. */
+export function stopAll() {
+  for (const stop of [...live.values()]) { try { stop(); } catch { /* already stopped */ } }
+  live.clear();
+  playing.clear();
+  stopSong();
+}
 
 /** Switch on or off (from a tap: that tap also unlocks sound on iPhone). Returns false when the device could not remember it. */
 export function setSfx(next) {
   on = !!next;
-  if (on) unlock();
+  if (on) unlock(); else stopAll();
   return storage.set(KEY, on ? "1" : "0");
 }
 
@@ -67,23 +76,26 @@ async function load(name) {
 export async function play(name) {
   if (!mayPlay({ on, hidden: typeof document !== "undefined" && document.hidden, playing, name })) return;
   playing.add(name);
-  const done = () => playing.delete(name);
+  const done = () => { playing.delete(name); live.delete(name); };
   try {
     if (!ctx) unlock();
     if (ctx) {
       if (ctx.state === "suspended") await ctx.resume().catch(() => {});
       const buf = await load(name);
-      if (!buf) return done();
+      if (!buf || !on) return done(); // switched off while the file was loading
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(ctx.destination);
       src.onended = done;
+      live.set(name, () => src.stop());
       src.start(0);
     } else {
       // Older browsers without Web Audio.
       const a = new Audio(sfxFile(name));
       a.onended = a.onerror = done;
+      live.set(name, () => { a.pause(); done(); });
       await a.play().catch(done);
+      if (!on) a.pause(); // switched off while it was starting
     }
   } catch { done(); }
 }

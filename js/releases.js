@@ -2,6 +2,12 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.40.2", date: "2026-10-17",
+    points: [
+      { pl: "Wyłączenie dźwięków (🔇) od razu ucisza też dźwięk, który właśnie gra.", en: "Turning sound off (🔇) now also silences a sound that is already playing." },
+    ],
+  },
+  {
     version: "0.40.1", date: "2026-10-17",
     points: [
       { pl: "Efekty dźwiękowe mają już swoje dźwięki: atak, Szał, Eldritch Blast i spadek do 0 HP. Grają też bez internetu.", en: "Sound effects now have their sounds: attack, Rage, Eldritch Blast and dropping to 0 HP. They work offline too." },

@@ -1689,6 +1689,22 @@ test("0.39.2 party portraits: the same picture element is kept across redraws un
   eq(made, 3);
 });
 
+test("0.40.2 switching sound off stops the sounds that are already playing (and the song)", () => {
+  const made = [];
+  globalThis.Audio = class { constructor(src) { this.src = src; this.paused = true; made.push(this); } play() { this.paused = false; return Promise.resolve(); } pause() { this.paused = true; } };
+  try {
+    SFX.setSfx(true);
+    SFX.play("attack");
+    SFX.playSong();
+    eq(made.map((a) => a.paused), [false, false]);
+    SFX.setSfx(false);
+    eq(made.map((a) => a.paused), [true, true]); // both go quiet at once
+    eq(SFX.songOn(), false);
+    SFX.play("attack"); // and nothing new starts while off
+    eq(made.length, 2);
+  } finally { SFX.setSfx(false); delete globalThis.Audio; mem.delete("gnoll.sfx"); }
+});
+
 test("0.40 sound effects: which pick makes which sound, when it may play, files match the offline list", () => {
   eq(SFX.soundFor({ spell: "eldritch-blast", attack: true }), "eldritch-blast");
   eq(SFX.soundFor({ spell: "fire-bolt" }), ""); // other spells quiet for now
