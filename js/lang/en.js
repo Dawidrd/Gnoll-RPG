@@ -541,6 +541,7 @@ export default {
   "err.featSpells": "Level {n}: {name} — a spell isn't allowed or there are too many (limit {count}).",
   "lvl.featFixedSpells": "Always prepared from this feat: {list}.",
   "lvl.newCircle": "New level {n} slots: you can prepare spells of that level.",
+  "lvl.newTag": "New",
   "spell.alwaysTag": "always",
   "opt.needLevel": "from level {n}",
   "opt.needPact": "requires Pact of the {pact}",

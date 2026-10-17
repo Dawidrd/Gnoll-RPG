@@ -541,6 +541,7 @@ export default {
   "err.featSpells": "Poziom {n}: {name} — czar spoza dozwolonych albo za dużo czarów (limit {count}).",
   "lvl.featFixedSpells": "Zawsze przygotowane z tego featu: {list}.",
   "lvl.newCircle": "Nowe sloty {n}. kręgu: możesz przygotować czary tego kręgu.",
+  "lvl.newTag": "Nowe",
   "spell.alwaysTag": "zawsze",
   "opt.needLevel": "od {n}. poziomu",
   "opt.needPact": "wymaga Pact of the {pact}",

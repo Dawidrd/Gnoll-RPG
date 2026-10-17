@@ -5,6 +5,7 @@
   --bone: #e4d8c2; --bone-dim: #a99b8b; --ash: #8a7d77;
   --gold: #caa24f; --gold-dim: #86692f;
   --blood: #9e1f2a; --blood-hi: #d0404a; --moss: #8fa77f;
+  --sky: #6ea8e0;
   --f-black: "Cormorant Unicase", Georgia, serif; /* character names */
   --f-head: "IM Fell English SC", Georgia, serif;
   --f-body: "Alegreya", Georgia, "Times New Roman", serif;
@@ -343,6 +344,11 @@ details summary { cursor: pointer; }
 .spellrow.sheet { grid-template-columns: 1fr; }
 .spellrow.on .sname { color: var(--gold); }
 .spellrow input[type="checkbox"] { margin-top: 4px; width: 20px; height: 20px; accent-color: var(--gold); }
+/* What a level-up just opened (a new spell circle): blue frame and a "New" badge until the Spells tab is seen. */
+.newtag { display: inline-block; font: 700 .7rem var(--f-ui); letter-spacing: .06em; text-transform: uppercase; color: #0b1622; background: var(--sky); border-radius: 999px; padding: 0 7px; vertical-align: middle; }
+.spellrow.fresh, .resrow.fresh, .newcircle { box-shadow: inset 0 0 0 1.5px var(--sky); border-radius: var(--r); background: rgba(110,168,224,.08); }
+.spellrow.fresh, .resrow.fresh { padding-left: 8px; padding-right: 8px; }
+.newcircle { padding: 6px 10px; font-family: var(--f-ui); font-size: .92rem; }
 .spellrow details summary { cursor: pointer; list-style: none; }
 .spellrow details summary::-webkit-details-marker { display: none; }
 .spellrow details summary::before { content: "▸ "; color: var(--ash); }

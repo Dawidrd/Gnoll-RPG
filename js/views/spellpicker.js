@@ -18,6 +18,9 @@ export function spellTags(s) {
   ];
 }
 
+/** "New" badge for what a level-up just opened (a spell circle, its slots and spells). */
+export const newBadge = () => h("small", { cls: "newtag", text: t("lvl.newTag") });
+
 /** Facts and description of one spell, for the character's level. */
 export function spellBody(s, c) {
   const f = spellFacts(s, lang());
@@ -35,7 +38,8 @@ export function spellBody(s, c) {
  * pick: { id, label, count, options: [ids], chosen: [ids] }
  * onChange(ids) is called with the new list.
  */
-export function spellPickUI({ pick, c, onChange, title }) {
+/** fresh: a spell circle just opened by a level-up; its spells are marked "New". */
+export function spellPickUI({ pick, c, onChange, title, fresh = 0 }) {
   const chosen = pick.chosen || [];
   const full = chosen.length >= pick.count;
   const st = (filters[pick.id] ||= { q: "", circle: "all", mine: false });
@@ -55,8 +59,9 @@ export function spellPickUI({ pick, c, onChange, title }) {
       const on = chosen.includes(id);
       const box = h("input", { type: "checkbox", id: `sp-${pick.id}-${id}`.replace(/[^\w-]/g, "_"), checked: on, disabled: !on && full,
         "aria-label": tr(s.name), onchange: (e) => onChange(e.target.checked ? [...chosen, id] : chosen.filter((x) => x !== id)) });
-      return h("div", { cls: "spellrow" + (on ? " on" : "") }, [box,
-        h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), dmgTags(spellDamage(s.id, c))]), ...spellBody(s, c)])]);
+      const isNew = fresh && s.circle === fresh;
+      return h("div", { cls: "spellrow" + (on ? " on" : "") + (isNew ? " fresh" : "") }, [box,
+        h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", isNew ? newBadge() : null, ...spellTags(s), dmgTags(spellDamage(s.id, c))]), ...spellBody(s, c)])]);
     }));
     if (!ids.length) list.append(h("p", { cls: "hint", text: t("spell.none") }));
   };

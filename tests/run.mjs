@@ -24,6 +24,7 @@ import LANG_EN from "../js/lang/en.js";
 import { RELEASES, latest, isUnseen } from "../js/releases.js";
 import { CONFIG } from "../js/config.js";
 import { pipTarget, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
+import { newSpellCircle } from "../js/rules/magic.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1499,6 +1500,18 @@ test("news: the card opens for returning players until they saw this version", (
   eq(STATS.screenPath("#/news"), "/news");
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   eq([sw.includes("./js/releases.js"), sw.includes("./js/views/news.js")], [true, true], "offline");
+});
+test("level-up: the new spell circle is found (marked New until the Spells tab is seen)", () => {
+  const at = (classId, level) => run(make({ classId, level }));
+  eq(newSpellCircle(at("cleric", 2), at("cleric", 3)), 2, "Cleric 3: level 2 slots");
+  eq(newSpellCircle(at("cleric", 3), at("cleric", 4)), 0, "Cleric 4: nothing new");
+  eq(newSpellCircle(at("wizard", 4), at("wizard", 5)), 3, "Wizard 5: level 3 slots");
+  eq(newSpellCircle(at("paladin", 4), at("paladin", 5)), 2, "Paladin 5: level 2 slots");
+  eq(newSpellCircle(at("warlock", 2), at("warlock", 3)), 2, "Warlock 3: pact slots go up a level");
+  eq(newSpellCircle(at("fighter", 4), at("fighter", 5)), 0, "no spells at all");
+  eq([!!LANG_PL["lvl.newTag"], !!LANG_EN["lvl.newTag"]], [true, true]);
+  const ch = normalize(Object.assign(blankCharacter(), { newCircle: 2 }));
+  eq(ch.newCircle, 2, "the mark survives loading");
 });
 test("resource dots: tapping spends or gives back; spending asks unless switched off", () => {
   // 3 of 4 left: tapping dot 2 spends one, dot 1 spends two, dot 3 (the last full one) spends it, dot 4 gives one back

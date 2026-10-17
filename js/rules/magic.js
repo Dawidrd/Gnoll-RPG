@@ -15,6 +15,12 @@ const PICK_LABEL = {
   cantrips: L("Sztuczki", "Cantrips"), prepared: L("Przygotowane czary", "Prepared spells"), spell: L("Czary", "Spells"), book: L("Księga czarów", "Spellbook"),
 };
 
+/** The spell slot circle a level-up opens (c, cn: compute() before and after), or 0 when no new circle. */
+export function newSpellCircle(c, cn) {
+  const after = cn?.spells?.slots?.length || 0;
+  return after > (c?.spells?.slots?.length || 0) ? after : 0;
+}
+
 export function readPick(ch, p) {
   let v;
   if (p.store === "class") v = ch.spellPicks?.[p.key];

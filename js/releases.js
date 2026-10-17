@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.33.0", date: "2026-10-17",
+    points: [
+      { pl: "Przy awansie nowy krąg czarów jest podświetlony na niebiesko ze znaczkiem „Nowe” — nowe miejsca na czary i czary, które możesz teraz wybrać.", en: "When you level up, a new spell level is highlighted in blue with a “New” badge — the new spell slots and the spells you can now pick." },
+      { pl: "Podświetlenie zostaje po awansie i znika, gdy obejrzysz zakładkę Czary.", en: "The highlight stays after levelling up and goes away once you've looked at the Spells tab." },
+    ],
+  },
+  {
     version: "0.32.0", date: "2026-10-17",
     points: [
       { pl: "Kliknięcie kropki zasobu (np. Bardic Inspiration, miejsca na czary) najpierw pyta „Użyć 1×…?” i przypomina, kiedy zasób wraca.", en: "Tapping a resource dot (e.g. Bardic Inspiration, spell slots) first asks “Use 1×…?” and reminds you when it comes back." },

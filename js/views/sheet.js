@@ -11,8 +11,8 @@ import { ABILITIES, ABILITY_NAMES, signed, clamp, rollDie, pipTarget, rechargeKe
 import { glossify } from "../glossary.js";
 import { CATALYSTS } from "../rules/feats-ravenloft.js";
 import { SPELLS } from "../rules/spells.js";
-import { writePick } from "../rules/magic.js";
-import { spellPickUI, spellTags, spellBody } from "./spellpicker.js";
+import { writePick, newSpellCircle } from "../rules/magic.js";
+import { spellPickUI, spellTags, spellBody, newBadge } from "./spellpicker.js";
 import { dmgTags } from "./dmgtag.js";
 import { spellDamage } from "../rules/damage.js";
 import { classOptionUI, classOptionList } from "./classoptions.js";
@@ -28,9 +28,11 @@ const TABS = ["start", "combat", "character", "spells", "inventory", "party", "l
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
+let freshShown = 0; // the new spell circle being shown on the Spells tab (ch.newCircle is cleared on the first look)
 
 export function renderSheet(root, go, id, tab) {
-  if (id !== lastId) { lastHp = null; pending = null; lastId = id; }
+  if (id !== lastId) { lastHp = null; pending = null; lastId = id; freshShown = 0; }
+  if (tab !== "spells") freshShown = 0;
   const ch = getById(id);
   if (!ch) return go("#/");
   let c = compute(ch);
@@ -40,6 +42,8 @@ export function renderSheet(root, go, id, tab) {
 
   const save = (redraw = true) => { if (!upsert(ch)) toast(t("app.saveError")); if (redraw) draw(); };
   let editing = null; // which spell pick is open for changes on the Spells tab
+  // A spell circle opened by the last level-up: marked "New" (blue) until the Spells tab has been seen.
+  const fresh = () => ch.newCircle || freshShown || 0;
 
   function draw() {
     c = compute(ch);
@@ -230,6 +234,7 @@ export function renderSheet(root, go, id, tab) {
     }
 
     function tabSpells() {
+      if (ch.newCircle) { freshShown = ch.newCircle; delete ch.newCircle; save(false); }
       const out = [concBanner()];
       const slotRes = c.resources.filter((r) => r.slot);
       const resOf = (id) => c.resources.find((r) => r.id === id);
@@ -272,8 +277,9 @@ export function renderSheet(root, go, id, tab) {
           if ((s.circle === 0 || x.uses === "atwill") && s.conc) acts.push(h("button", { type: "button", cls: "btn small ghost", text: t("conc.start"), onclick: () => { ch.concentration = x.id; save(); } }));
           const why = [x.kind === "always" ? t("spell.always") : x.kind === "book" ? t("spell.bookRitual") : x.uses === "ritual" ? t("spell.ritualOnly") : x.uses === "slotsOrRitual" ? t("spell.slotsOrRitual")
             : x.uses === "atwill" ? (s.circle ? t("spell.noSlot") : t("spell.atWill")) : "", x.self ? t("spell.selfOnly") : ""].filter(Boolean).join(" ");
-          rows.push(h("div", { cls: "spellrow sheet" + (ch.concentration === x.id ? " on" : "") }, [
-            h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null,
+          const isNew = s.circle && s.circle === fresh();
+          rows.push(h("div", { cls: "spellrow sheet" + (ch.concentration === x.id ? " on" : "") + (isNew ? " fresh" : "") }, [
+            h("details", {}, [h("summary", {}, [h("span", { cls: "sname", text: tr(s.name) }), " ", isNew ? newBadge() : null, ...spellTags(s), x.kind === "always" ? h("small", { cls: "lvtag", text: t("spell.alwaysTag") }) : null,
               dmgTags(spellDamage(x.id, c, src.ability ? c.mods[src.ability] : null))]), ...spellBody(s, c), why ? h("p", { cls: "hint", text: why }) : null]),
             acts.length ? h("div", { cls: "row acts" }, acts) : null,
           ]));
@@ -287,7 +293,7 @@ export function renderSheet(root, go, id, tab) {
         const rule = src.id === "class" && c.spells?.changeRule === "level" ? h("p", { cls: "hint", text: t("spell.changeLevel") })
           : src.id === "class" && c.spells?.changeRule === "oneLongRest" ? h("p", { cls: "hint", text: t("spell.changeOneLongRest") }) : null;
         out.push(h("section", { cls: "blk gl" }, [...head, ...rows, edit, rule,
-          open ? spellPickUI({ pick: open, c, onChange: (ids) => { writePick(ch, open, ids); save(); } }) : null]));
+          open ? spellPickUI({ pick: open, c, fresh: fresh(), onChange: (ids) => { writePick(ch, open, ids); save(); } }) : null]));
       }
       return out;
     }
@@ -401,16 +407,17 @@ export function renderSheet(root, go, id, tab) {
 
         // 5. Spells: new cantrips and prepared spells from the class list, picked now
         const srcN = cn.spellSources.find((x) => x.id === "class");
+        const nc = newSpellCircle(c, cn);
         if (srcN) {
           const srcB = c.spellSources.find((x) => x.id === "class");
           const box = h("div", { cls: "stack" }, [h("h4", { text: t("lvl.stepSpells") }),
             h("p", { text: srcB ? t("lvl.spellCounts", { c1: c.spells.cantrips, c2: cn.spells.cantrips, p1: c.spells.prepared, p2: cn.spells.prepared })
               : t("lvl.spellsNew", { c2: cn.spells.cantrips, p2: cn.spells.prepared }) }),
-            cn.spells.slots.length > (c.spells?.slots.length || 0) ? h("p", { cls: "hint", text: t("lvl.newCircle", { n: cn.spells.slots.length }) }) : null]);
+            nc ? h("p", { cls: "newcircle", id: "lvl-new-circle" }, [newBadge(), " ", t("lvl.newCircle", { n: nc })]) : null]);
           for (const p of [...srcN.picks, ...(cn.spellSources.find((x) => x.id === "tome")?.picks || [])]) {
             const before = c.spellSources.flatMap((x) => x.picks).find((x) => x.id === p.id);
             if (before && before.count === p.count && p.chosen.length === p.count && p.options.length === before.options.length) continue;
-            box.append(spellPickUI({ pick: p, c: cn, onChange: (ids) => { const d = { spellPicks: structuredClone(draft.spellPicks) }; writePick(d, p, ids); pending.spellPicks = d.spellPicks; draw(); } }));
+            box.append(spellPickUI({ pick: p, c: cn, fresh: nc, onChange: (ids) => { const d = { spellPicks: structuredClone(draft.spellPicks) }; writePick(d, p, ids); pending.spellPicks = d.spellPicks; draw(); } }));
           }
           const allPicks = [...srcN.picks, ...(cn.spellSources.find((x) => x.id === "tome")?.picks || [])];
           if (box.children.length > 2 || !srcB || allPicks.some((p) => p.chosen.length !== p.count)) { steps.push(box); ok.push(allPicks.every((p) => p.chosen.length === p.count && !p.invalid.length)); }
@@ -433,6 +440,7 @@ export function renderSheet(root, go, id, tab) {
               Object.assign(ch, { level: N, hpRolls: draft.hpRolls, subclass: draft.subclass, skills: draft.skills, expertise: draft.expertise || [], levelChoices: draft.levelChoices, spellPicks: draft.spellPicks, classOptions: draft.classOptions });
               const after = compute(ch).hpMax;
               ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
+              if (nc) ch.newCircle = nc;
               pending = null; save(); toast(t("lvl.done", { n: N }));
             } }),
             pending.hp != null || pending.lc || pending.subclass || pending.skills.length || pending.expertise.length || pending.spellPicks || pending.classOptions
@@ -467,6 +475,7 @@ export function renderSheet(root, go, id, tab) {
       for (const l of Object.keys(ch.hpRolls || {})) if (+l > n) delete ch.hpRolls[l];
       for (const l of Object.keys(ch.levelChoices || {})) if (+l > n) delete ch.levelChoices[l];
       ch.level = n;
+      delete ch.newCircle; freshShown = 0;
       const cd = compute(structuredClone(ch));
       const chosen = (ch.skills || []).filter((x) => !cd.granted.includes(x));
       const kept = trimSkills(chosen, cd.slots);
@@ -515,7 +524,8 @@ export function renderSheet(root, go, id, tab) {
         type: "button", cls: "pip" + (i < left ? " on" : ""), "aria-label": `${tr(r.name)} ${i + 1}/${r.max}`,
         onclick: () => { const nowLeft = pipTarget(left, i); if (nowLeft < left && asksBeforeSpend(ch)) ask(nowLeft); else set(nowLeft); },
       })));
-      return h("div", { cls: "resrow" }, [h("span", { cls: "lbl" }, [tr(r.name), h("small", { text: `${left} / ${r.max} · ${t("res.recharge." + rechargeKey(r))}` })]), pips, box]);
+      const isNew = r.slot && r.slot === fresh();
+      return h("div", { cls: "resrow" + (isNew ? " fresh" : "") }, [h("span", { cls: "lbl" }, [tr(r.name), ...(isNew ? [" ", newBadge()] : []), h("small", { text: `${left} / ${r.max} · ${t("res.recharge." + rechargeKey(r))}` })]), pips, box]);
     }
     /** Card setting: ask before spending a resource (on by default). */
     function askToggle() {
