@@ -1,5 +1,5 @@
-// Character creator in the five steps of chapter 2 of the 2024 Player's Handbook:
-// 1 Class → 2 Origin → 3 Ability scores → 4 Alignment and identity → 5 Details.
+// Character creator in the steps of chapter 2 of the 2024 Player's Handbook:
+// 1 Class → 2 Origin → 3 Ability scores → 4 Alignment and identity → 5 Details → 6 Equipment.
 // The form redraws from `ch` after each structural change; text fields write straight into `ch`.
 import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
@@ -22,11 +22,11 @@ import { searchSelects } from "./selectsearch.js";
 import { afterCreate, validCode } from "../sync/partylogic.js";
 import { classOptionUI } from "./classoptions.js";
 import { weaponEditor } from "./weapons.js";
-import { CATALOG, SHOP_SECTIONS, TRINKETS, priceText, wearStart, applyStartGear } from "../rules/equipment.js";
+import { CATALOG, SHOP_SECTIONS, TRINKETS, RARITIES, priceText, wearStart, applyStartGear } from "../rules/equipment.js";
 import { WEAPONS } from "../rules/weapons.js";
 import { gearEditor } from "./gear.js";
 
-const STEPS = [1, 2, 3, 4, 5];
+const STEPS = [1, 2, 3, 4, 5, 6];
 // Where to scroll when "Next" is blocked by a checks item (anything else: the step's checklist).
 const FIELD_OF = {
   "todo.subclass": "#f-subclass", "todo.legacySubclass": "#f-subclass",
@@ -38,7 +38,8 @@ const FIELD_OF = {
   "todo.alignment": ".aligngrid", "todo.name": "#f-name",
   "todo.skills": "#f-skills", "err.skills": "#f-skills", "todo.expertise": "#f-skills", "err.expertise": "#f-skills", "err.expertiseFrom": "#f-skills",
   "todo.feat": "#f-feats", "todo.featAbility": "#f-feats", "todo.featExpertisePick": "#f-feats", "todo.catalyst": "#f-feats",
-  "todo.startClass": "#f-start", "todo.startBg": "#f-start", "err.startGold": "#f-start-coins",
+  "todo.startClass": "#f-start", "todo.startBg": "#f-start", "err.startGold": "#f-start-coins", "todo.startRoll": "#f-start-roll",
+  "err.startArmor": "#f-armor", "err.startShield": "#f-shield", "err.startWeapon": "#weapons",
   "todo.spellPick": "#f-spells", "err.spellInvalid": "#f-spells", "err.spellTooMany": "#f-spells",
 };
 
@@ -152,7 +153,7 @@ export function renderForm(root, go, id, opts = {}) {
     }, [h("span", { cls: "stepnum", text: n }), h("span", { cls: "steplbl", text: t("step." + n) }),
       h("span", { cls: "stepstate", text: bad(n) ? "!" : count(n) ? String(count(n)) : "✓" })])));
 
-    const body = { 1: stepClass, 2: stepOrigin, 3: stepAbilities, 4: stepIdentity, 5: stepDetails }[step](c);
+    const body = { 1: stepClass, 2: stepOrigin, 3: stepAbilities, 4: stepIdentity, 5: stepDetails, 6: stepGear }[step](c);
 
     const here = [...errors.filter((x) => x.step === step).map((x) => h("li", { cls: "err", text: msg(x) })),
       ...todo.filter((x) => x.step === step).map((x) => h("li", { text: msg(x) })),
@@ -161,7 +162,7 @@ export function renderForm(root, go, id, opts = {}) {
 
     const nav = h("div", { cls: "row formnav" }, [
       step > 1 ? h("button", { type: "button", cls: "btn ghost", id: "f-prev", text: "← " + t("form.prev"), onclick: () => goStep(step - 1) }) : null,
-      step < 5 ? h("button", { type: "button", cls: "btn", id: "f-next", text: t("form.next") + " →", onclick: goNext }) : null,
+      step < STEPS.length ? h("button", { type: "button", cls: "btn", id: "f-next", text: t("form.next") + " →", onclick: goNext }) : null,
       h("button", { type: "submit", cls: "btn gold", id: "f-save", text: t("form.save") }),
     ]);
     const totalTodo = todo.length;
@@ -438,12 +439,17 @@ export function renderForm(root, go, id, opts = {}) {
     const bg = BACKGROUNDS[ch.background];
     const out = [skillsUI(c, bg), ...c.classOptions.map((g) => card(null, [classOptionUI({ group: g, c, known: c.knownClassCantrips,
       onChange: (raws) => { ch.classOptions = { ...(ch.classOptions || {}), [g.key]: raws }; draw(); } })])), featsUI(c, bg),
-      ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), ...(paper ? paperGearUI() : [startGearUI(c)]), armorUI(c), spellsUI(c), hpUI(c),
+      ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), spellsUI(c), hpUI(c),
       ...c.asiLevels.map((L) => card(t("lvl.asiTitle", { n: L }), [levelChoiceUI({ draft: ch, L, profSkills: c.skills.filter((s) => s.prof && !s.fromFeat).map((s) => s.id),
         onChange: (lc) => { ch.levelChoices = { ...ch.levelChoices, [L]: lc }; draw(); } })]))];
     const legacy = legacyUI(c);
     if (legacy) out.push(legacy);
     return out.filter(Boolean);
+  }
+
+  // --- Step 6: equipment ------------------------------------------------------
+  function stepGear(c) {
+    return [...(paper ? paperGearUI() : [startGearUI(c)]), armorUI(c)];
   }
 
   function skillsUI(c, bg) {
@@ -620,11 +626,16 @@ export function renderForm(root, go, id, opts = {}) {
     if (p.bgKits) parts.push(h("h4", { text: t("form.startFromBg", { bg: short(BACKGROUNDS[ch.background].name) }) }), options(p.bgKits, sg.bg, "bg"));
     else parts.push(h("p", { cls: "hint", text: t("form.startNoBg") }));
     if (p.pendingTools) parts.push(h("p", { cls: "warn soft", text: t("form.startPending") }));
-    // PHB: from level 5 the GM may add gold on top of the normal equipment.
-    if (ch.level >= 5) parts.push(h("p", { cls: "hint", text: t("form.startBonus", { n: ch.level }) }), h("div", { cls: "row" }, [
-      sg.bonusGp ? h("span", { cls: "rollres", text: t("form.startBonusGot", { n: sg.bonusGp }) }) : null,
-      h("button", { type: "button", cls: "btn ghost", id: "f-start-bonus", text: t(sg.bonusGp ? "form.startBonusClear" : "form.startBonusRoll"),
-        onclick: () => change((g) => { g.bonusGp = g.bonusGp ? 0 : 500 + rollDie(10) * 25; }) })]));
+    // PHB, Starting Equipment at Higher Levels: extra gold from level 5 (the d10 rolled at the table or here).
+    const hi = p.higher;
+    if (hi?.per) parts.push(h("h4", { text: t("form.startBonusTitle", { n: ch.level }) }),
+      h("p", { cls: "hint", text: t("form.startBonus", { gp: hi.gp, per: hi.per }) }),
+      h("div", { cls: "row" }, [
+        field(t("form.startBonusD10"), h("select", { id: "f-start-roll", onchange: (e) => change((g) => { g.bonusRoll = e.target.value ? +e.target.value : null; }) }, [
+          h("option", { value: "", text: "—", selected: !sg.bonusRoll }),
+          ...Array.from({ length: 10 }, (_, i) => h("option", { value: i + 1, text: String(i + 1), selected: sg.bonusRoll === i + 1 }))])),
+        h("button", { type: "button", cls: "btn ghost", id: "f-start-bonus", text: t("form.startBonusRoll"), onclick: () => change((g) => { g.bonusRoll = rollDie(10); }) }),
+        p.bonusGp ? h("span", { cls: "rollres", text: t("form.startBonusGot", { n: p.bonusGp }) }) : null]));
 
     // Shopping with the coins from the kits.
     const sel = h("select", { id: "f-shop-sel", "aria-label": t("form.shopPick") }, [h("option", { value: "", text: t("form.shopPick") }),
@@ -647,21 +658,31 @@ export function renderForm(root, go, id, opts = {}) {
         } })]),
         bought.length ? h("div", { cls: "list" }, bought) : null]));
 
-    // A free trinket: rolled, chosen from the list or written by the player.
+    // Magic items from the same table: the GM says which; the player writes them in.
+    if (p.magicSlots.length) parts.push(h("h4", { text: t("form.startMagic") }), h("p", { cls: "hint", text: t("form.startMagicHint") }),
+      ...p.magicSlots.map((r, i) => field(t("form.startMagicSlot", { n: i + 1, rarity: tr(RARITIES[r]) }), h("input", { type: "text", maxlength: 80, id: "f-start-magic-" + i,
+        value: typeof sg.magic?.[i] === "string" ? sg.magic[i] : "",
+        onchange: (e) => change((g) => { const m = [...(g.magic || [])]; m[i] = e.target.value.trim(); g.magic = m.slice(0, p.magicSlots.length); }) }), "wide")));
+
+    // A free trinket: rolled or chosen from the list, or written by the player. One or the other, never both.
     const own = typeof sg.trinket === "string" ? sg.trinket : "";
+    const listed = typeof sg.trinket === "number";
     parts.push(h("h4", { text: t("form.trinket") }), h("p", { cls: "hint", text: t("form.trinketHint") }),
       h("div", { cls: "row" }, [
-        h("select", { id: "f-trinket", "aria-label": t("form.trinket"), onchange: (e) => change((g) => { g.trinket = e.target.value === "" ? null : +e.target.value; }) }, [
-          h("option", { value: "", text: "—", selected: typeof sg.trinket !== "number" }),
+        h("select", { id: "f-trinket", "aria-label": t("form.trinket"), disabled: !!own, onchange: (e) => change((g) => { g.trinket = e.target.value === "" ? null : +e.target.value; }) }, [
+          h("option", { value: "", text: "—", selected: !listed }),
           ...TRINKETS.map((x, i) => h("option", { value: i, text: `${i + 1}. ${tr(x)}`, "data-q": x.pl + " " + x.en, selected: sg.trinket === i }))]),
-        h("button", { type: "button", cls: "btn ghost", id: "f-trinket-roll", text: t("form.trinketRoll"), onclick: () => change((g) => { g.trinket = rollDie(TRINKETS.length) - 1; }) }),
+        h("button", { type: "button", cls: "btn ghost", id: "f-trinket-roll", text: t("form.trinketRoll"), disabled: !!own, onclick: () => change((g) => { g.trinket = rollDie(TRINKETS.length) - 1; }) }),
+        listed ? h("button", { type: "button", cls: "btn ghost", id: "f-trinket-clear", text: t("form.trinketClear"), onclick: () => change((g) => { g.trinket = null; }) }) : null,
       ]),
-      field(t("form.trinketOwn"), h("input", { type: "text", maxlength: 120, id: "f-trinket-own", value: own,
-        onchange: (e) => change((g) => { g.trinket = e.target.value.trim() || null; }) }), "wide"));
+      field(t("form.trinketOwn"), h("input", { type: "text", maxlength: 120, id: "f-trinket-own", value: own, disabled: listed,
+        onchange: (e) => change((g) => { g.trinket = e.target.value.trim() || null; }) }), "wide"),
+      listed ? h("p", { cls: "hint", id: "f-trinket-why", text: t("form.trinketOwnOff") }) : own ? h("p", { cls: "hint", id: "f-trinket-why", text: t("form.trinketListOff") }) : null);
 
     // What goes on the sheet when the character is saved.
     const all = [
-      p.armor ? tr(CATALOG["a:" + p.armor].name) : null, p.shield ? tr(CATALOG.shield.name) : null,
+      p.armor ? tr(CATALOG["a:" + p.armor].name) + ((ch.armor || "none") === "none" ? ` (${t("form.startNotWorn")})` : "") : null,
+      p.shield ? tr(CATALOG.shield.name) + (ch.shield ? "" : ` (${t("form.startNotWorn")})`) : null,
       ...p.weapons.map((w) => (w.qty > 1 ? `${w.qty}× ` : "") + tr(WEAPONS[w.id].name)),
       ...p.items.map(line),
     ].filter(Boolean);
@@ -675,7 +696,34 @@ export function renderForm(root, go, id, opts = {}) {
     return [card(t("form.paperGear"), [h("p", { cls: "hint", text: t("form.paperGearHint") })], { id: "f-start" }), gearEditor({ ch, onChange: () => {} })];
   }
 
+  /** Armor, shield and weapons. A new character wears and wields only what its starting equipment gives (kits and purchases). */
   function armorUI(c) {
+    const sg = ch.startGear;
+    if (paper || sg.applied || (sg.skip && !isNew)) return armorFree(c);
+    const acLine = h("p", { cls: "acline" }, ["AC: ", h("b", { text: c.ac.value }), " · " + tr(c.ac.note)]);
+    if (sg.skip) return card(t("form.armorTitle"), [h("p", { cls: "hint", text: t("form.armorSkipped") }), acLine]);
+    const p = c.startGear;
+    // A piece the character no longer has stays visible, so its error can be read and fixed.
+    const list = ["none", ...p.armors.filter((k) => ARMOR[k])];
+    if (ch.armor && !list.includes(ch.armor) && ARMOR[ch.armor]) list.push(ch.armor);
+    return card(t("form.armorTitle"), [
+      h("p", { cls: "hint", text: t("form.training") + ": " + (c.training.length ? c.training.map((k) => t("armor." + k)).join(", ") : t("armor.none")) }),
+      h("p", { cls: "hint", text: t("form.armorOwned") }),
+      h("div", { cls: "row" }, [
+        field(t("form.armor"), h("select", { id: "f-armor", onchange: (e) => { ch.armor = e.target.value; draw(); } },
+          list.map((k) => h("option", { value: k, text: tr(ARMOR[k].name), selected: k === (ch.armor || "none") })))),
+        h("label", { cls: "check" + (p.shield || ch.shield ? "" : " blocked") }, [h("input", { type: "checkbox", id: "f-shield", checked: !!ch.shield, disabled: !p.shield && !ch.shield,
+          onchange: (e) => { ch.shield = e.target.checked; draw(); } }), t("form.shield")]),
+      ]),
+      acLine,
+      ...(c.ac.warnings || []).map((w) => h("p", { cls: "warn", text: tr(w) })),
+      h("h4", { text: t("wpn.title") }),
+      weaponEditor({ ch, c, onChange: draw, locked: true }),
+    ]);
+  }
+
+  /** Any armor and weapon: a character copied from paper, or one whose equipment is already on the sheet. */
+  function armorFree(c) {
     return card(t("form.armorTitle"), [
       h("p", { cls: "hint", text: t("form.training") + ": " + (c.training.length ? c.training.map((k) => t("armor." + k)).join(", ") : t("armor.none")) }),
       h("div", { cls: "row" }, [

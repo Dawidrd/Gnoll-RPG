@@ -1,5 +1,5 @@
 // What the character still has to choose (todo) and what breaks the rules (errors).
-// Each item: { step: 1–5, key: i18n key, vars }. Errors block saving; todo items don't.
+// Each item: { step: 1–6, key: i18n key, vars }. Errors block saving; todo items don't.
 import { ABILITIES, FEATS, SKILLS } from "./core.js";
 import { STANDARD_ARRAY } from "./core.js";
 import { POINT_BUY, pointsSpent, ALIGNMENTS, validPaper } from "./identity.js";
@@ -105,12 +105,17 @@ export function review(ch, c) {
     if (FEATS[f.id]?.spellAbility && !(ch.featChoices?.[f.id]?.ability)) T(5, "todo.featAbility", { name: FEATS[f.id].name });
   }
 
-  // Starting equipment: an option from the class and from the background; purchases can't cost more than the coins.
+  // Step 6, starting equipment: an option from the class and from the background; purchases can't cost more than the coins;
+  // armor, shield and weapons only from what the character has (kits and purchases).
   const sg = c.startGear;
   if (sg && !sg.sg.applied && !sg.sg.skip) {
-    if (sg.needsClass) T(5, "todo.startClass");
-    if (sg.needsBg) T(5, "todo.startBg");
-    if (sg.left < 0) E(5, "err.startGold", { n: (-sg.left / 100).toFixed(2).replace(/\.00$/, "") });
+    if (sg.needsClass) T(6, "todo.startClass");
+    if (sg.needsBg) T(6, "todo.startBg");
+    if (sg.needsRoll) T(6, "todo.startRoll", { n: c.level });
+    if (sg.left < 0) E(6, "err.startGold", { n: (-sg.left / 100).toFixed(2).replace(/\.00$/, "") });
+    if ((ch.armor || "none") !== "none" && !sg.armors.includes(ch.armor)) E(6, "err.startArmor");
+    if (ch.shield && !sg.shield) E(6, "err.startShield");
+    if ((ch.weapons || []).some((w) => !w.start)) E(6, "err.startWeapon");
   }
 
   // Values typed by hand in versions before 0.4: still applied, but should be replaced.

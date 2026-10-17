@@ -27,8 +27,9 @@ export function attacksBlock(c, ch) {
   ]))]);
 }
 
-/** Add or remove carried weapons. onChange() saves and redraws. */
-export function weaponEditor({ ch, c, onChange }) {
+/** Add or remove carried weapons. onChange() saves and redraws.
+ * locked: a new character's weapons come only from its starting equipment, so the list is shown but not edited here. */
+export function weaponEditor({ ch, c, onChange, locked = false }) {
   const sel = h("select", { id: "wpn-add-sel", "aria-label": t("wpn.pick") }, [
     h("option", { value: "", text: t("wpn.pick") }),
     ...["simple", "martial"].map((cat) => h("optgroup", { label: t("wpn.cat." + cat) },
@@ -39,9 +40,13 @@ export function weaponEditor({ ch, c, onChange }) {
     return h("div", { cls: "li" }, [
       h("div", {}, [h("div", { cls: "t", text: (it.qty > 1 ? `${it.qty}× ` : "") + tr(WEAPONS[it.id]?.name || { pl: it.id, en: it.id }) }),
         a ? h("div", { cls: "n" }, [`${signed(a.hit)} · `, dmgTag(a.tag), a.mastery ? " · " + short(a.mastery.name) : null]) : null]),
-      h("button", { type: "button", cls: "btn small ghost", text: t("inv.remove"), onclick: () => { ch.weapons = ch.weapons.filter((x) => x.uid !== it.uid); onChange(); } }),
+      locked && it.start ? null : h("button", { type: "button", cls: "btn small ghost", text: t("inv.remove"), onclick: () => { ch.weapons = ch.weapons.filter((x) => x.uid !== it.uid); onChange(); } }),
     ]);
   });
+  if (locked) return h("div", { cls: "stack", id: "weapons" }, [
+    rows.length ? h("div", { cls: "list" }, rows) : h("p", { cls: "hint", text: t("wpn.emptyStart") }),
+    h("p", { cls: "hint", text: t("wpn.fromStart") }),
+  ]);
   return h("div", { cls: "stack", id: "weapons" }, [
     rows.length ? h("div", { cls: "list" }, rows) : h("p", { cls: "hint", text: t("wpn.empty") }),
     h("div", { cls: "row" }, [sel, h("button", { type: "button", cls: "btn", id: "wpn-add", text: t("inv.add"), onclick: () => {

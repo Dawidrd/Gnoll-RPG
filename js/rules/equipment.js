@@ -233,8 +233,26 @@ export const TRINKETS = [
   L("Ząb gnolla nawleczony na rzemyk — na szczęście", "A gnoll's tooth on a leather cord, for luck"),
 ];
 
-/** The picks for starting equipment, with defaults for any missing fields. */
-export const blankStartGear = (over = {}) => ({ cls: "", bg: "", buys: [], trinket: null, bonusGp: 0, skip: false, applied: false, ...over });
+/** The picks for starting equipment, with defaults for any missing fields.
+ * bonusRoll: the d10 for extra gold from level 5 (typed or rolled); magic: names of the magic items, one per slot. */
+export const blankStartGear = (over = {}) => ({ cls: "", bg: "", buys: [], trinket: null, bonusRoll: null, magic: [], skip: false, applied: false, ...over });
+
+export const RARITIES = {
+  common: L("pospolity", "Common"), uncommon: L("niepospolity", "Uncommon"), rare: L("rzadki", "Rare"), "very-rare": L("bardzo rzadki", "Very Rare"),
+};
+/** PHB ch. 2, Starting Equipment at Higher Levels: gold on top of the normal equipment (base + 1d10 × per) and magic items. */
+const HIGHER = [
+  { from: 2, gp: 0, per: 0, magic: { common: 1 } },
+  { from: 5, gp: 500, per: 25, magic: { common: 1, uncommon: 1 } },
+  { from: 11, gp: 5000, per: 250, magic: { common: 2, uncommon: 3, rare: 1 } },
+  { from: 17, gp: 20000, per: 250, magic: { common: 2, uncommon: 4, rare: 3, "very-rare": 1 } },
+];
+/** What a character starting above level 1 gets on top: { gp, per, slots: [rarity…] }, or null at level 1. */
+export function higherStart(level) {
+  const row = [...HIGHER].reverse().find((r) => level >= r.from);
+  if (!row) return null;
+  return { gp: row.gp, per: row.per, slots: Object.entries(row.magic).flatMap(([r, n]) => Array(n).fill(r)) };
+}
 
 const resolveKitEntry = ([key, qty = 1, note = null], c) => {
   if (key.startsWith("tool:")) {
@@ -265,13 +283,17 @@ export function startPlan(ch, c) {
   const bgOpt = bgKits?.[sg.bg] || null;
   const fromKits = [...(clsOpt?.items || []), ...(bgOpt?.items || [])].map((x) => resolveKitEntry(x, c));
   const buys = (sg.buys || []).filter((b) => CATALOG[b.key] && b.qty > 0).map((b) => ({ ...CATALOG[b.key], qty: b.qty }));
-  const budget = gp((clsOpt?.gp || 0) + (bgOpt?.gp || 0) + (sg.bonusGp || 0));
+  const higher = higherStart(ch.level || 1);
+  const roll = higher?.per && sg.bonusRoll >= 1 && sg.bonusRoll <= 10 ? sg.bonusRoll : null;
+  const bonusGp = higher?.per ? (roll ? higher.gp + roll * higher.per : 0) : 0;
+  const budget = gp((clsOpt?.gp || 0) + (bgOpt?.gp || 0) + bonusGp);
   const spent = buys.reduce((n, b) => n + b.cost * b.qty, 0);
 
   // Weapons: one attack line per kind, with how many are carried.
   const weapons = [];
   const addWeapon = (id, qty) => { const w = weapons.find((x) => x.id === id); if (w) w.qty += qty; else weapons.push({ id, qty }); };
-  // Armor: the last armor bought is worn, otherwise the kit's; spare armor and shields go with the other items.
+  // Armor: the one the player picked from what they have, else the last armor bought, else the kit's;
+  // spare armor and shields go with the other items.
   const armors = [];
   let shields = 0;
   const items = [];
@@ -291,17 +313,24 @@ export function startPlan(ch, c) {
   };
   for (const e of fromKits) take(e, e.qty, false);
   for (const b of buys) take(b, b.qty, true);
-  const worn = [...armors].reverse().find((a) => a.fromShop) || armors[0] || null;
+  const worn = armors.find((a) => a.id === ch.armor) || [...armors].reverse().find((a) => a.fromShop) || armors[0] || null;
   const armor = worn?.id || null;
   for (const a of armors) if (a !== worn) addItem(ARMOR[a.id].name, 1, null);
   const shield = shields > 0;
   if (shields > 1) addItem(CATALOG.shield.name, shields - 1, null);
   const trinket = typeof sg.trinket === "number" ? TRINKETS[sg.trinket] : typeof sg.trinket === "string" && sg.trinket.trim() ? L(sg.trinket.trim(), sg.trinket.trim()) : null;
   if (trinket) addItem(trinket, 1, L("błyskotka", "trinket"));
+  const magicSlots = higher ? higher.slots : [];
+  magicSlots.forEach((r, i) => {
+    const name = typeof sg.magic?.[i] === "string" ? sg.magic[i].trim() : "";
+    if (name) addItem(L(name, name), 1, L(`magiczny przedmiot (${RARITIES[r].pl})`, `magic item (${RARITIES[r].en})`));
+  });
 
   return {
     sg, clsKits, bgKits, clsOpt, bgOpt, fromKits, buys, weapons, armor, shield, items, trinket,
+    armors: [...new Set(armors.map((a) => a.id))], higher, bonusGp, magicSlots,
     budget, spent, left: budget - spent,
+    needsRoll: !!higher?.per && !roll,
     pendingTools: fromKits.filter((x) => x.pending).length,
     needsClass: !!clsKits && !sg.cls, needsBg: !!bgKits && !sg.bg,
   };
@@ -331,6 +360,11 @@ export function wearStart(ch, before, after) {
   ch.weapons = [...(ch.weapons || []).filter((w) => !w.start), ...after.weapons.map((w) => ({ uid: stamp(), id: w.id, qty: w.qty, start: true }))];
   if ((before.armor || "none") !== (after.armor || "none") && (ch.armor || "none") === (before.armor || "none")) ch.armor = after.armor || "none";
   if (before.shield !== after.shield && !!ch.shield === before.shield) ch.shield = after.shield;
+  // Only what the character has can be worn: armor or a shield that's gone comes off.
+  if (after.armors) {
+    if ((ch.armor || "none") !== "none" && !after.armors.includes(ch.armor)) ch.armor = after.armor || "none";
+    if (ch.shield && !after.shield) ch.shield = false;
+  }
 }
 
 /** Hand out the starting equipment: items and coins go on the sheet, weapons stay. Run once, when the character is saved. */
@@ -339,7 +373,10 @@ export function applyStartGear(ch, plan, lang = "pl") {
   const name = (x) => x[lang] || x.en;
   if (!Array.isArray(ch.items)) ch.items = [];
   ch.gold = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(ch.gold || {}) };
-  for (const it of plan.items) {
+  // Armor or a shield owned but not worn goes in the pack.
+  const extra = [...((ch.armor || "none") === "none" && plan.armor ? [{ name: ARMOR[plan.armor].name, qty: 1, note: null }] : []),
+    ...(!ch.shield && plan.shield ? [{ name: CATALOG.shield.name, qty: 1, note: null }] : [])];
+  for (const it of [...plan.items, ...extra]) {
     const nm = name(it.name), note = it.note ? name(it.note) : "";
     const same = ch.items.find((x) => x.name === nm && (x.note || "") === note);
     if (same) same.qty += it.qty;

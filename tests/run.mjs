@@ -96,7 +96,7 @@ test("a tool from a proficiency not yet picked shows as pending", () => {
   eq(q.pendingTools, 0);
   eq(q.items.some((x) => x.name.en === "Flute") && q.items.some((x) => x.name.en === "Smith's Tools"), true);
 });
-test("wearing follows the kit, but never overrides armor the player chose", () => {
+test("wearing follows the kit; armor the character no longer has comes off", () => {
   const ch = gear({ classId: "fighter", background: "sage" });
   const empty = run(ch).startGear;
   ch.startGear.cls = "A";
@@ -109,11 +109,72 @@ test("wearing follows the kit, but never overrides armor the player chose", () =
   EQ.wearStart(ch, a, b);
   eq(ch.armor, "studded");
   eq(ch.weapons.filter((w) => w.start).map((w) => w.id), ["scimitar", "shortsword", "longbow"]);
-  ch.armor = "breastplate";
   ch.startGear.cls = "C";
   EQ.wearStart(ch, b, run(ch).startGear);
-  eq(ch.armor, "breastplate", "player's own pick stays");
+  eq(ch.armor, "none", "gold only: no armor left to wear");
   eq(ch.weapons.length, 0);
+});
+test("armor, shield and weapons in a new character only from kits and purchases (bug: they were free)", () => {
+  const ch = gear({ classId: "fighter", background: "sage", startGear: { cls: "C", bg: "B" }, armor: "plate" });
+  eq(keys(run(ch).review.errors).includes("err.startArmor"), true, "plate picked but never bought");
+  ch.armor = "none"; ch.shield = true;
+  eq(keys(run(ch).review.errors).includes("err.startShield"), true);
+  ch.shield = false; ch.weapons = [{ uid: "x", id: "longsword" }];
+  eq(keys(run(ch).review.errors).includes("err.startWeapon"), true, "weapon added by hand, not from the kit");
+  ch.weapons = [];
+  ch.startGear.buys = [{ key: "a:chain-mail", qty: 1 }, { key: "shield", qty: 1 }];
+  ch.armor = "chain-mail"; ch.shield = true;
+  const c = run(ch);
+  eq(c.review.errors.filter((x) => x.key.startsWith("err.start")).length, 0, "bought, so allowed");
+  eq(c.startGear.left, 20500 - 7500 - 1000, "205 gp minus 75 and 10");
+  eq(c.review.errors.filter((x) => x.key.startsWith("err.start")).every((x) => x.step === 6), true);
+  // Older characters and ones copied from paper keep choosing freely.
+  eq(keys(run(make({ armor: "plate", shield: true, weapons: [{ uid: "y", id: "longsword" }] })).review.errors).some((k) => k.startsWith("err.start")), false);
+});
+test("two armors owned: the one picked is worn, the other goes in the pack; armor taken off goes in the pack too", () => {
+  const ch = gear({ classId: "cleric", background: "acolyte", startGear: { cls: "A", bg: "B", buys: [{ key: "a:scale", qty: 1 }] } });
+  eq(run(ch).startGear.armor, "scale", "last bought is worn by default");
+  ch.armor = "chain-shirt";
+  let p = run(ch).startGear;
+  eq(p.armor, "chain-shirt", "the player's pick among owned armor");
+  eq(p.armors, ["chain-shirt", "scale"]);
+  eq(!!p.items.find((x) => x.name.en.startsWith("Scale")), true, "the other one in the pack");
+  ch.armor = "none"; ch.shield = false;
+  p = run(ch).startGear;
+  EQ.applyStartGear(ch, p, "en");
+  eq(["Chain shirt", "Scale", "Shield"].every((n) => ch.items.some((x) => x.name.startsWith(n))), true, "nothing owned is lost");
+});
+test("higher-level start (PHB table): gold from level 5 by tier, magic items from level 2", () => {
+  eq(EQ.higherStart(1), null);
+  eq(EQ.higherStart(3), { gp: 0, per: 0, slots: ["common"] });
+  eq(EQ.higherStart(5), { gp: 500, per: 25, slots: ["common", "uncommon"] });
+  eq(EQ.higherStart(10).gp, 500);
+  eq(EQ.higherStart(11), { gp: 5000, per: 250, slots: ["common", "common", "uncommon", "uncommon", "uncommon", "rare"] });
+  eq(EQ.higherStart(20).slots.length, 10);
+  eq(EQ.higherStart(17).gp, 20000);
+});
+test("starting at level 5: the d10 for extra gold is a to-do on step 6, the typed result adds up", () => {
+  const ch = gear({ classId: "rogue", background: "criminal", level: 5, startGear: { cls: "B", bg: "B" } });
+  let c = run(ch);
+  eq(stepBlockers(c.review, 6).map((x) => x.key), ["todo.startRoll"]);
+  eq(c.startGear.budget, 15000, "100 + 50 gp, roll still missing");
+  ch.startGear.bonusRoll = 4;
+  c = run(ch);
+  eq(c.startGear.budget, 15000 + 60000, "+500 + 4 × 25 gp");
+  eq(stepBlockers(c.review, 6).length, 0);
+  eq(stepBlockers(c.review, 5).some((x) => x.key.startsWith("todo.start")), false, "equipment isn't on step 5 any more");
+  ch.level = 12; ch.startGear.bonusRoll = 2;
+  eq(run(ch).startGear.budget, 15000 + 550000, "+5000 + 2 × 250 gp");
+  ch.level = 3;
+  eq(run(ch).review.todo.some((x) => x.key === "todo.startRoll"), false, "levels 2–4: no extra gold");
+});
+test("magic items written in go to the sheet with their rarity; empty slots are skipped", () => {
+  const ch = gear({ classId: "wizard", background: "sage", level: 5, startGear: { cls: "B", bg: "B", bonusRoll: 1, magic: ["Bag of Holding", ""] } });
+  const p = run(ch).startGear;
+  eq(p.magicSlots, ["common", "uncommon"]);
+  EQ.applyStartGear(ch, p, "pl");
+  const m = ch.items.filter((x) => x.note.startsWith("magiczny"));
+  eq(m.map((x) => [x.name, x.note]), [["Bag of Holding", "magiczny przedmiot (pospolity)"]]);
 });
 test("handing out the equipment: items, coins and weapons once, then never again", () => {
   const ch = gear({ classId: "wizard", background: "sage", startGear: { cls: "A", bg: "A", trinket: 3, buys: [{ key: "g:tinderbox", qty: 1 }] } });
