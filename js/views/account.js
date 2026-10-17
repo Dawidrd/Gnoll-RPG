@@ -98,7 +98,8 @@ export function accountBox() {
       kids.push(h("p", { cls: "small", text: t("acc.why") }), inAppNote(app));
     } else {
       kids.push(h("p", { cls: "small", text: t("acc.why") }),
-        h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-in", text: t("acc.signIn"), onclick: () => signIn() })]),
+        s.cont ? h("p", { cls: "small", text: t("acc.cont.hint") }) : null,
+        h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-in", text: t(s.cont ? "acc.cont" : "acc.signIn"), onclick: () => signIn() })]),
         h("p", { cls: "hint", text: t("acc.firstSync") }));
     }
     if (s.error) kids.push(h("p", { cls: "small", role: "alert", text: t("acc.err." + s.error) }));

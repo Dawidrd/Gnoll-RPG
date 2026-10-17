@@ -11,7 +11,8 @@ import { plan, syncableId, toDoc, goneDoc, fromDoc } from "./merge.js";
 const SDK = "https://www.gstatic.com/firebasejs/12.4.0/";
 const REDIRECT = "gnoll.signin.redirect"; // "1" while signing in through a page redirect
 
-// status: off (not set up) | out | loading | in | unreachable; sync: ok | pending | offline | error; error: load | signin
+// status: off (not set up) | out | loading | in | unreachable; sync: ok | pending | offline | error; error: load | signin | redirect
+// cont: the browser blocked Google's window on the first tap; one more tap ("Continue in Google") opens it
 // guests: characters made on this device without an account, which can be moved into the signed-in one
 const state = { status: "off", user: null, sync: null, error: null, guests: 0 };
 const subs = new Set();
@@ -44,13 +45,19 @@ export async function connect() {
   try { await load(); } catch { emit({ status: currentOwner() ? "unreachable" : "out", error: "load" }); }
 }
 
+// Google's window opens only straight from a tap. The first tap also has to fetch Firebase, which Safari on iPhone
+// counts as "not from a tap" and blocks the window; then a second button ("Continue in Google") opens it at once.
+// The page redirect is the last resort: Safari loses its result (the sign-in runs on gnoll-rpg.firebaseapp.com,
+// a different site than the app), so the player came back signed out.
 export async function signIn() {
-  emit({ error: null });
-  try { await load(); } catch { emit({ status: "out", error: "load" }); return; }
+  const fresh = !fb;
+  emit({ error: null, cont: false });
+  if (fresh) { try { await load(); } catch { emit({ status: "out", error: "load" }); return; } }
   const provider = new fb.A.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   try { await fb.A.signInWithPopup(fb.auth, provider); }
   catch (e) {
+    if (e?.code === "auth/popup-blocked" && fresh) return emit({ cont: true });
     if (e?.code === "auth/popup-blocked" || e?.code === "auth/operation-not-supported-in-this-environment") {
       storage.set(REDIRECT, "1"); // finish signing in after coming back
       return fb.A.signInWithRedirect(fb.auth, provider);
@@ -132,9 +139,10 @@ function signedIn(user) {
 
 function signedOut() {
   stop?.();
+  const lost = storage.get(REDIRECT) === "1"; // came back from Google's page, but the browser lost the sign-in
   storage.set(REDIRECT, "0");
   const was = currentOwner();
   setOwner("");
-  emit({ status: "out", user: null, sync: null, guests: 0 });
+  emit({ status: "out", user: null, sync: null, guests: 0, cont: false, ...(lost ? { error: "redirect" } : {}) });
   if (was) changed();
 }
