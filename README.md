@@ -43,9 +43,11 @@ Odwiedziny liczy GoatCounter (bez ciasteczek i bez danych osobowych: tylko nazwy
 Nie ma kroku budowania. Wystarczy dowolny serwer plików:
 
 ```sh
-python3 -m http.server 8000
-# otwórz http://localhost:8000
+python -m http.server 8765
+# otwórz http://localhost:8765
 ```
+
+Na Windowsie polecenie to `python` albo `py` (nie `python3`).
 
 ## Testy / Tests
 

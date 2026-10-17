@@ -5,7 +5,7 @@ Po naprawieniu/zrobieniu wpis trafia do „Zrobione” z numerem wersji.
 
 ## Błędy
 
-_(brak)_
+1. **Logowanie Google nie działa we wbudowanych przeglądarkach (Messenger, Facebook, Instagram itp.); gracz widzi błąd 400 na accounts.google.com** (wysoki priorytet). Stan: od 0.22.2 aplikacja rozpoznaje taką przeglądarkę, zamiast przycisku logowania pokazuje krótkie wyjaśnienie („stuknij ⋯ albo ⋮ → Otwórz w przeglądarce”) i ma „Kopiuj link”. **Oczekiwane:** zanim gracz kliknie logowanie, czytelna instrukcja w PL i EN, osobno dla telefonu, z przyciskiem „Skopiuj adres”: *Wyjście z wbudowanej przeglądarki* — iPhone: menu „…” lub ikona kompasu w rogu → „Otwórz w Safari” (albo „Otwórz w przeglądarce”); Android: menu „⋮” lub „…” → „Otwórz w Chrome” (albo „Otwórz w przeglądarce”); nazwy pozycji różnią się między aplikacjami, więc w tekście „lub podobna pozycja”. *Instalacja aplikacji na telefonie* — podpowiedź „Jak zainstalować”, dostępna z ekranu logowania i z ustawień: iPhone (Safari lub Chrome): ikona Udostępnij (kwadrat ze strzałką) → „Dodaj do ekranu początkowego” → „Dodaj”; jeśli pozycji nie widać, przewiń listę akcji i dotknij „Edytuj akcje” albo otwórz stronę w Safari. Android (Chrome): menu „⋮” → „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”. Android (Samsung Internet): menu → „Dodaj stronę do” → „Ekran główny”. Wyraźnie napisać, że przycisk „Zainstaluj aplikację” istnieje tylko na Androidzie. **Ustalone:** nie przenosimy hostingu na Firebase, dopóki dowodnie nie ustalimy przyczyny — najpierw to rozwiązanie (instrukcja wyjścia z wbudowanej przeglądarki); jako alternatywa dla graczy bez konta Google — logowanie linkiem na e-mail (do decyzji, osobny wpis).
 
 ## Pomysły
 
