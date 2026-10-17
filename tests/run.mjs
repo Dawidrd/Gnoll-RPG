@@ -677,7 +677,7 @@ test("Bard colleges: Lore skills, Valor armor, Dance AC, Glamour spells, Spirits
   eq(["medium", "shield"].every((x) => b("valor").training.includes(x)), true);
   const dance = { abilityBase: { str: 8, dex: 14, con: 15, int: 13, wis: 10, cha: 12 } };
   eq(b("dance", dance).ac.value, 10 + 2 + 1, "10 + DEX + CHA");
-  eq(b("dance", { ...dance, shield: true }).ac.value, 10 + 2 + 2, "a shield turns Dazzling Footwork off: 10 + DEX + shield");
+  eq(b("dance", { ...dance, shield: true }).ac.value, 10 + 2, "a shield turns Dazzling Footwork off: 10 + DEX, and an untrained shield adds nothing");
   eq(src(b("glamour"), "class").fixed.filter((x) => x.kind === "always").map((x) => x.id), ["charm-person", "mirror-image"]);
   eq(errKeys(b("spirits")).includes("err.ravenloftOnly"), true);
   const sp = b("spirits", { setting: "ravenloft" });
@@ -1425,6 +1425,39 @@ test("gender: old characters load; an unknown value is kept as own words", () =>
   eq([odd.gender, odd.genderCustom], ["other", "Konstrukt"], "nothing is lost");
   eq(normalize(make({ gender: "male" })).gender, "male");
   for (const k of ["form.gender", "form.genderPick", "form.genderOther", "form.genderCustom", "form.genderHint", "char.gender"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+});
+
+// --- Weapons and armor filtered by proficiency (0.29) ---
+test("weapon proficiency list: class, subclass and Martial Weapon Training", () => {
+  const wiz = run(make({ classId: "wizard" }));
+  eq(wiz.weaponProf.includes("dagger"), true);
+  eq(wiz.weaponProf.includes("longsword"), false, "wizard: simple only");
+  const rogue = run(make({ classId: "rogue" }));
+  eq([rogue.weaponProf.includes("rapier"), rogue.weaponProf.includes("shortsword"), rogue.weaponProf.includes("longsword")], [true, true, false]);
+  eq(run(make({ classId: "fighter" })).weaponProf.length, Object.keys(WEAPONS).length);
+  const mwt = run(make({ classId: "wizard", level: 4, levelChoices: { 4: { kind: "feat", feat: "martial-weapon-training", inc: "dex" } },
+    weapons: [{ uid: "a", id: "longsword" }] }));
+  eq(mwt.weaponProf.includes("longsword"), true, "feat gives martial weapons");
+  eq(mwt.attacks[0].notes.length, 0, "no 'not proficient' note");
+});
+
+test("trained(): shop entries for weapons, armor and shields", () => {
+  const wiz = run(make({ classId: "wizard" }));
+  eq([EQ.trained(wiz, EQ.CATALOG["w:dagger"]), EQ.trained(wiz, EQ.CATALOG["w:longsword"]), EQ.trained(wiz, EQ.CATALOG["a:leather"]),
+    EQ.trained(wiz, EQ.CATALOG.shield), EQ.trained(wiz, EQ.CATALOG["g:rope"]), EQ.trained(wiz, { kind: "armor", id: "none" })], [true, false, false, false, true, true]);
+  const cle = run(make({ classId: "cleric", classChoices: { order: "thaumaturge" } }));
+  eq([EQ.trained(cle, EQ.CATALOG["a:scale"]), EQ.trained(cle, EQ.CATALOG["a:chain-mail"]), EQ.trained(cle, EQ.CATALOG.shield)], [true, false, true]);
+});
+
+test("shield without training gives no AC bonus (PHB 2024)", () => {
+  const base = { abilityBase: { str: 10, dex: 14, con: 12, int: 15, wis: 10, cha: 8 } };
+  const wiz = run(make({ classId: "wizard", shield: true, ...base }));
+  const bare = run(make({ classId: "wizard", ...base }));
+  eq(wiz.ac.value, bare.ac.value, "no +2");
+  eq(wiz.ac.warnings.some((w) => w.en.includes("no +2")), true);
+  const cle = run(make({ classId: "cleric", shield: true, ...base }));
+  eq(cle.ac.value, run(make({ classId: "cleric", ...base })).ac.value + 2);
+  for (const k of ["wpn.onlyTrained", "wpn.showAll", "wpn.noProf", "wpn.untrainedWarn"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
 let failed = 0;

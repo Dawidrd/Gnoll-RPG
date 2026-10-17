@@ -136,6 +136,18 @@ export const CATALOG = Object.fromEntries([
   ...Object.values(GEAR).map((g) => ["g:" + g.id, { kind: g.cat === "pack" ? "pack" : "gear", id: g.id, name: g.name, cost: g.cost, bundle: g.bundle || 1, cat: g.cat }]),
 ].map(([key, v]) => [key, { key, bundle: 1, ...v }]));
 
+/**
+ * Can the character use this piece of the price list well? Weapons need proficiency (c.weaponProf),
+ * armor and shields need training (c.training). Everything else is always fine.
+ */
+export function trained(c, entry) {
+  if (!entry) return true;
+  if (entry.kind === "weapon") return c.weaponProf.includes(entry.id);
+  if (entry.kind === "armor") return entry.id === "none" || c.training.includes(ARMOR[entry.id]?.type);
+  if (entry.kind === "shield") return c.training.includes("shield");
+  return true;
+}
+
 /** Order of the shop's sections. */
 export const SHOP_SECTIONS = ["pack", "gear", "ammo", "focus", "tool", "simple", "martial", "armor"];
 

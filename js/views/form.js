@@ -21,8 +21,8 @@ import { spellPickUI } from "./spellpicker.js";
 import { searchSelects } from "./selectsearch.js";
 import { afterCreate, validCode } from "../sync/partylogic.js";
 import { classOptionUI } from "./classoptions.js";
-import { weaponEditor } from "./weapons.js";
-import { CATALOG, SHOP_SECTIONS, TRINKETS, RARITIES, priceText, wearStart, applyStartGear } from "../rules/equipment.js";
+import { weaponEditor, showAll, showAllToggle, markUntrained } from "./weapons.js";
+import { CATALOG, SHOP_SECTIONS, TRINKETS, RARITIES, priceText, wearStart, applyStartGear, trained } from "../rules/equipment.js";
 import { WEAPONS } from "../rules/weapons.js";
 import { gearEditor } from "./gear.js";
 import { addSwitch } from "./addmode.js";
@@ -705,13 +705,16 @@ export function renderForm(root, go, id, opts = {}) {
         h("button", { type: "button", cls: "btn ghost", id: "f-start-bonus", text: t("form.startBonusRoll"), onclick: () => change((g) => { g.bonusRoll = rollDie(10); }) }),
         p.bonusGp ? h("span", { cls: "rollres", text: t("form.startBonusGot", { n: p.bonusGp }) }) : null]));
 
-    // Shopping with the coins from the kits.
+    // Shopping with the coins from the kits. Weapons and armor: only what the character is trained with, unless "Show all" is on.
+    const untrained = Object.values(CATALOG).filter((x) => !trained(c, x)).length;
     const sel = h("select", { id: "f-shop-sel", "aria-label": t("form.shopPick") }, [h("option", { value: "", text: t("form.shopPick") }),
-      ...SHOP_SECTIONS.map((sec) => h("optgroup", { label: t("shop." + sec) }, Object.values(CATALOG).filter((x) => x.cat === sec)
-        .map((x) => h("option", { value: x.key, text: `${tr(x.name)}${x.bundle > 1 ? ` ×${x.bundle}` : ""} — ${priceText(x.cost)}`, "data-q": x.name.pl + " " + x.name.en }))))]);
+      ...SHOP_SECTIONS.map((sec) => [sec, Object.values(CATALOG).filter((x) => x.cat === sec && (showAll.on || trained(c, x)))]).filter(([, list]) => list.length)
+        .map(([sec, list]) => h("optgroup", { label: t("shop." + sec) }, list.map((x) => h("option", { value: x.key,
+          text: markUntrained(`${tr(x.name)}${x.bundle > 1 ? ` ×${x.bundle}` : ""} — ${priceText(x.cost)}`, trained(c, x)), "data-q": x.name.pl + " " + x.name.en }))))]);
     const qty = h("input", { type: "number", min: 1, value: 1, id: "f-shop-qty", "aria-label": t("inv.qty") });
     const bought = sg.buys.map((b, i) => CATALOG[b.key] ? h("div", { cls: "li" }, [
-      h("div", {}, [h("div", { cls: "t", text: `${b.qty}× ${tr(CATALOG[b.key].name)}` }), h("div", { cls: "n", text: priceText(CATALOG[b.key].cost * b.qty) })]),
+      h("div", {}, [h("div", { cls: "t", text: `${b.qty}× ${tr(CATALOG[b.key].name)}` }), h("div", { cls: "n", text: priceText(CATALOG[b.key].cost * b.qty) }),
+        trained(c, CATALOG[b.key]) ? null : h("div", { cls: "n warn-text", text: "⚠ " + t("wpn.noProf") })]),
       h("button", { type: "button", cls: "btn small ghost", id: "f-shop-rm-" + i, text: t("inv.remove"), onclick: () => change((g) => { g.buys = g.buys.filter((_, j) => j !== i); }) }),
     ]) : null).filter(Boolean);
     parts.push(
@@ -724,6 +727,7 @@ export function renderForm(root, go, id, opts = {}) {
           if (!key) return;
           change((g) => { const same = g.buys.find((b) => b.key === key); if (same) same.qty += n; else g.buys = [...g.buys, { key, qty: n }]; });
         } })]),
+        showAllToggle(untrained, draw, "f-shop-all"),
         bought.length ? h("div", { cls: "list" }, bought) : null]));
 
     // Magic items from the same table: the GM says which; the player writes them in.
@@ -792,17 +796,24 @@ export function renderForm(root, go, id, opts = {}) {
 
   /** Any armor and weapon: a character copied from paper, or one whose equipment is already on the sheet. */
   function armorFree(c) {
+    // Only armor the character is trained in, unless "Show all" is on; the armor worn now always stays on the list.
+    const ok = (k) => trained(c, { kind: "armor", id: k });
+    const untrained = Object.keys(ARMOR).filter((k) => !ok(k)).length + (c.training.includes("shield") ? 0 : 1) + Object.keys(WEAPONS).length - c.weaponProf.length;
+    const list = Object.keys(ARMOR).filter((k) => showAll.on || ok(k) || k === ch.armor);
+    const shieldOk = c.training.includes("shield");
     return card(t("form.armorTitle"), [
       h("p", { cls: "hint", text: t("form.training") + ": " + (c.training.length ? c.training.map((k) => t("armor." + k)).join(", ") : t("armor.none")) }),
       h("div", { cls: "row" }, [
         field(t("form.armor"), h("select", { id: "f-armor", onchange: (e) => { ch.armor = e.target.value; draw(); } },
-          Object.entries(ARMOR).map(([k, a]) => h("option", { value: k, text: tr(a.name), selected: k === ch.armor })))),
-        h("label", { cls: "check" }, [h("input", { type: "checkbox", id: "f-shield", checked: !!ch.shield, onchange: (e) => { ch.shield = e.target.checked; draw(); } }), t("form.shield")]),
+          list.map((k) => h("option", { value: k, text: markUntrained(tr(ARMOR[k].name), ok(k)), selected: k === ch.armor })))),
+        showAll.on || shieldOk || ch.shield ? h("label", { cls: "check" }, [h("input", { type: "checkbox", id: "f-shield", checked: !!ch.shield,
+          onchange: (e) => { ch.shield = e.target.checked; draw(); } }), shieldOk ? t("form.shield") : markUntrained(t("form.shield"), false)]) : null,
       ]),
+      showAllToggle(untrained, draw, "f-armor-all"),
       h("p", { cls: "acline" }, ["AC: ", h("b", { text: c.ac.value }), " · " + tr(c.ac.note)]),
       ...(c.ac.warnings || []).map((w) => h("p", { cls: "warn", text: tr(w) })),
       h("h4", { text: t("wpn.title") }),
-      weaponEditor({ ch, c, onChange: draw }),
+      weaponEditor({ ch, c, onChange: draw, toggle: false }),
     ]);
   }
 

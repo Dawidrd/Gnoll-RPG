@@ -5,6 +5,26 @@ import { WEAPONS } from "../rules/weapons.js";
 import { signed } from "../rules/core.js";
 import { dmgTag } from "./dmgtag.js";
 
+/** "Show all" for the weapon, armor and shop lists: off = only what the character is trained with. Kept while the app is open. */
+export const showAll = { on: false };
+
+/**
+ * The "Show all" switch under a filtered list, or null when nothing is hidden.
+ * untrained: how many choices the character isn't trained with; onToggle() redraws.
+ */
+export function showAllToggle(untrained, onToggle, id = "show-all") {
+  if (!untrained) return null;
+  return h("div", { cls: "stack" }, [
+    showAll.on ? null : h("p", { cls: "hint", text: t("wpn.onlyTrained") }),
+    h("label", { cls: "check" }, [h("input", { type: "checkbox", id, checked: showAll.on,
+      onchange: (e) => { showAll.on = e.target.checked; onToggle(); } }), t("wpn.showAll", { n: untrained })]),
+    showAll.on ? h("p", { cls: "warn soft", text: t("wpn.untrainedWarn") }) : null,
+  ]);
+}
+
+/** Option text with a mark for a choice the character isn't trained with. */
+export const markUntrained = (text, ok) => (ok ? text : `${text} — ⚠ ${t("wpn.noProf")}`);
+
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 const short = (x) => tr(x).split(" (")[0];
 
@@ -28,12 +48,17 @@ export function attacksBlock(c, ch) {
 }
 
 /** Add or remove carried weapons. onChange() saves and redraws.
- * locked: a new character's weapons come only from its starting equipment, so the list is shown but not edited here. */
-export function weaponEditor({ ch, c, onChange, locked = false }) {
+ * locked: a new character's weapons come only from its starting equipment, so the list is shown but not edited here.
+ * toggle: false when the card already has its own "Show all" switch. */
+export function weaponEditor({ ch, c, onChange, locked = false, redraw = onChange, toggle = true }) {
+  // Only weapons the character is proficient with, unless "Show all" is on.
+  const ok = (w) => c.weaponProf.includes(w.id);
+  const untrained = Object.values(WEAPONS).filter((w) => !ok(w)).length;
   const sel = h("select", { id: "wpn-add-sel", "aria-label": t("wpn.pick") }, [
     h("option", { value: "", text: t("wpn.pick") }),
-    ...["simple", "martial"].map((cat) => h("optgroup", { label: t("wpn.cat." + cat) },
-      Object.values(WEAPONS).filter((w) => w.cat === cat).map((w) => h("option", { value: w.id, text: `${tr(w.name)} — ${tr({ pl: w.dice.replace("d", "k"), en: w.dice })}`, "data-q": w.name.pl + " " + w.name.en })))),
+    ...["simple", "martial"].map((cat) => [cat, Object.values(WEAPONS).filter((w) => w.cat === cat && (showAll.on || ok(w)))]).filter(([, list]) => list.length)
+      .map(([cat, list]) => h("optgroup", { label: t("wpn.cat." + cat) },
+        list.map((w) => h("option", { value: w.id, text: markUntrained(`${tr(w.name)} — ${tr({ pl: w.dice.replace("d", "k"), en: w.dice })}`, ok(w)), "data-q": w.name.pl + " " + w.name.en })))),
   ]);
   const rows = (ch.weapons || []).map((it) => {
     const a = c.attacks.find((x) => x.uid === it.uid);
@@ -53,6 +78,7 @@ export function weaponEditor({ ch, c, onChange, locked = false }) {
       if (!sel.value) return;
       ch.weapons = [...(ch.weapons || []), { uid: newId(), id: sel.value }]; onChange();
     } })]),
+    toggle ? showAllToggle(untrained, redraw, "wpn-show-all") : null,
     h("p", { cls: "hint", text: t("wpn.hint") }),
   ]);
 }

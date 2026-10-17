@@ -12,10 +12,10 @@ export function goldValue(g) {
   return ((g.pp || 0) * 1000 + (g.gp || 0) * 100 + (g.ep || 0) * 50 + (g.sp || 0) * 10 + (g.cp || 0)) / 100;
 }
 
-export function inventoryTab({ ch, save, c }) {
+export function inventoryTab({ ch, save, c, draw }) {
   return [h("div", { cls: "stack" }, [
     h("header", { cls: "stack" }, [h("h2", { text: t("inv.title") }), h("p", { cls: "lead", text: t("inv.lead") })]),
-    h("section", { cls: "card", id: "weapons-card" }, [h("h4", { text: t("wpn.title") }), weaponEditor({ ch, c, onChange: () => save() })]),
+    h("section", { cls: "card", id: "weapons-card" }, [h("h4", { text: t("wpn.title") }), weaponEditor({ ch, c, onChange: () => save(), redraw: draw })]),
     gearEditor({ ch, onChange: () => save(false) }),
     h("p", { cls: "hint", text: t("inv.carry", { lb: c.abilities.str * 15 }) }),
   ])];

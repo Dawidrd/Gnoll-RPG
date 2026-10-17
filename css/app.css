@@ -272,6 +272,7 @@ details summary { cursor: pointer; }
 .kitopt b { color: var(--bone); }
 .kitopt[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); color: var(--bone); }
 .picked.bad { color: #f0a0a6; }
+.warn-text { color: #f0a0a6; }
 .shop summary { cursor: pointer; font-family: var(--f-ui); color: var(--gold); padding: 6px 0; }
 .shop[open] summary { margin-bottom: 6px; }
 .steps { margin: 4px 0 8px; padding-left: 22px; }

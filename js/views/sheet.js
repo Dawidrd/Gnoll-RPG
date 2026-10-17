@@ -84,7 +84,7 @@ export function renderSheet(root, go, id, tab) {
 
     if (!tabsFor(c).includes(tab)) tab = "start";
     const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes,
-      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save }), journal: () => journalTab({ ch, save }), party: () => partyTab({ ch, go }) }[tab]();
+      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save, draw }), journal: () => journalTab({ ch, save }), party: () => partyTab({ ch, go }) }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
     searchSelects(root);

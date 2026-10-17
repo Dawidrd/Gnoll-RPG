@@ -34,10 +34,11 @@ export function armorClass({ armorId, shield, mods, unarmored, training, strScor
     if (a.str && strScore < a.str) warnings.push({ pl: `Siła poniżej ${a.str}: prędkość −10 ft.`, en: `Strength below ${a.str}: speed −10 ft.` });
     if (a.stealth) warnings.push({ pl: "Utrudnienie na Skradanie.", en: "Disadvantage on Stealth." });
   }
-  if (shield) {
-    value += 2;
+  // A shield without training gives no AC bonus (PHB 2024, Armor Training).
+  const shieldAc = shield && training.includes("shield") ? 2 : 0;
+  if (shieldAc) {
+    value += shieldAc;
     note = { pl: note.pl + " + tarcza 2", en: note.en + " + shield 2" };
-    if (!training.includes("shield")) warnings.push({ pl: "Brak biegłości w tarczy.", en: "Not trained with shields." });
-  }
-  return { value, note, warnings, type: a.type, heavy: a.type === "heavy", wearing: a.type !== "none" };
+  } else if (shield) warnings.push({ pl: "Brak biegłości w tarczy: tarcza nie dodaje +2 do KP.", en: "Not trained with shields: the shield adds no +2 to AC." });
+  return { value, note, warnings, shieldAc, type: a.type, heavy: a.type === "heavy", wearing: a.type !== "none" };
 }

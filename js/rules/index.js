@@ -12,7 +12,7 @@ import { wizard } from "./classes/wizard.js";
 import { fighter } from "./classes/fighter.js";
 import { paladin } from "./classes/paladin.js";
 import { ranger } from "./classes/ranger.js";
-import { weaponAttacks, masteryGroup } from "./weapons.js";
+import { WEAPONS, weaponAttacks, masteryGroup } from "./weapons.js";
 import { BEASTS } from "./beasts.js";
 import { classOptions, optionInnate } from "./options.js";
 import { ARMOR, armorClass } from "./armor.js";
@@ -254,8 +254,9 @@ export function compute(raw) {
   // Class option lists (Eldritch Invocations, Metamagic). Cantrip prerequisites look at the cantrips picked for the class and the Book of Shadows.
   const tomeOn = (ch.classOptions?.invocations || []).includes("pact-of-the-tome");
   const knownClassCantrips = [...(ch.spellPicks?.cantrips || []), ...(tomeOn ? ch.spellPicks?.tomeCantrips || [] : [])];
-  // Weapon training: Simple weapons for everyone, more from the class (Martial, or some Martial kinds) and the subclass.
-  const proficient = (w) => w.cat === "simple" || !!(cls.weaponProf && cls.weaponProf(w, ctx)) || !!subclass?.martialWeapons;
+  // Weapon training: Simple weapons for everyone, more from the class (Martial, or some Martial kinds), the subclass and feats (Martial Weapon Training).
+  const featMartial = levelFeats.some((lf) => FEATS[lf.id].weapons === "martial");
+  const proficient = (w) => w.cat === "simple" || !!(cls.weaponProf && cls.weaponProf(w, ctx)) || !!subclass?.martialWeapons || featMartial;
   // Weapon Mastery: the class's kinds, plus one per Weapon Master feat (for any class, among weapons you're proficient with).
   const extraMastery = levelFeats.filter((lf) => lf.id === "weapon-master").length;
   const optCls = { ...cls, optionPicks: (c) => {
@@ -421,8 +422,8 @@ export function compute(raw) {
   if (active.mageArmor && !worn.wearing) {
     const ma = 13 + mods.dex;
     const base = unarmored && (unarmored.shieldOk || !ch.shield) ? unarmored.value : 10 + mods.dex;
-    if (ma > base) worn = { ...worn, value: ma + (ch.shield ? 2 : 0),
-      note: { pl: "Mage Armor 13 + ZRĘ" + (ch.shield ? " + tarcza 2" : ""), en: "Mage Armor 13 + DEX" + (ch.shield ? " + shield 2" : "") } };
+    if (ma > base) worn = { ...worn, value: ma + worn.shieldAc,
+      note: { pl: "Mage Armor 13 + ZRĘ" + (worn.shieldAc ? " + tarcza 2" : ""), en: "Mage Armor 13 + DEX" + (worn.shieldAc ? " + shield 2" : "") } };
   }
   // Fighting Style feats (class slot or taken at a level): Defense gives +1 AC in armor; the others shape weapon attacks.
   const styleIds = [...new Set([...featIds, ...levelFeats.map((lf) => lf.id)])].filter((id) => FEATS[id]?.category === "fighting-style");
@@ -473,7 +474,7 @@ export function compute(raw) {
     setting: ch.setting || "standard", size, alignment: ch.alignment || "", languages, toolSlots, toolIds, fixedTools,
     featSlots, featInstances,
     granted, slots, skillFit, featIds, expertiseMax: cls.expertise ? cls.expertise(level) : 0, expertiseFrom: cls.expertiseFrom || null,
-    cls, sp, bg, subclass, subclassId: ctx.subclassId, customSubclass, classChoices, spells, training, level, pb, abilities, mods, ac, initiative, speed, darkvision,
+    cls, sp, bg, subclass, subclassId: ctx.subclassId, customSubclass, classChoices, spells, training, weaponProf: Object.values(WEAPONS).filter(proficient).map((w) => w.id), level, pb, abilities, mods, ac, initiative, speed, darkvision,
     hpMax, hpPerLevel: perLevel, hpExtra, saves, skills, tools,
     featMagic, spellSources: spellSrc, deathSaves, blindsight, flaws, climb: spt.climb, ravenloft, ravenloftOnly, originFeats, bgFeatId,
     speciesSpeed: spt.speed, creatureType: sp.type || "humanoid",
