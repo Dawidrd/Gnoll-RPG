@@ -17,6 +17,7 @@ import * as PARTY from "../js/sync/partylogic.js";
 import { stepBlockers } from "../js/rules/checks.js";
 import * as EQ from "../js/rules/equipment.js";
 import { CLASSES as ALL_CLASSES, BACKGROUNDS as ALL_BGS } from "../js/rules/index.js";
+import { inAppBrowser } from "../js/inapp.js";
 import { readFileSync } from "node:fs";
 import LANG_PL from "../js/lang/pl.js";
 import LANG_EN from "../js/lang/en.js";
@@ -1199,6 +1200,20 @@ test("nothing is counted locally, with do-not-track, or after the user opts out"
   withSite({}, () => eq(STATS.statsOn(), true));
   eq(beacons.length, 0);
   for (const k of ["privacy.stats.h", "privacy.stats.p", "privacy.stats.off", "privacy.stats.browser"]) eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
+});
+
+test("inAppBrowser: Messenger, Facebook, Instagram and Android WebView are caught; normal browsers aren't", () => {
+  const ios = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
+  eq(inAppBrowser(ios + " [FBAN/MessengerForiOS;FBAV/470.0.0.40.109;FBBV/1;FBDV/iPhone14,5;FBMD/iPhone;FBSN/iOS;FBSV/17.5;FBSS/3;FBCR/;FBID/phone;FBLC/pl_PL;FBOP/5]"), "Messenger");
+  eq(inAppBrowser(ios + " [FBAN/FBIOS;FBAV/480.0.0.38.105;FBBV/1;FBDV/iPhone14,5;FBMD/iPhone;FBSN/iOS;FBSV/17.5]"), "Facebook");
+  eq(inAppBrowser(ios + " Instagram 340.0.0.22.109 (iPhone14,5; iOS 17_5; pl_PL; pl; scale=3.00; 1170x2532)"), "Instagram");
+  eq(inAppBrowser("Mozilla/5.0 (Linux; Android 14; SM-S911B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0 Mobile Safari/537.36 [FB_IAB/Orca-Android;FBAV/470.0]"), "Messenger");
+  eq(inAppBrowser("Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0 Mobile Safari/537.36"), "");
+  eq(inAppBrowser(ios.replace("Mobile/15E148", "Version/17.5 Mobile/15E148 Safari/604.1")), null); // Safari
+  eq(inAppBrowser("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0 Mobile/15E148 Safari/604.1"), null); // Chrome on iPhone
+  eq(inAppBrowser("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"), null);
+  eq(inAppBrowser("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"), null);
+  eq(inAppBrowser(""), null);
 });
 
 let failed = 0;

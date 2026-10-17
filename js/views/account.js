@@ -4,6 +4,7 @@ import { t } from "../i18n.js";
 import { storage } from "../store.js";
 import { account, onAccount, accountAvailable, signIn, signOut, connect, moveGuests } from "../sync/cloud.js";
 import { deleteAccount } from "../sync/erase.js";
+import { inAppBrowser } from "../inapp.js";
 
 const NOTICE = "gnoll.notice"; // a message to show after the page reloads
 
@@ -23,8 +24,24 @@ function deleteError(e) {
   return "failed";
 }
 
+/** In Messenger's (or another app's) built-in browser Google won't sign in: explain how to open the page in a normal browser. */
+function inAppNote(app) {
+  const link = h("input", { id: "acc-inapp-link", readonly: true, value: location.href, "aria-label": t("acc.inapp.link"), onfocus: (e) => e.target.select() });
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(location.href); toast(t("party.copied")); }
+    catch { link.focus(); link.select(); toast(t("party.copyManual")); }
+  };
+  return h("div", { cls: "stack", id: "acc-inapp" }, [
+    h("p", { cls: "warn soft", text: app ? t("acc.inapp.named", { app }) : t("acc.inapp.unnamed") }),
+    h("p", { cls: "small", text: t("acc.inapp.how") }),
+    link,
+    h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-inapp-copy", text: t("party.copy"), onclick: copy })]),
+  ]);
+}
+
 export function accountBox() {
   if (!accountAvailable()) return null;
+  const app = inAppBrowser(navigator.userAgent);
   const box = h("section", { cls: "card", id: "account" });
   // del: the "delete account" panel; null = closed. { keep, step, error }
   let del = null;
@@ -77,6 +94,8 @@ export function accountBox() {
     } else if (s.status === "unreachable") {
       kids.push(h("p", { cls: "small", text: t("acc.unreachable") }),
         h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn", text: t("acc.retry"), onclick: () => connect() })]));
+    } else if (app !== null) {
+      kids.push(h("p", { cls: "small", text: t("acc.why") }), inAppNote(app));
     } else {
       kids.push(h("p", { cls: "small", text: t("acc.why") }),
         h("div", { cls: "row" }, [h("button", { type: "button", cls: "btn gold", id: "acc-in", text: t("acc.signIn"), onclick: () => signIn() })]),
