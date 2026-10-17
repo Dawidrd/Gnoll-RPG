@@ -27,6 +27,7 @@ import { pipTarget, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
 import { newSpellCircle } from "../js/rules/magic.js";
 import { fieldOf } from "../js/views/fieldof.js";
 import * as FAM from "../js/rules/familiars.js";
+import * as NOTES from "../js/rules/notes.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -595,9 +596,9 @@ test("Sorcerer: Sorcery Points, Metamagic, Innate Sorcery, subclasses", () => {
 });
 
 // --- 0.10: equipment, journal, turn planner, switched-on effects ---
-test("older saves get empty equipment, coins, journal and turn", () => {
+test("older saves get empty equipment, coins, notes and turn", () => {
   const ch = normalize({ ...make(), items: undefined, gold: undefined, journal: undefined, turn: undefined, active: undefined });
-  eq([ch.items, ch.gold, ch.journal, ch.turn.round, ch.active], [[], { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }, [], 1, {}]);
+  eq([ch.items, ch.gold, ch.notebook, ch.turn.round, ch.active], [[], { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }, [], 1, {}]);
 });
 test("Mage Armor and armor taken off change AC; Rage adds resistances", () => {
   const sat = (active, armor = "leather") => run(wl({ armor, active, classOptions: { invocations: ["armor-of-shadows"] } }));
@@ -656,8 +657,10 @@ test("import from an old character page: state, picks, equipment, journal, quest
   eq([ch.gold.gp, ch.gold.sp, ch.concentration, c.active.mageArmor, c.ac.value], [23, 4, "hex", true, 15]);
   eq(ch.items.map((x) => x.name), ["Sztylet", "Lina"]);
   eq([ch.familiar.name, ch.familiar.form, ch.familiar.status, ch.familiar.hp.cur], ["Kra", "raven", "pocket", 1], "the familiar comes along");
-  eq([ch.journal[0].title, ch.journal[0].date], ["Sesja 1", "2026-09-30"]);
-  eq(ch.notes.includes("- [x] Kto?\n  Odpowiedź: Jeleń") && ch.notes.includes("- [ ] Gdzie?"), true);
+  const session = ch.notebook.find((n) => n.id === "s-s1"), questions = ch.notebook.find((n) => n.id === "page-questions");
+  eq([session.text, new Date(session.at).toISOString().slice(0, 10)], ["Sesja 1\nLoch", "2026-09-30"], "journal entries become private notes");
+  eq(questions.text.includes("- [x] Kto?\n  Odpowiedź: Jeleń") && questions.text.includes("- [ ] Gdzie?"), true);
+  eq(["notes" in ch, "journal" in ch, report.counts.journal], [false, false, 1]);
   eq(report.notes.map((n) => [n.key, n.vars]), [["imp.levelChanged", { from: 1, to: 2 }], ["imp.hpDiff", { page: 20, app: 15 }], ["imp.acDiff", { page: 13, app: 15 }]]);
 });
 
@@ -1579,6 +1582,44 @@ test("familiar: old familiars load with their form, place and HP; speed with Inv
   eq(FAM.familiarSpeed(FAM.FAMILIARS.owl, "fly").en, "5 ft, fly 60 ft", "a better Fly Speed stays");
   eq(FAM.familiarSpeed(FAM.FAMILIARS.cat, "").pl, "40 ft, wspinaczka 40 ft");
   for (const k of ["tab.familiar", "fam.status.here", "fam.status.pocket", "fam.status.gone", "fam.rule5", "fam.invest3", "fam.group.chain"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+});
+
+// --- 0.36.0: one Notes tab ---
+test("notes: the Notes text, the journal and the familiar's notes move into one list; nothing is lost", () => {
+  const ch = normalize(Object.assign(blankCharacter(), { updated: 1000, notes: "Historia postaci\nUrodzony w Barovii",
+    journal: [{ id: "a", title: "Sesja 1", date: "2026-09-30", body: "Loch", created: 5 }, { id: "b", title: "", date: "", body: "Bez tytułu", created: 7 }],
+    familiar: { name: "Pazur", kind: "Kruk", hp: { cur: 1, max: 1 }, notes: "Lubi błyskotki" } }));
+  eq(["notes" in ch, "journal" in ch, "notes" in ch.familiar], [false, false, false], "old fields are gone");
+  eq(ch.notebook.map((n) => n.text), ["Historia postaci\nUrodzony w Barovii", "Sesja 1\nLoch", "Bez tytułu", "🐾 Pazur\nLubi błyskotki"]);
+  eq(ch.notebook[1].at, Date.parse("2026-09-30T12:00:00"), "a session is dated by its day");
+  eq(ch.notebook[2].at, 7, "no day: when it was written");
+  eq(normalize(structuredClone(ch)).notebook.length, 4, "loading again adds nothing");
+  eq(normalize(Object.assign(blankCharacter(), { notes: "  ", journal: [] })).notebook, [], "empty notes make no entry");
+  eq(blankCharacter().notebook, [], "new characters start with an empty list");
+  // An old device still writing the Notes text: the same text is not added twice.
+  eq(normalize(Object.assign(structuredClone(ch), { notes: "Historia postaci\nUrodzony w Barovii" })).notebook.length, 4);
+});
+test("notes: one list, newest first, filtered by who sees it; the first line is the title", () => {
+  const priv = [{ id: "1", text: "a", at: 10 }, { id: "2", text: "b", at: 30 }], party = [{ id: "3", text: "c", at: 20, author: "u" }];
+  eq(NOTES.noteBoard(priv, party).map((n) => [n.id, n.shared]), [["2", false], ["3", true], ["1", false]]);
+  eq(NOTES.noteBoard(priv, party, "mine").map((n) => n.id), ["2", "1"]);
+  eq(NOTES.noteBoard(priv, party, "party").map((n) => n.id), ["3"]);
+  eq(NOTES.noteBoard(priv, null).map((n) => n.id), ["2", "1"], "no party");
+  eq(NOTES.noteParts("Tytuł\nTreść\ndalej"), { title: "Tytuł", body: "Treść\ndalej" });
+  eq(NOTES.noteParts("Jedna linijka"), { title: "", body: "Jedna linijka" });
+});
+test("notes: a party's old 'My notes' are copied into the character once", () => {
+  const nb = [{ id: "pm-x", text: "już jest", at: 1 }];
+  const mine = [{ id: "x", text: "już jest", at: 1 }, { id: "y", text: " nowa ", at: 2 }, { id: "z", text: "  ", at: 3 }];
+  eq(NOTES.partyPrivateToCopy(nb, mine).map((n) => n.id), ["y"]);
+  eq(NOTES.copiedNote(mine[1]), { id: "pm-y", text: "nowa", at: 2 });
+});
+test("notes: texts in both languages, the Journal tab is gone, new files work offline", () => {
+  for (const k of ["notes.lead", "notes.new", "notes.onlyMe", "notes.party", "notes.meHint", "notes.partyHint", "notes.toParty", "notes.toMe", "notes.toPartyConfirm",
+    "notes.toMeConfirm", "notes.tooLong", "notes.whyLocal", "notes.whySignIn", "notes.whyLoading", "notes.whyNoParty", "notes.movedFromParty", "notes.onSheet", "notes.openSheet", "notes.none"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+  for (const k of ["tab.journal", "journal.title", "fam.notes", "party.notes.mine"]) eq([k, LANG_PL[k], LANG_EN[k]], [k, undefined, undefined]);
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  for (const f of ["./js/views/notes.js", "./js/views/live.js", "./js/rules/notes.js"]) eq(sw.includes(`"${f}"`), true, f + " in SHELL");
 });
 
 let failed = 0;

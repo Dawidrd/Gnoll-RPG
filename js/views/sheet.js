@@ -18,7 +18,8 @@ import { spellDamage } from "../rules/damage.js";
 import { classOptionUI, classOptionList } from "./classoptions.js";
 import { combatTab, activeCard } from "./combat.js";
 import { attacksBlock } from "./weapons.js";
-import { inventoryTab, journalTab } from "./gear.js";
+import { inventoryTab } from "./gear.js";
+import { notesTab } from "./notes.js";
 import { partyTab } from "./party.js";
 import { familiarTab, hasFamiliar } from "./familiar.js";
 import { familiarAccess } from "../rules/familiars.js";
@@ -26,7 +27,7 @@ import { accountAvailable } from "../sync/cloud.js";
 import { searchSelects } from "./selectsearch.js";
 import { skillGroups } from "./skillgroups.js";
 
-const TABS = ["start", "combat", "character", "spells", "familiar", "inventory", "party", "levelup", "journal", "notes"];
+const TABS = ["start", "combat", "character", "spells", "familiar", "inventory", "party", "levelup", "notes"];
 let lastHp = null; // undo snapshot for the open character
 let lastId = null;
 let pending = null; // decisions for the next level on the Level up tab, applied together on confirm
@@ -89,8 +90,8 @@ export function renderSheet(root, go, id, tab) {
       h("a", { href: `#/c/${ch.id}/${k}`, "aria-current": k === tab ? "page" : false, text: t("tab." + k) })));
 
     if (!tabsFor(c).includes(tab)) tab = "start";
-    const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: tabNotes,
-      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save, draw }), journal: () => journalTab({ ch, save }), familiar: () => familiarTab({ ch, c, save }), party: () => partyTab({ ch, go }) }[tab]();
+    const body = { start: tabStart, character: tabCharacter, spells: tabSpells, levelup: tabLevel, notes: () => notesTab({ ch, save }),
+      combat: () => combatTab({ ch, c, save }), inventory: () => inventoryTab({ ch, c, save, draw }), familiar: () => familiarTab({ ch, c, save }), party: () => partyTab({ ch, go }) }[tab]();
     root.replaceChildren(header, vitals, h("div", { cls: "shell" }, [nav, h("main", { cls: "panel" }, body)]));
     root.querySelectorAll(".gl").forEach(glossify);
     searchSelects(root);
@@ -495,16 +496,6 @@ export function renderSheet(root, go, id, tab) {
       const after = compute(ch).hpMax;
       ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
       pending = null; save();
-    }
-
-    function tabNotes() {
-      const state = h("span", { cls: "hint" });
-      let timer;
-      const ta = h("textarea", { cls: "notes", rows: 16, oninput: () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => { ch.notes = ta.value; if (upsert(ch)) state.textContent = t("notes.saved"); else toast(t("app.saveError")); }, 400);
-      } }, ch.notes || "");
-      return [h("section", { cls: "blk" }, [h("h2", { text: t("notes.title") }), h("p", { cls: "hint", text: t("notes.hint") }), ta, state])];
     }
 
     // --- pieces -----------------------------------------------------------

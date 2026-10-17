@@ -161,11 +161,11 @@ export const FAMILIAR_STATUS = ["here", "pocket", "gone"];
 
 /**
  * 0.35.0: form from the list, creature type, where it is (with you / pocket dimension / gone at 0 HP),
- * the Investment of the Chain Master's movement and notes. Older familiars keep their typed "kind";
+ * the Investment of the Chain Master's movement (its notes moved to the Notes tab in 0.36.0: rules/notes.js). Older familiars keep their typed "kind";
  * a kind that names a listed form becomes that form.
  */
 export function normalizeFamiliar(f) {
-  const out = { name: "", kind: "", form: "", type: "", hp: { cur: null, max: null }, status: "here", move: "", notes: "", ...f };
+  const out = { name: "", kind: "", form: "", type: "", hp: { cur: null, max: null }, status: "here", move: "", ...f };
   out.hp = { cur: null, max: null, ...(f.hp || {}) };
   if (!FAMILIAR_STATUS.includes(out.status)) out.status = "here";
   if (f.status == null && f.present === false) out.status = "pocket";

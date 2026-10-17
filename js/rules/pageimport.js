@@ -95,7 +95,11 @@ export function fromPage(data) {
   // Equipment, journal, questions.
   const items = [...(data.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   ch.items = items.filter((x) => x && x.name).map((x) => ({ id: "it-" + (x.id || Math.random().toString(36).slice(2)), name: String(x.name), qty: Math.max(0, parseInt(x.qty, 10) || 0), note: x.note ? String(x.note) : "" }));
-  ch.journal = (data.sessions || []).filter((x) => x && (x.title || x.body)).map((x) => ({ id: "s-" + (x.id || Math.random().toString(36).slice(2)), title: String(x.title || ""), date: x.date || (x.created ? new Date(x.created).toISOString().slice(0, 10) : ""), body: String(x.body || ""), created: x.created || 0 }));
+  // Journal entries become private notes (title on the first line), dated by the session; questions become one more note.
+  const day = (d) => { const ms = Date.parse(d + "T12:00:00"); return Number.isFinite(ms) ? ms : 0; };
+  const sessions = (data.sessions || []).filter((x) => x && (x.title || x.body));
+  ch.notebook.push(...sessions.map((x) => ({ id: "s-" + (x.id || Math.random().toString(36).slice(2)),
+    text: [x.title, x.body].map((y) => String(y || "").trim()).filter(Boolean).join("\n"), at: (x.date && day(x.date)) || x.created || 0 })));
   const qs = [...(data.questions || [])].filter((q) => q && q.text).sort((a, b) => (a.group || "").localeCompare(b.group || "") || (a.order ?? 0) - (b.order ?? 0));
   if (qs.length) {
     const head = { gm: "Pytania do GM-a", gra: "Do wybadania w grze" };
@@ -105,7 +109,7 @@ export function fromPage(data) {
       if (q.group !== group) { group = q.group; lines.push("", `## ${head[group] || group || "Pytania"}`); }
       lines.push(`- [${q.done ? "x" : " "}] ${q.text}` + (q.answer ? `\n  Odpowiedź: ${q.answer}` : ""));
     }
-    ch.notes = [ch.notes || "", `# Ze strony postaci (${report.page})`, ...lines].filter((x, i) => i > 0 || x).join("\n").trim();
+    ch.notebook.push({ id: "page-questions", text: [`Ze strony postaci (${report.page})`, ...lines].join("\n").trim(), at: Date.now() });
   }
   ch.turn = { round: 1, action: null, bonus: null, reaction: null, item: null, moved: 0 };
 
@@ -115,7 +119,7 @@ export function fromPage(data) {
   if (Number.isFinite(+shown.hpMax) && +shown.hpMax !== after.hpMax) report.notes.push({ key: "imp.hpDiff", vars: { page: +shown.hpMax, app: after.hpMax } });
   if (Number.isFinite(+shown.ac) && +shown.ac !== after.ac.value) report.notes.push({ key: "imp.acDiff", vars: { page: +shown.ac, app: after.ac.value } });
   if (Number.isFinite(+shown.speed) && +shown.speed !== after.speed) report.notes.push({ key: "imp.speedDiff", vars: { page: +shown.speed, app: after.speed } });
-  report.counts = { items: ch.items.length, journal: ch.journal.length, questions: qs.length };
+  report.counts = { items: ch.items.length, journal: sessions.length, questions: qs.length };
   report.todo = after.review.todo.length + after.review.errors.length;
   ch.imported = { page: report.page, at: Date.now(), notes: report.notes, counts: report.counts };
   return { ch, report };

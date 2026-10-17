@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.36.0", date: "2026-10-17",
+    points: [
+      { pl: "Wszystkie notatki są teraz w jednym miejscu — w zakładce „Notatki” na karcie postaci.", en: "All your notes are now in one place — the “Notes” tab on the character sheet." },
+      { pl: "Przy każdej notatce wybierasz: 🔒 tylko ja albo 👥 drużyna. Notatkę można później przełączyć.", en: "For each note you choose: 🔒 only me or 👥 party. You can switch a note later." },
+      { pl: "Dziennik, notatki chowańca i „Moje notatki” z drużyny przeniosły się same do Notatek — nic nie zginęło.", en: "The journal, the familiar's notes and the party's “My notes” moved into Notes by themselves — nothing was lost." },
+    ],
+  },
+  {
     version: "0.35.0", date: "2026-10-17",
     points: [
       { pl: "Postać z chowańcem (czar Find Familiar, Pakt Łańcucha, Wild Companion druida) ma nową zakładkę „Chowaniec”.", en: "A character with a familiar (Find Familiar, Pact of the Chain, the Druid's Wild Companion) has a new “Familiar” tab." },

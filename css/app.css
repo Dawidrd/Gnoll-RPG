@@ -79,8 +79,6 @@ main.panel { padding-top: 0; }
 input, textarea, select { font: 1rem var(--f-body); color: var(--bone); background: #120e14; border: 1px solid var(--seam); border-radius: var(--r); padding: 8px 10px; min-width: 0; min-height: 40px; }
 input[type=number] { font-family: var(--f-ui); font-variant-numeric: tabular-nums; width: 5.5em; }
 textarea { width: 100%; resize: vertical; line-height: 1.5; }
-textarea.notes { min-height: 50vh; }
-textarea.notes.famnotes { min-height: 9em; }
 label { font-family: var(--f-ui); font-size: .85rem; color: var(--bone-dim); display: grid; gap: 4px; }
 label.wide { flex: 1 1 100%; }
 .cform .row > label { flex: 1 1 180px; }
@@ -408,7 +406,7 @@ details summary { cursor: pointer; }
 @media (max-width: 520px) { .coins { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .list { display: grid; border: 1px solid var(--seam); border-radius: var(--r); background: rgba(22,17,24,.9); }
 .li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 10px 14px; border-bottom: 1px solid rgba(59,48,57,.7); align-items: center; }
-.li:last-child, .sess:last-child { border-bottom: 0; }
+.li:last-child { border-bottom: 0; }
 .li .t { font-weight: 600; overflow-wrap: anywhere; }
 .li .n { font-size: .88rem; color: var(--bone-dim); }
 .li.empty-qty .t { color: var(--ash); text-decoration: line-through; }
@@ -419,10 +417,6 @@ details summary { cursor: pointer; }
 .qty b { min-width: 2.4ch; text-align: center; font-size: 1.1rem; }
 @media (max-width: 520px) { .li { grid-template-columns: minmax(0, 1fr); } .qty { justify-content: flex-start; } }
 .empty { padding: 14px; color: var(--ash); font-family: var(--f-ui); font-size: .92rem; }
-.sess { display: grid; gap: 6px; padding: 14px; border-bottom: 1px solid rgba(59,48,57,.7); }
-.sess h3 { margin: 0; }
-.sess .meta { font-family: var(--f-ui); font-size: .8rem; color: var(--ash); letter-spacing: .06em; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.sess .body { white-space: pre-wrap; }
 .famcard input { width: 100%; }
 .famcard input[type=number] { width: 6em; }
 
@@ -441,6 +435,7 @@ ol.march-edit { margin: 0; padding-left: 1.6em; display: grid; gap: 6px; }
 ol.march-edit li { display: flex; align-items: center; gap: 8px; }
 ol.march-edit li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .note { display: grid; gap: 6px; border-top: 1px solid var(--seam); padding-top: 10px; }
+.note-title { margin: 0; font-weight: 600; color: var(--gold); overflow-wrap: anywhere; }
 .note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .note .hint { margin: 0; }
 .note-private { border-style: dashed; }

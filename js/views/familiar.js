@@ -10,7 +10,7 @@ const PIPS_MAX = 30; // more HP than this shows as numbers only
 /** The tab shows for a character who can have a familiar, and stays while one is filled in (nothing is hidden silently). */
 export function hasFamiliar(ch, c) {
   const f = ch.familiar || {};
-  return familiarAccess(c).has || !!(f.name || f.form || f.kind || f.notes);
+  return familiarAccess(c).has || !!(f.name || f.form || f.kind);
 }
 
 /** "Raven „Claw” · HP 2/2 · with you" — for Start and the tab's header. */
@@ -142,17 +142,8 @@ export function familiarTab({ ch, c, save }) {
     h("ul", { cls: "checklist" }, ["1", "2", "3", "4", "5"].map((k) => h("li", { text: t("fam.rule" + k) }))),
   ]);
 
-  // --- notes -----------------------------------------------------------------
-  const state = h("span", { cls: "hint" });
-  let timer;
-  const ta = h("textarea", { cls: "notes famnotes", rows: 6, id: "fam-notes", placeholder: t("fam.notesPh"), oninput: () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => { f.notes = ta.value; save(false); state.textContent = t("notes.saved"); }, 400);
-  } }, f.notes || "");
-  const notes = h("section", { cls: "card stack" }, [h("h4", { text: t("fam.notes") }), ta, state]);
-
   return [h("div", { cls: "stack" }, [
     h("header", { cls: "stack" }, [h("h2", { text: t("fam.title") }), h("p", { cls: "lead", text: familiarLine(f) })]),
-    who, hpBox, stats, invest, rules, notes,
+    who, hpBox, stats, invest, rules,
   ])];
 }

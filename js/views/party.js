@@ -1,17 +1,19 @@
 // Party screens: the Party tab on a character sheet (partyTab), my parties and founding one (#/party),
 // one party on its own (#/party/<id>, e.g. for a Game Master without a character), joining by invite link (#/join/<code>[/<characterId>]).
 // One character = one party: characters already in another party cannot be picked.
-import { h, toast, fill } from "../dom.js";
+import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { loadAll, getById, storage } from "../store.js";
 import { CLASSES, SPECIES } from "../rules/index.js";
 import { ABILITIES, ABILITY_NAMES, SKILLS, signed } from "../rules/core.js";
 import { account, onAccount, accountAvailable } from "../sync/cloud.js";
 import { accountBox } from "./account.js";
-import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX, NOTE_MAX,
-  sessionWhen, cleanNote, sortNotes, canEditNote, canDeleteNote, noteSigned, marchOrder, marchRows, moveIn,
+import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX,
+  sessionWhen, marchOrder, marchRows, moveIn,
   GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar } from "../sync/partylogic.js";
 import * as PARTY from "../sync/party.js";
+import { confirmer, painter } from "./live.js";
+import { drawBoard, bringPartyNotes } from "./notes.js";
 import { countEvent } from "../stats.js";
 
 const fail = () => toast(t("party.err.save"));
@@ -34,18 +36,6 @@ function fillChars(sel, none, busy) {
 const pickedChar = (sel) => loadAll().find((c) => c.id === sel.value) || null;
 
 /** In-page yes/no question (native confirm() is blocked in some app views). */
-function confirmer() {
-  const box = h("div", { cls: "confirm", role: "alert" });
-  const ask = (text, fn) => {
-    box.replaceChildren(h("span", { cls: "small", text }),
-      h("button", { type: "button", cls: "btn gold", text: t("sheet.yes"), onclick: () => { box.classList.remove("open"); fn(); } }),
-      h("button", { type: "button", cls: "btn ghost", text: t("sheet.no"), onclick: () => box.classList.remove("open") }));
-    box.classList.add("open");
-    box.scrollIntoView({ block: "nearest" });
-  };
-  return { box, ask };
-}
-
 /**
  * Shared frame: without an account the screen explains why one is needed and offers signing in.
  * draw(panel) runs once the account is ready; the screen redraws when the account changes.
@@ -154,30 +144,6 @@ function sheetLine(s) {
   return [short(SPECIES[s.species]) || s.species, `${short(cls) || s.cls}${sub ? ` (${sub})` : ""} ${s.level || ""}`.trim()].filter(Boolean).join(" · ");
 }
 const when = (d) => d.toLocaleString(lang(), { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-const stamp = (at) => new Date(at || 0).toLocaleString(lang(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-
-/**
- * Sections redraw on every change in the cloud (someone's HP, a new note…). A section the user is typing in
- * waits until they leave it, so nothing typed is lost; drafts live in `ui`, outside the redrawn elements.
- * The user's own clicks redraw at once (force), also where the text field keeps focus (Safari does not move it to buttons).
- */
-function painter() {
-  const waiting = new Map(), hooked = new WeakSet();
-  const typing = (el) => el.contains(document.activeElement) && document.activeElement.matches("input, textarea, select");
-  const paint = (el, draw, force) => {
-    if (!force && typing(el)) {
-      waiting.set(el, draw);
-      if (!hooked.has(el)) {
-        hooked.add(el);
-        el.addEventListener("focusout", () => setTimeout(() => { if (waiting.has(el) && !typing(el)) paint(el, waiting.get(el), true); }, 0));
-      }
-      return;
-    }
-    waiting.delete(el);
-    fill(el, draw());
-  };
-  return paint;
-}
 
 export function renderParty(root, go, id) {
   frame(root, t("party.title"), (panel) => partyBody(panel, go, id, "#/party"));
@@ -185,16 +151,18 @@ export function renderParty(root, go, id) {
 
 /**
  * One party inside `panel`: overview (info, characters, GM view, marching order), notes, managing.
- * home: where to go after leaving or deleting it. Returns a function that stops its listeners.
+ * home: where to go after leaving or deleting it. sheetCh: the character whose sheet shows this (its Party tab);
+ * there the notes are on the sheet's Notes tab instead. Returns a function that stops its listeners.
  */
-function partyBody(panel, go, id, home, onSheet = false) {
+function partyBody(panel, go, id, home, sheetCh = null) {
+  const onSheet = !!sheetCh;
   const { box, ask } = confirmer();
   const paint = painter();
   // What the user is doing here; kept across redraws.
-  const ui = { tab: "overview", editInfo: null, newNote: { party: "", mine: "" }, editing: null, march: null };
+  const ui = { tab: "overview", editInfo: null, notes: { show: "all", text: "", shared: false, editing: null }, march: null };
   const body = h("div", { cls: "stack" }, [h("p", { cls: "small", text: t("party.loading") })]);
   const tabs = h("div", { cls: "seg party-tabs", role: "tablist" });
-  const sec = { info: h("div"), members: h("div"), gm: h("div"), march: h("div"), notes: h("div"), mine: h("div"), manage: h("div", { cls: "stack" }) };
+  const sec = { info: h("div"), members: h("div"), gm: h("div"), march: h("div"), notes: h("div"), manage: h("div", { cls: "stack" }) };
   let v = null, built = false;
   let busy = new Set(); // my characters playing in other parties
   PARTY.myPartyChars(id).then((b) => { busy = b; if (v) paint(sec.members, drawMembers); });
@@ -366,52 +334,23 @@ function partyBody(panel, go, id, home, onSheet = false) {
     return [h("section", { cls: "card" }, parts)];
   };
 
-  // --- notes: the party's (everyone reads) and mine (only I read) ---
-  const drawNotes = (priv) => {
-    const key = priv ? "mine" : "party";
-    const list = sortNotes(priv ? v.mine : v.notes);
-    const editing = (n) => ui.editing?.priv === priv && ui.editing.id === n.id;
-    const area = (value, onInput, idAttr) => {
-      const el = h("textarea", { rows: 4, maxlength: NOTE_MAX, id: idAttr, placeholder: t(priv ? "party.notes.minePh" : "party.notes.partyPh") });
-      el.value = value;
-      el.addEventListener("input", () => onInput(el.value));
-      return el;
+  // --- notes: one list, each note "only me" or "party". A player's private notes live in their character (Notes tab);
+  // a GM without a character keeps them in the cloud, as before.
+  const drawNotes = () => {
+    const ch = v.me.charId ? getById(v.me.charId) : null;
+    if (ch) {
+      return [h("section", { cls: "card", id: "notes-party" }, [h("h3", { text: t("notes.title") }),
+        h("p", { cls: "small", text: t("notes.onSheet", { name: ch.name }) }),
+        h("div", { cls: "row" }, [h("a", { cls: "btn gold", id: "notes-open-sheet", href: `#/c/${ch.id}/notes`, text: t("notes.openSheet") })])])];
+    }
+    const ops = {
+      add: (text, shared) => PARTY.addNote(id, text, !shared, v.me).catch(fail),
+      edit: (n, text) => PARTY.editNote(id, n.id, text, !n.shared, v.me).catch(fail),
+      remove: (n) => PARTY.deleteNote(id, n.id, !n.shared).catch(fail),
+      move: (n) => PARTY.addNote(id, n.text, n.shared, v.me).then(() => PARTY.deleteNote(id, n.id, !n.shared)).catch(fail),
     };
-    const note = (n) => {
-      if (editing(n)) {
-        return h("article", { cls: "note" }, [
-          area(ui.editing.text, (x) => (ui.editing.text = x)),
-          h("div", { cls: "row" }, [
-            btn(t("party.save"), () => {
-              if (!cleanNote(ui.editing.text)) return toast(t("party.notes.empty"));
-              PARTY.editNote(id, n.id, ui.editing.text, priv, v.me).catch(fail); ui.editing = null; redraw(true);
-            }, "btn gold"),
-            btn(t("party.cancel"), () => { ui.editing = null; redraw(true); }, "btn ghost"),
-          ]),
-        ]);
-      }
-      const mayEdit = priv || canEditNote(n, v.uid), mayDelete = priv || canDeleteNote(n, v.me);
-      return h("article", { cls: "note" }, [
-        h("p", { cls: "note-text", text: n.text }),
-        h("p", { cls: "hint", text: priv ? stamp(n.at) : `${noteSigned(n, t("party.notes.gmSign"))}${n.author === v.uid ? " " + t("party.you") : ""} · ${stamp(n.at)}` }),
-        mayEdit || mayDelete ? h("div", { cls: "row" }, [
-          mayEdit ? btn(t("party.notes.edit"), () => { ui.editing = { priv, id: n.id, text: n.text }; redraw(true); }) : null,
-          mayDelete ? btn(t("party.notes.delete"), () => ask(t("party.notes.deleteConfirm"), () => PARTY.deleteNote(id, n.id, priv).catch(fail)), "btn small ghost") : null,
-        ]) : null,
-      ]);
-    };
-    const add = () => {
-      if (!cleanNote(ui.newNote[key])) return toast(t("party.notes.empty"));
-      PARTY.addNote(id, ui.newNote[key], priv, v.me).catch(fail);
-      ui.newNote[key] = ""; redraw(true);
-    };
-    return [h("section", { cls: "card" + (priv ? " note-private" : ""), id: priv ? "notes-mine" : "notes-party" }, [
-      h("h3", { text: t(priv ? "party.notes.mine" : "party.notes.party") }),
-      h("p", { cls: "hint", text: t(priv ? "party.notes.mineHint" : "party.notes.partyHint") }),
-      area(ui.newNote[key], (x) => (ui.newNote[key] = x), priv ? "note-new-mine" : "note-new-party"),
-      h("div", { cls: "row" }, [btn(t("party.notes.add"), add, "btn gold", { id: priv ? "note-add-mine" : "note-add-party" })]),
-      list.length ? h("div", { cls: "stack" }, list.map(note)) : h("p", { cls: "small", text: t("party.notes.none") }),
-    ])];
+    return [h("section", { cls: "card stack", id: "notes-party" }, [h("h3", { text: t("notes.title") }), h("p", { cls: "hint", text: t("notes.gmLead") }),
+      ...drawBoard({ ui: ui.notes, priv: v.mine, party: v.notes, uid: v.uid, me: v.me, why: "", ops, ask, redraw: () => redraw(true) })])];
   };
 
   // --- managing: requests and the invite link (admins), leaving or deleting ---
@@ -450,7 +389,7 @@ function partyBody(panel, go, id, home, onSheet = false) {
     return parts;
   };
 
-  const TABS = ["overview", "notes", "manage"];
+  const TABS = onSheet ? ["overview", "manage"] : ["overview", "notes", "manage"];
   const drawTabs = () => TABS.map((k) => h("button", { type: "button", role: "tab", id: "tab-" + k, "aria-selected": ui.tab === k ? "true" : "false", "aria-pressed": ui.tab === k ? "true" : "false",
     text: t("party.tab." + k) + (k === "manage" && v.me.role === "admin" && v.requests.length ? ` (${v.requests.length})` : ""),
     onclick: () => { ui.tab = k; redraw(true); } }));
@@ -459,17 +398,16 @@ function partyBody(panel, go, id, home, onSheet = false) {
   function redraw(force = false) {
     if (!built) {
       built = true;
-      body.replaceChildren(tabs, sec.info, sec.members, sec.gm, sec.march, sec.notes, sec.mine, sec.manage);
+      body.replaceChildren(tabs, sec.info, sec.members, sec.gm, sec.march, sec.notes, sec.manage);
     }
     paint(tabs, drawTabs, force);
-    const show = { overview: ["info", "members", "gm", "march"], notes: ["notes", "mine"], manage: ["manage"] }[ui.tab];
+    const show = { overview: ["info", "members", "gm", "march"], notes: ["notes"], manage: ["manage"] }[ui.tab];
     for (const k in sec) sec[k].hidden = !show.includes(k);
     paint(sec.info, drawInfo, force);
     paint(sec.members, drawMembers, force);
     paint(sec.gm, drawGm, force);
     paint(sec.march, drawMarch, force);
-    paint(sec.notes, () => drawNotes(false), force);
-    paint(sec.mine, () => drawNotes(true), force);
+    paint(sec.notes, drawNotes, force);
     paint(sec.manage, drawManage, force);
   }
 
@@ -477,6 +415,9 @@ function partyBody(panel, go, id, home, onSheet = false) {
     if (next.missing) { built = false; return body.replaceChildren(h("p", { cls: "lead", text: t("party.gone") }), h("a", { cls: "btn", href: home, text: t("party.toList") })); }
     if (!next.party || !next.me) return;
     v = next;
+    // The old "My notes" of this party move into the character playing here (the sheet's own copy when on the sheet).
+    const moved = bringPartyNotes(sheetCh || (v.me.charId ? getById(v.me.charId) : null), v);
+    if (moved) toast(t("notes.movedFromParty", { n: moved }));
     redraw();
   });
 }
@@ -555,7 +496,7 @@ function mountTab(panel, ch, go) {
     const order = ["in", "asked", "checking", "rejected", "removed"];
     const row = mine.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))[0] || null;
     if (row?.status === "in") {
-      if (shown !== row.id) { stop?.(); shown = row.id; box.replaceChildren(); stop = partyBody(box, go, row.id, home, true); }
+      if (shown !== row.id) { stop?.(); shown = row.id; box.replaceChildren(); stop = partyBody(box, go, row.id, home, ch); }
       return;
     }
     if (shown) { stop?.(); stop = null; shown = null; }

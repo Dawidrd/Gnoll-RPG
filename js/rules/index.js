@@ -25,6 +25,7 @@ import { review } from "./checks.js";
 import { startPlan, blankStartGear } from "./equipment.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
 import { normalizeFamiliar } from "./familiars.js";
+import { migrateNotes } from "./notes.js";
 
 export const CLASSES = { barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard };
 
@@ -188,12 +189,13 @@ export function normalize(ch) {
   // 0.10: equipment, coins, session journal, the turn planner and what's switched on (rage, Mage Armor, armor off, familiar).
   if (!Array.isArray(ch.items)) ch.items = [];
   ch.gold = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(ch.gold || {}) };
-  if (!Array.isArray(ch.journal)) ch.journal = [];
   if (!ch.turn) ch.turn = newTurn();
   if (!ch.active) ch.active = {};
   if (!Array.isArray(ch.weapons)) ch.weapons = []; // 0.12: weapons carried, for attack rolls
   if (!ch.familiar) ch.familiar = { name: "", kind: "", hp: { cur: null, max: null }, present: true };
   ch.familiar = normalizeFamiliar(ch.familiar);
+  // 0.36: one list of notes; the Notes text, the session journal and the familiar's notes move into it.
+  migrateNotes(ch);
   // 0.26: gender (description only). A value from outside the list is kept as the player's own words.
   if (ch.gender == null) ch.gender = "";
   if (ch.gender && !GENDERS[ch.gender]) { ch.genderCustom = String(ch.gender); ch.gender = "other"; }
@@ -520,6 +522,6 @@ export function blankCharacter({ paper = false } = {}) {
     skills: [], expertise: [], feats: [],
     armor: "none", shield: false, startGear: blankStartGear(), classChoices: {}, spells: { cantrips: "", prepared: "" },
     hpRolls: {}, hp: { cur: null, temp: 0, maxOverride: null }, death: { ok: 0, fail: 0 }, used: {},
-    notes: "", created: Date.now(), updated: Date.now(),
+    notebook: [], created: Date.now(), updated: Date.now(),
   };
 }
