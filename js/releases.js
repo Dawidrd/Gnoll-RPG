@@ -2,6 +2,12 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.39.2", date: "2026-10-17",
+    points: [
+      { pl: "Portrety postaci w zakładce Drużyna już nie migają, gdy ktoś zmieni HP albo coś innego na swojej karcie.", en: "Character portraits on the Party tab no longer flicker when someone changes their HP or anything else on their sheet." },
+    ],
+  },
+  {
     version: "0.39.1", date: "2026-10-17",
     points: [
       { pl: "Pytanie „Na pewno?” przy usuwaniu albo przenoszeniu notatki pokazuje się teraz tuż pod tą notatką — strona już nie skacze na górę.", en: "The “Are you sure?” question when deleting or moving a note now shows right under that note — the page no longer jumps to the top." },

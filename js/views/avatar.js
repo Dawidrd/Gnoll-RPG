@@ -2,7 +2,7 @@
 // The photo never leaves the device as it is: only the framed 256×256 square is kept, inside the character (rules/avatar.js).
 import { h, fill, toast } from "../dom.js";
 import { t } from "../i18n.js";
-import { AVATAR_SIDE, ZOOM_MAX, validAvatar, coverScale, clampPan, centerPan, zoomPan, sourceRect } from "../rules/avatar.js";
+import { AVATAR_SIDE, ZOOM_MAX, keeper, validAvatar, coverScale, clampPan, centerPan, zoomPan, sourceRect } from "../rules/avatar.js";
 
 const VIEW = 240; // side of the framing square on screen, CSS pixels (same as .avcrop in app.css)
 const FILE_MAX = 40 * 1024 * 1024; // bigger files are not photos from a phone
@@ -13,6 +13,12 @@ export function avatarPic(src, name, size = "md") {
   if (validAvatar(src)) return h("img", { cls, src, alt: t("av.alt", { name: name || "?" }), loading: "lazy", decoding: "async" });
   const letter = (String(name || "").trim().match(/\p{L}|\p{N}/u) || ["?"])[0].toUpperCase();
   return h("span", { cls: cls + " none", "aria-hidden": "true", text: letter });
+}
+
+/** avatarPic for lists redrawn from the cloud: the same element while the member's picture and name stay the same. */
+export function keptPics() {
+  const k = keeper();
+  return (key, src, name, size = "md") => k.get(key, [size, name || "", src || ""].join("|"), () => avatarPic(src, name, size));
 }
 
 /** The framed square as a small JPEG; lower quality until it fits the limit. Two steps for big photos (smoother result). */

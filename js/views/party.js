@@ -16,7 +16,7 @@ import * as PARTY from "../sync/party.js";
 import { confirmer, painter } from "./live.js";
 import { drawBoard, bringPartyNotes } from "./notes.js";
 import { countEvent } from "../stats.js";
-import { avatarPic } from "./avatar.js";
+import { keptPics } from "./avatar.js";
 
 const fail = () => toast(t("party.err.save"));
 const chLabel = (ch) => `${ch.name} — ${CLASSES[ch.classId] ? tr(CLASSES[ch.classId].name).split(" (")[0] : ch.classId} ${ch.level}`;
@@ -161,6 +161,7 @@ function partyBody(panel, go, id, home, sheetCh = null) {
   const { box, ask } = confirmer();
   const notesAsk = confirmer(); // questions about a GM's note show under that note
   const paint = painter();
+  const pic = keptPics(); // portraits stay put when the list redraws (someone's HP changed…)
   // What the user is doing here; kept across redraws.
   const ui = { tab: "overview", editInfo: null, notes: { show: "all", text: "", shared: false, editing: null }, march: null };
   const body = h("div", { cls: "stack" }, [h("p", { cls: "small", text: t("party.loading") })]);
@@ -228,7 +229,7 @@ function partyBody(panel, go, id, home, sheetCh = null) {
       ].filter(Boolean);
       return h("article", { cls: "ccard member" }, [
         h("div", { cls: "withpic" }, [
-          m.charId ? avatarPic(m.avatar, m.charName, "sm") : null,
+          m.charId ? pic(m.uid, m.avatar, m.charName, "sm") : null,
           h("span", { cls: "ccard-text" }, [
             h("span", { cls: "ccard-name", text: m.charName || t("party.noCharShort") }),
             s ? h("span", { cls: "ccard-meta", text: sheetLine(s) }) : m.charId ? h("span", { cls: "hint", text: t("party.sheet.none") }) : null,

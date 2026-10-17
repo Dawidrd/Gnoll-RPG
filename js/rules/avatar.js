@@ -40,3 +40,20 @@ export function sourceRect(w, h, view, scale, x, y) {
   const at = (v, size) => Math.min(size - side, Math.max(0, -v / scale));
   return { sx: at(p.x, w), sy: at(p.y, h), side };
 }
+
+/**
+ * Keeps made elements between redraws (0.39.2): get(key, sig, make) returns the element made last time for this key
+ * while its sig (e.g. picture + name) is the same, so a live list redrawn from the cloud does not load its portraits again.
+ */
+export function keeper() {
+  const kept = new Map();
+  return {
+    get(key, sig, make) {
+      const old = kept.get(key);
+      if (old && old.sig === sig) return old.el;
+      const el = make();
+      kept.set(key, { sig, el });
+      return el;
+    },
+  };
+}

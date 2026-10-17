@@ -1675,6 +1675,19 @@ test("0.37 avatar: only a small picture is valid; framing stays inside the photo
   for (const k of ["av.title", "av.add", "av.change", "av.remove", "av.removeAsk", "av.hint", "av.cropHint", "av.use", "av.bad"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
+test("0.39.2 party portraits: the same picture element is kept across redraws until it changes", () => {
+  const k = AV.keeper();
+  let made = 0;
+  const make = () => ({ n: ++made });
+  const a = k.get("u1", "sm|Grok|data:A", make);
+  eq(k.get("u1", "sm|Grok|data:A", make) === a, true); // HP changed, picture did not: same element
+  eq(made, 1);
+  const b = k.get("u1", "sm|Grok|data:B", make); // new picture: new element
+  eq(b === a, false);
+  eq(k.get("u2", "sm|Grok|data:B", make) === b, false); // another member has their own
+  eq(made, 3);
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

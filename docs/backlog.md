@@ -5,7 +5,7 @@ Po naprawieniu/zrobieniu wpis trafia do „Zrobione” z numerem wersji.
 
 ## Błędy
 
-1. **Miga portret w drużynie.** **Jest:** w zakładce Drużyna portrety postaci migają. **Oczekiwane:** portret wyświetla się raz i stoi spokojnie. Do zbadania: czy lista członków nie rysuje się od nowa przy każdej zmianie z chmury (np. przy zmianie HP kogoś innego) i czy obrazek nie wczytuje się za każdym razem od nowa. Gdy się nie zmienił, ma zostać ten sam. Kółko ma stałą wielkość także w trakcie wczytywania, więc nic nie skacze.
+_(brak)_
 
 ## Pomysły
 
@@ -21,6 +21,7 @@ _(brak)_
 
 ## Zrobione
 
+- **0.39.2** — Miganie portretów w Drużynie: przyczyna — każda zmiana z chmury (np. HP innej postaci) przerysowywała listę członków i tworzyła nowe obrazki, które wczytywały się od zera. Teraz lista bierze ten sam element portretu, dopóki obrazek, imię i rozmiar się nie zmienią (`keeper` w `js/rules/avatar.js`, `keptPics` w `js/views/avatar.js`, z testem). Kółko ma stałą wielkość (48 px) także w trakcie wczytywania.
 - **0.39.1** — Usuwanie notatki: przyczyna — pytanie „Na pewno?” było na samej górze zakładki (nad polem nowej notatki), więc strona skakała w górę. Teraz pytania o notatkę (usuń, przenieś do drużyny / do mnie) pokazują się tuż pod nią (`ui.asking` w `drawBoard`, `js/views/notes.js`), fokus na pierwszym przycisku; „Nie” i Esc zamykają i oddają fokus przyciskowi, który pytał (`confirmer` w `js/views/live.js`). Po usunięciu fokus na następnej (albo poprzedniej) notatce, a gdy lista pusta — na nagłówku „Zapisane notatki”; nigdy na polu nowej notatki (klawiatura telefonu się nie otwiera). Odświeżenie z chmury czeka, gdy gracz odpowiada na pytanie, i przywraca fokus (`painter`). Notatki MG na ekranie drużyny mają własne okienko pytania.
 - **0.39.0** — Kropki zasobów (Start i sloty w zakładce Czary): stuknięcie w dowolną pełną kropkę zużywa dokładnie 1 (`pipSpend` w `js/rules/core.js`), pytanie „Na pewno?” mówi zawsze „1×”; pusta kropka jest nieaktywna (`disabled`, czytnik ekranu: „zużyte”). Po zużyciu komunikat „Zużyto 1× [nazwa] · Cofnij” (6 s; `toast` w `js/dom.js` przyjmuje przycisk). Pod nazwą zużytego zasobu link „Odzyskaj (zasada lub MG)” — oddaje 1 po pytaniu. Drugie szybkie stuknięcie (<400 ms) ignorowane, `touch-action: manipulation` na kropkach. Odpoczynki: logika w `restUsed` (core.js, z testem); wszystkie zasoby poziomów 1–5 sprawdzone z PHB 2024 i The Horrors Within — zgodne. Kropki HP chowańca i rzuty przeciw śmierci bez zmian. Na przyszłość (poziomy 6+): Improved Warding Flare (od 6. krótki odpoczynek), Action Surge 2× od 17., Greater Portent 3 kości od 14., pula k12 Zeloty 5/6/7 na 6/12/17.
 - **0.38.0** — Widok MG: braki „ustalone z MG”. Gdy gracz zapisze postać przez „Zapisz z brakami — ustalone z MG” (`ch.todoAgreed`), MG drużyny widzi w Widoku MG ramkę „Do uzupełnienia (ustalone z MG)”: przy każdej takiej postaci jej braki (i ewentualne błędy) w swoim języku. Lista znika sama, gdy gracz uzupełni kartę. Braki wysyłane jako krótki tekst z kluczami (pole `todo` w dokumencie `gm/{uid}`, maks. 4000 znaków), czytane ostrożnie (co nie pasuje, pomijane). `firestore.rules`: nowe pole `todo` + test na emulatorze (wymaga wklejenia nowych zasad w konsoli Firebase). Ekran Prywatność (PL i EN).
