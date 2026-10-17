@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.34.0", date: "2026-10-17",
+    points: [
+      { pl: "Przy tworzeniu postaci i przy awansie ramka, w której wszystko jest już wybrane, robi się zielona ze znaczkiem ✓.", en: "When creating a character and when levelling up, a box where everything is already chosen turns green with a ✓." },
+      { pl: "Od razu widać, co zostało do zrobienia.", en: "You can see at a glance what's left to do." },
+    ],
+  },
+  {
     version: "0.33.0", date: "2026-10-17",
     points: [
       { pl: "Przy awansie nowy krąg czarów jest podświetlony na niebiesko ze znaczkiem „Nowe” — nowe miejsca na czary i czary, które możesz teraz wybrać.", en: "When you level up, a new spell level is highlighted in blue with a “New” badge — the new spell slots and the spells you can now pick." },

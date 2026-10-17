@@ -25,6 +25,7 @@ import { RELEASES, latest, isUnseen } from "../js/releases.js";
 import { CONFIG } from "../js/config.js";
 import { pipTarget, rechargeKey, asksBeforeSpend } from "../js/rules/core.js";
 import { newSpellCircle } from "../js/rules/magic.js";
+import { fieldOf } from "../js/views/fieldof.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
 const mem = new Map();
@@ -1500,6 +1501,27 @@ test("news: the card opens for returning players until they saw this version", (
   eq(STATS.screenPath("#/news"), "/news");
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   eq([sw.includes("./js/releases.js"), sw.includes("./js/views/news.js")], [true, true], "offline");
+});
+test("creator: every check points at a field, so finished frames can turn green", () => {
+  const src = ["../js/rules/checks.js", "../js/rules/index.js"].map((f) => readFileSync(new URL(f, import.meta.url), "utf8")).join("\n");
+  const keys = [...new Set(src.match(/"(todo|err)\.[a-zA-Z]+"/g).map((k) => k.slice(1, -1)))];
+  const L = { pl: "X", en: "X" }, N = { pl: "Y", en: "Y" };
+  const fake = { toolSlots: [{ id: "class", label: L }], classOptions: [{ key: "invocations", label: L, chosen: [] }], bg: { name: N } };
+  // Only from an Ability Score Improvement level (found through c.levelProblems), or shown as old text with no field.
+  const levelOnly = ["todo.asiChoice", "todo.asiFeat", "todo.asiPick", "todo.featDamage", "todo.featExpertise", "todo.featInc", "todo.featSkill", "todo.featSpells", "err.featInc", "err.featPrereq", "err.featSpells"];
+  const missing = keys.filter((k) => !levelOnly.includes(k) && k !== "todo.legacySpells" && !fieldOf({ key: k, step: 5, vars: { what: L, name: N } }, fake));
+  eq(missing, []);
+  // Every fixed field exists in the creator.
+  const ui = ["../js/views/form.js", "../js/views/weapons.js"].map((f) => readFileSync(new URL(f, import.meta.url), "utf8")).join("\n");
+  const ids = new Set(keys.map((k) => fieldOf({ key: k, step: 5, vars: {} }, {})).filter((s) => s && /^#[\w-]+$/.test(s)).map((s) => s.slice(1)));
+  eq([...ids].filter((id) => !ui.includes(`"${id}"`) && !ui.includes(`"${id.replace(/[^-]+$/, "")}"`)), []); // or built as "f-inc-" + "p2"
+  eq([fieldOf({ key: "todo.feat", step: 2 }, {}), fieldOf({ key: "todo.feat", step: 5 }, {})], ["#f-bg", "#f-feats"]);
+  eq(fieldOf({ key: "todo.tools", step: 1, vars: { what: L } }, fake), "[id^='f-tool-class']");
+  eq(fieldOf({ key: "todo.unknown", step: 1 }, fake), null, "unknown: nothing turns green");
+  // A Fighter 4 without the level 4 choice: it points at that level's frame.
+  const c = run(make({ classId: "fighter", level: 4 }));
+  const asi = c.review.todo.find((x) => c.levelProblems[4].todo.some((y) => y.key === x.key && y.vars === x.vars));
+  eq(!!asi && fieldOf(asi, c), "#f-asi-4");
 });
 test("level-up: the new spell circle is found (marked New until the Spells tab is seen)", () => {
   const at = (classId, level) => run(make({ classId, level }));

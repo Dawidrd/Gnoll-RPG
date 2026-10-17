@@ -291,6 +291,11 @@ details summary { cursor: pointer; }
 .shop .row select { flex: 1 1 220px; min-width: 0; }
 .shop .row input[type="number"] { width: 5.5em; flex: 0 0 auto; }
 .card.flash { animation: flash 1.6s ease-out; }
+/* A frame whose choices are all made (creator and level-up): green border and a ✓ in the corner. */
+.lvlseg { border: 1px solid var(--seam); border-radius: var(--r); padding: 12px 14px; }
+.segdone { position: relative; border-color: var(--moss) !important; }
+.segdone > h4:first-child { padding-right: 24px; }
+.segdone::after { content: "✓"; position: absolute; top: 8px; right: 12px; color: var(--moss); font: 700 1.1rem var(--f-ui); }
 @keyframes flash { 0%, 40% { box-shadow: 0 0 0 2px var(--gold); } 100% { box-shadow: 0 0 0 2px transparent; } }
 @media (prefers-reduced-motion: reduce) { .card.flash { animation: none; outline: 2px solid var(--gold); } }
 .checklist { display: grid; gap: 4px; font-family: var(--f-ui); font-size: .92rem; }

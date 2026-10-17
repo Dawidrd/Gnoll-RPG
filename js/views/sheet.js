@@ -424,6 +424,8 @@ export function renderSheet(root, go, id, tab) {
         }
 
         const ready = ok.every(Boolean);
+        // Each part of the level-up has a frame; once its choices are made it turns green with a ✓.
+        steps.forEach((el, i) => el.classList.add("lvlseg", ...(ok[i] ? ["segdone"] : [])));
         out.push(h("section", { cls: "card key gl" }, [
           h("h3", { text: t("lvl.next", { n: N }) }),
           h("ul", {}, [

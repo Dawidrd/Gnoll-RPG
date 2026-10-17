@@ -27,23 +27,9 @@ import { WEAPONS } from "../rules/weapons.js";
 import { gearEditor } from "./gear.js";
 import { addSwitch } from "./addmode.js";
 import { skillGroups } from "./skillgroups.js";
+import { fieldOf } from "./fieldof.js";
 
 const STEPS = [1, 2, 3, 4, 5, 6];
-// Where to scroll when "Next" is blocked by a checks item (anything else: the step's checklist).
-const FIELD_OF = {
-  "todo.subclass": "#f-subclass", "todo.legacySubclass": "#f-subclass",
-  "todo.background": "#f-bg", "todo.legacyBackground": "#f-bg",
-  "todo.legacySpecies": "#f-species", "todo.size": "#f-species", "todo.speciesChoice": "select[id^='f-sp-']",
-  "todo.languages": "#f-languages", "err.languages": "#f-languages",
-  "todo.roll": "#f-rollall", "todo.pointbuy": "#f-pb-left", "err.pointbuy": "#f-pb-left",
-  "todo.increase": "#f-inc-p2", "err.increase": "#f-inc-p2",
-  "todo.alignment": ".aligngrid", "todo.name": "#f-name",
-  "todo.skills": "#f-skills", "err.skills": "#f-skills", "todo.expertise": "#f-skills", "err.expertise": "#f-skills", "err.expertiseFrom": "#f-skills",
-  "todo.feat": "#f-feats", "todo.featAbility": "#f-feats", "todo.featExpertisePick": "#f-feats", "todo.catalyst": "#f-feats",
-  "todo.startClass": "#f-start", "todo.startBg": "#f-start", "err.startGold": "#f-start-coins", "todo.startRoll": "#f-start-roll",
-  "err.startArmor": "#f-armor", "err.startShield": "#f-shield", "err.startWeapon": "#weapons",
-  "todo.spellPick": "#f-spells", "err.spellInvalid": "#f-spells", "err.spellTooMany": "#f-spells",
-};
 
 export { msg } from "./msg.js";
 import { msg } from "./msg.js";
@@ -145,15 +131,17 @@ export function renderForm(root, go, id, opts = {}) {
   // A character from paper moves on freely: what's missing stays on the "To do" list.
   const goNext = () => {
     if (paper) return goStep(step + 1);
-    const first = stepBlockers(compute(structuredClone(ch)).review, step)[0];
+    const c = compute(structuredClone(ch));
+    const first = stepBlockers(c.review, step)[0];
     if (!first) return goStep(step + 1);
     toast(t("form.nextBlocked", { what: msg(first) }));
-    pointAt(first);
+    pointAt(first, c);
   };
   /** Show the field a checks item is about, on its own step. */
-  const pointAt = (item) => {
+  const pointAt = (item, c) => {
     if (item.step && item.step !== step) goStep(item.step);
-    const el = root.querySelector(FIELD_OF[item.key] || ".checkcard") || root.querySelector(".checkcard");
+    const sel = fieldOf(item, c);
+    const el = (sel && root.querySelector(sel)) || root.querySelector(".checkcard");
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     if (el.matches("input, select")) el.focus({ preventScroll: true });
@@ -217,7 +205,7 @@ export function renderForm(root, go, id, opts = {}) {
       onclick: (e) => { e.preventDefault(); modes.open("paper"); }, text: t("form.toPaper") })]) : null;
 
     // Enter in a text field: a new character goes on to the next step (it is saved on the last one).
-    return h("form", { cls: "panel cform", novalidate: true, oninput: () => keep(true), onchange: () => keep(true),
+    const form = h("form", { cls: "panel cform", novalidate: true, oninput: () => keep(true), onchange: () => keep(true),
       onsubmit: (e) => { e.preventDefault(); if (canSaveHere) save(); else goNext(); } }, [
       h("header", { cls: "stack" }, [h("div", { cls: "formhead" }, [h("h2", { text: t(isNew ? "add.title" : "form.titleEdit") }),
         h("a", { cls: "btn ghost", href: isNew ? (opts.join ? `#/join/${opts.join}` : "#/") : `#/c/${ch.id}/character`, text: t("form.cancel") })]), modes?.el, status, resumeNote,
@@ -228,6 +216,27 @@ export function renderForm(root, go, id, opts = {}) {
       h("p", { cls: "hint", text: t("step." + step + ".hint") }), toPaper,
       ...body, checklist, nav, agreeBox,
     ]);
+    markDone(form, body, c);
+    return form;
+  }
+
+  /**
+   * Frames (cards) of this step whose choices are all made turn green with a ✓ (0.34). A frame is finished when it has
+   * something to choose and none of the step's to-dos or errors points into it. When an item can't be placed, nothing
+   * turns green on this step (better no tick than a wrong one).
+   */
+  function markDone(form, body, c) {
+    const busy = new Set();
+    for (const x of stepBlockers(c.review, step)) {
+      const sel = fieldOf(x, c);
+      const el = sel && form.querySelector(sel);
+      if (!el) return;
+      const box = el.closest(".card");
+      if (box) busy.add(box);
+    }
+    for (const box of body) {
+      if (box instanceof Element && box.matches(".card") && !busy.has(box) && box.querySelector("input, select, .seg button, .aligngrid button")) box.classList.add("segdone");
+    }
   }
 
   // --- Step 1: class ---------------------------------------------------------
@@ -470,8 +479,8 @@ export function renderForm(root, go, id, opts = {}) {
       abRows,
       h("p", { cls: "picked" + (method === "paper" ? "" : " done"), id: "f-paper-kind", text: t("form.paperIs." + method, { n: spent }) }),
       method === "paper" ? h("p", { cls: sealed ? "hint" : "warn soft", text: sealed ? t("form.paperLocked", { name: ch.paperConfirm.name || t("party.role.gm") }) : t("form.paperOpen") }) : null,
-    ]), card(t("form.increase"), incParts)];
-    return [card(t("form.abilities"), parts), card(t("form.increase"), incParts)];
+    ], { id: "f-abilities" }), card(t("form.increase"), incParts)];
+    return [card(t("form.abilities"), parts, { id: "f-abilities" }), card(t("form.increase"), incParts)];
   }
 
   // --- Step 4: alignment and identity -----------------------------------------
@@ -505,10 +514,10 @@ export function renderForm(root, go, id, opts = {}) {
   function stepDetails(c) {
     const bg = BACKGROUNDS[ch.background];
     const out = [skillsUI(c, bg), ...c.classOptions.map((g) => card(null, [classOptionUI({ group: g, c, known: c.knownClassCantrips,
-      onChange: (raws) => { ch.classOptions = { ...(ch.classOptions || {}), [g.key]: raws }; draw(); } })])), featsUI(c, bg),
+      onChange: (raws) => { ch.classOptions = { ...(ch.classOptions || {}), [g.key]: raws }; draw(); } })], { id: "f-opt-" + g.key })), featsUI(c, bg),
       ...c.toolSlots.filter((s) => s.step === 5).map((s) => toolSlotUI(c, s)), spellsUI(c), hpUI(c),
       ...c.asiLevels.map((L) => card(t("lvl.asiTitle", { n: L }), [levelChoiceUI({ draft: ch, L, profSkills: c.skills.filter((s) => s.prof && !s.fromFeat).map((s) => s.id),
-        onChange: (lc) => { ch.levelChoices = { ...ch.levelChoices, [L]: lc }; draw(); } })]))];
+        onChange: (lc) => { ch.levelChoices = { ...ch.levelChoices, [L]: lc }; draw(); } })], { id: "f-asi-" + L }))];
     const legacy = legacyUI(c);
     if (legacy) out.push(legacy);
     return out.filter(Boolean);
@@ -883,7 +892,7 @@ export function renderForm(root, go, id, opts = {}) {
     if (ch.hp?.maxOverride) item(t("legacy.hp"), String(ch.hp.maxOverride), () => (ch.hp.maxOverride = null), "hp");
     if (ch.featsOther?.trim()) item(t("legacy.featsOther"), ch.featsOther, () => (ch.featsOther = ""), "featsother");
     if (ch.tools?.trim()) item(t("legacy.tools"), ch.tools, () => (ch.tools = ""), "tools");
-    return rows.length ? card(t("legacy.title"), [h("p", { cls: "hint", text: t("legacy.hint") }), ...rows]) : null;
+    return rows.length ? card(t("legacy.title"), [h("p", { cls: "hint", text: t("legacy.hint") }), ...rows], { id: "f-legacy" }) : null;
   }
 
   /** "Class: Monk 1/2" style list of where choices come from. */
@@ -902,7 +911,7 @@ export function renderForm(root, go, id, opts = {}) {
     const err = c.review.errors[0];
     if (err) { toast(msg(err)); goStep(err.step); return; }
     const state = saveState(c.review);
-    if (state === "todo" && !agreed) { toast(t("form.saveBlocked", { what: msg(c.review.todo[0]) })); pointAt(c.review.todo[0]); return; }
+    if (state === "todo" && !agreed) { toast(t("form.saveBlocked", { what: msg(c.review.todo[0]) })); pointAt(c.review.todo[0], c); return; }
     if (state === "todo") ch.todoAgreed = true; else delete ch.todoAgreed;
     ch.name = ch.name.trim(); ch.player = (ch.player || "").trim();
     if (ch.genderCustom != null) ch.genderCustom = ch.genderCustom.trim();
