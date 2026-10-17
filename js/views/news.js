@@ -4,6 +4,7 @@ import { h } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { storage } from "../store.js";
 import { RELEASES, latest, isUnseen } from "../releases.js";
+import { playSong, stopSong, songOn } from "../sfx.js";
 
 const SEEN = "gnoll.news.seen";
 let seenNow = null; // if the browser refuses to save, "Got it" still holds until the page reloads
@@ -29,15 +30,20 @@ export function newsCard(hasCharacters) {
   const box = h("details", { cls: "news", id: "news", open: fresh }, [
     h("summary", {}, [h("span", { cls: "news-title", text: t("news.title") }), " ", h("span", { cls: "news-ver", text: head(rel) }), badge ? " " : null, badge]),
     points(rel),
-    h("div", { cls: "row" }, [ok, h("a", { cls: "btn ghost", id: "news-more", href: "#/news", text: t("news.more") })]),
+    h("div", { cls: "row" }, [ok, h("a", { cls: "btn ghost", id: "news-more", href: "#/news", text: t("news.more"), onclick: playSong })]),
   ]);
   return box;
 }
 
+// The song plays only while the history is open.
+addEventListener("hashchange", () => { if (location.hash !== "#/news") stopSong(); });
+
 /** Full history, newest first. */
 export function renderNews(root) {
+  const stop = songOn() ? h("button", { type: "button", cls: "btn ghost", id: "news-song-stop", text: t("news.songStop"),
+    onclick: () => { stopSong(); stop.remove(); } }) : null;
   root.replaceChildren(h("section", { cls: "panel", id: "news-all" }, [
-    h("header", { cls: "stack" }, [h("h2", { text: t("news.allTitle") })]),
+    h("header", { cls: "stack" }, [h("h2", { text: t("news.allTitle") }), stop]),
     ...RELEASES.map((rel) => h("section", { cls: "card stack" }, [h("h3", { cls: "news-ver", text: head(rel) }), points(rel)])),
     h("div", { cls: "row" }, [h("a", { cls: "btn", href: "#/", text: t("privacy.back") })]),
   ]));

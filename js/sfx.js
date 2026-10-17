@@ -88,5 +88,20 @@ export async function play(name) {
   } catch { done(); }
 }
 
+// Easter egg (0.40.1): a song for reading the change history. Big file, so not in SHELL: it streams only when played.
+export const SONG = "./assets/audio/sfx/rafonix-sam.mp3";
+let song = null;
+/** Start the song (from the tap on "See earlier changes", only with sound effects on). Missing file = silence. */
+export function playSong() {
+  if (!on || (song && !song.paused)) return;
+  try {
+    song = song || new Audio(SONG);
+    song.loop = true;
+    song.play().catch(() => {});
+  } catch { song = null; }
+}
+export const songOn = () => !!song && !song.paused;
+export function stopSong() { try { song?.pause(); } catch { /* nothing to stop */ } }
+
 /** For the sheet: start a sound when a planner pick makes one. */
 export const playFor = (o) => { const s = soundFor(o); if (s) play(s); };

@@ -1710,6 +1710,8 @@ test("0.40 sound effects: which pick makes which sound, when it may play, files 
     eq([f, existsSync(new URL("../" + f, import.meta.url))], [f, sw.includes(`"${f}"`)]);
   }
   eq(sw.includes('"./js/sfx.js"'), true);
+  eq(sw.includes(SFX.SONG), false); // the big song streams when played, phones do not download it up front
+  eq([!!LANG_PL["news.songStop"], !!LANG_EN["news.songStop"]], [true, true]);
   for (const k of ["sfx.on", "sfx.off", "sfx.notKept", "sfx.labelOn", "sfx.labelOff", "sfx.hint"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 

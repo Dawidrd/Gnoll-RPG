@@ -32,7 +32,8 @@ Pliki `.mp3`, krótkie (do ~1,5 s, do ~50 KB). Nazwa pliku = nazwa dźwięku z l
 
 | Plik | Kiedy gra | Źródło | Licencja |
 |---|---|---|---|
-| `attack.mp3` | atak w planerze tury (Attack, druga broń, atak okazyjny) | — | — |
-| `rage.mp3` | wejście w Szał (barbarzyńca) | — | — |
-| `down.mp3` | postać spada do 0 HP | — | — |
-| `eldritch-blast.mp3` | Eldritch Blast w planerze tury | — | — |
+| `attack.mp3` | atak w planerze tury (Attack, druga broń, atak okazyjny) | myinstants.com (dźwięki wrzucane przez użytkowników) | nieznana — do wymiany na pliki z jasną licencją |
+| `rage.mp3` | wejście w Szał (barbarzyńca) | myinstants.com (dźwięki wrzucane przez użytkowników) | nieznana — do wymiany na pliki z jasną licencją |
+| `down.mp3` | postać spada do 0 HP | myinstants.com (dźwięki wrzucane przez użytkowników) | nieznana — do wymiany na pliki z jasną licencją |
+| `eldritch-blast.mp3` | Eldritch Blast w planerze tury | myinstants.com (dźwięki wrzucane przez użytkowników) | nieznana — do wymiany na pliki z jasną licencją |
+| `rafonix-sam.mp3` | easter egg: „Zobacz wcześniejsze zmiany” (przy włączonych dźwiękach), poza `SHELL` (5 MB, wczytywany dopiero przy odtwarzaniu) | Rafonix — „Sam”, dodany na decyzję właściciela projektu | prawa autorskie wykonawcy, brak licencji — zdjąć przy zgłoszeniu albo problemach z działaniem |

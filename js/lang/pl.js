@@ -1062,6 +1062,7 @@ export default {
   "news.ok": "Rozumiem",
   "news.more": "Zobacz wcześniejsze zmiany",
   "news.allTitle": "Historia zmian",
+  "news.songStop": "⏹ Wyłącz muzykę",
   // 0.37: character portrait
   "av.title": "Portret postaci",
   "av.add": "Dodaj zdjęcie",
