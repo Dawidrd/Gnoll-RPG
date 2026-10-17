@@ -1089,12 +1089,34 @@ test("party: the GM view holds what a GM needs for rolls; the GM's choice of gro
   const ch = make({ classId: "cleric", speciesId: "dwarf", abilities: { str: 14, dex: 10, con: 15, int: 8, wis: 15, cha: 12 } });
   ch.death = { ok: 2, fail: 9 };
   const c = run(ch), v = PARTY.gmSummary(ch, c);
-  eq(Object.keys(v), [...PARTY.GM_KEYS, "paper"]);
+  eq(Object.keys(v), [...PARTY.GM_KEYS, "paper", "todo"]);
   eq(v.paper, "", "scores not from paper: no values");
   eq([v.per, v.init, v.speed, v.dv, v.dc, v.wis, v.stealth], [c.passivePerception, c.initiative, c.speed, c.darkvision, c.spells.dc, c.saves.wis.value, c.skills.find((s) => s.id === "stealth").value]);
   eq([v.dOk, v.dFail], [2, 3], "death saves stop at 3");
   eq(PARTY.gmSummary(make({ classId: "fighter" }), run(make({ classId: "fighter" }))).dc, 0, "no spells: no DC");
   eq([PARTY.gmGroups(["skills", "bogus", "skills"]), PARTY.gmGroups(null)], [["skills"], PARTY.GM_GROUPS_DEFAULT]);
+});
+test("party: the GM sees the gaps a player saved as agreed with the GM (0.38), in their own language", () => {
+  const ch = make({ classId: "fighter", level: 3 });
+  const c = run(ch);
+  eq(c.review.todo.some((x) => x.key === "todo.subclass"), true, "level 3 without a subclass");
+  eq(PARTY.gmSummary(ch, c).todo, "", "not agreed with the GM: nothing sent");
+  ch.todoAgreed = true;
+  const items = PARTY.gmTodoItems(PARTY.gmSummary(ch, run(ch)).todo);
+  eq(items.length, c.review.errors.length + c.review.todo.length, "every gap goes");
+  eq(items.some((x) => x.key === "todo.subclass"), true);
+  eq(items.every((x) => !("step" in x)), true, "only key and vars");
+  // A gap with a { pl, en } name stays translatable.
+  const feat = PARTY.gmTodoItems(JSON.stringify([{ key: "todo.featSkill", vars: { n: 4, name: { pl: "Skilled (Wszechstronny)", en: "Skilled" } } }]));
+  eq(feat, [{ key: "todo.featSkill", vars: { n: 4, name: { pl: "Skilled (Wszechstronny)", en: "Skilled" } } }]);
+  // Anything else from the cloud is left out.
+  eq(PARTY.gmTodoItems("nonsense"), []);
+  eq(PARTY.gmTodoItems(JSON.stringify([{ key: "party.gm.title" }, { key: "todo.name", vars: { x: [1], y: "a".repeat(500) } }, 5])), [{ key: "todo.name", vars: { y: "a".repeat(100) } }]);
+  // Never longer than the rules allow.
+  const many = { review: { errors: [], todo: Array.from({ length: 200 }, (_, i) => ({ key: "todo.featSkill", vars: { n: i, name: { pl: "x".repeat(60), en: "y".repeat(60) } } })) } };
+  const text = PARTY.gmTodo({ todoAgreed: true }, many);
+  eq(text.length <= PARTY.GM_TODO_MAX && PARTY.gmTodoItems(text).length > 0, true, "cut to fit");
+  eq(RULES.includes(`text(s.get('todo', ''), ${PARTY.GM_TODO_MAX})`), true, "same limit in firestore.rules");
 });
 test("level up: an HP roll typed from the table must be a whole number from 1 to the hit die", () => {
   eq(typedHpRoll(8, "5"), 5, "d8 5");

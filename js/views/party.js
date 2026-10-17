@@ -10,7 +10,8 @@ import { account, onAccount, accountAvailable } from "../sync/cloud.js";
 import { accountBox } from "./account.js";
 import { inviteLink, validCode, codeFrom, canManage, canLeave, sortMembers, cleanName, NAME_MAX, CAMPAIGN_MAX,
   sessionWhen, marchOrder, marchRows, moveIn,
-  GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar } from "../sync/partylogic.js";
+  GM_GROUPS, gmGroups, busyChars, paperState, paperValues, mayDropChar, gmTodoItems } from "../sync/partylogic.js";
+import { msg } from "./msg.js";
 import * as PARTY from "../sync/party.js";
 import { confirmer, painter } from "./live.js";
 import { drawBoard, bringPartyNotes } from "./notes.js";
@@ -290,6 +291,10 @@ function partyBody(panel, go, id, home, sheetCh = null) {
           : btn(t("party.paper.confirm"), () => PARTY.confirmPaper(id, m, true).catch(fail), "btn small gold", { disabled: !vals }),
       ]);
     });
+    // Gaps a player saved as agreed with the GM (0.38): what is still missing on their sheet.
+    const todoRows = playing.map((m) => [m, gmTodoItems(v.gm[m.uid]?.todo)]).filter(([, items]) => items.length).map(([m, items]) =>
+      h("div", { cls: "li" }, [h("div", {}, [h("div", { cls: "t", text: `${m.charName || m.name || "?"} (${items.length})` }),
+        h("ul", { cls: "gm-todo" }, items.map((x) => h("li", { text: msg(x) })))])]));
     return [h("section", { cls: "card key", id: "party-gm" }, [
       h("h3", { text: t("party.gm.title") }),
       h("p", { cls: "hint", text: t("party.gm.hint") }),
@@ -298,6 +303,8 @@ function partyBody(panel, go, id, home, sheetCh = null) {
       table,
       paperRows.length ? h("div", { cls: "stack", id: "gm-paper" }, [h("h4", { text: t("party.paper.title") }),
         h("p", { cls: "hint", text: t("party.paper.hint") }), h("div", { cls: "list" }, paperRows)]) : null,
+      todoRows.length ? h("div", { cls: "stack", id: "gm-todo" }, [h("h4", { text: t("party.gm.todoTitle") }),
+        h("p", { cls: "hint", text: t("party.gm.todoHint") }), h("div", { cls: "list" }, todoRows)]) : null,
     ])];
   };
 

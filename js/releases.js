@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.38.0", date: "2026-10-17",
+    points: [
+      { pl: "Gdy zapiszesz postać z brakami „ustalone z MG”, MG widzi listę tych braków w Widoku MG w drużynie.", en: "When you save a character with gaps “agreed with the GM”, the GM sees the list of those gaps in the party's GM view." },
+      { pl: "Lista znika sama, kiedy uzupełnisz kartę.", en: "The list clears by itself once you complete the sheet." },
+    ],
+  },
+  {
     version: "0.37.0", date: "2026-10-17",
     points: [
       { pl: "Postać może mieć portret: dodaj zdjęcie albo rysunek w kreatorze (krok „Charakter i tożsamość”) albo na karcie w zakładce Postać.", en: "A character can have a portrait: add a photo or drawing in the creator (the identity step) or on the sheet's Character tab." },

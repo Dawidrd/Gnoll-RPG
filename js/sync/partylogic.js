@@ -173,7 +173,45 @@ export function gmSummary(ch, c) {
   out.dOk = n(Math.min(3, ch.death?.ok || 0)); out.dFail = n(Math.min(3, ch.death?.fail || 0));
   // Scores rolled on paper, before background increases ("15,14,…" in ability order), for the GM to confirm.
   out.paper = paperOf(ch) ? ABILITIES.map((a) => n(ch.abilityBase?.[a])).join(",") : "";
+  out.todo = gmTodo(ch, c);
   return out;
+}
+
+// --- Gaps the player saved as "agreed with the GM" (0.38): the GM sees them in the GM view ---
+// Sent as checks items ({ key, vars }) in a short JSON text, so each GM reads them in their own language.
+export const GM_TODO_MAX = 4000;
+const TODO_KEY = /^(todo|err)\.[A-Za-z0-9_.]{1,60}$/;
+const TODO_TEXT = 100;
+/** One variable of a checks item: a number, a short text or a { pl, en } name; undefined for anything else. */
+function todoVar(v) {
+  if (Number.isFinite(v)) return v;
+  if (typeof v === "string") return v.slice(0, TODO_TEXT);
+  if (v && typeof v === "object" && typeof v.pl === "string" && typeof v.en === "string") return { pl: v.pl.slice(0, TODO_TEXT), en: v.en.slice(0, TODO_TEXT) };
+  return undefined;
+}
+/** A checks item cleaned for sending/showing: only a known shape of key and variables; null when it isn't one. */
+function todoItem(x) {
+  if (!x || typeof x.key !== "string" || !TODO_KEY.test(x.key)) return null;
+  const vars = Object.entries(x.vars && typeof x.vars === "object" ? x.vars : {}).map(([k, v]) => [k, todoVar(v)]).filter(([k, v]) => /^\w{1,20}$/.test(k) && v !== undefined);
+  return vars.length ? { key: x.key, vars: Object.fromEntries(vars) } : { key: x.key };
+}
+/** What the GM view carries of the gaps: "" unless the player saved them as agreed with the GM. `c` is compute(ch). */
+export function gmTodo(ch, c) {
+  if (!ch?.todoAgreed) return "";
+  const out = [];
+  for (const x of [...(c.review?.errors || []), ...(c.review?.todo || [])]) {
+    const item = todoItem(x);
+    if (!item) continue;
+    if (JSON.stringify([...out, item]).length > GM_TODO_MAX) break;
+    out.push(item);
+  }
+  return out.length ? JSON.stringify(out) : "";
+}
+/** The GM view's gaps text as checks items (anything malformed is left out). */
+export function gmTodoItems(text) {
+  let list;
+  try { list = JSON.parse(text || "[]"); } catch { return []; }
+  return Array.isArray(list) ? list.map(todoItem).filter(Boolean) : [];
 }
 /** The GM's choice of groups (saved on the device), cleaned of unknown names. */
 export const gmGroups = (list) => (Array.isArray(list) ? list.filter((g, i) => g in GM_GROUPS && list.indexOf(g) === i) : [...GM_GROUPS_DEFAULT]);

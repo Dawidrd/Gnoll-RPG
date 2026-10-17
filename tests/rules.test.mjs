@@ -301,6 +301,10 @@ test("the GM view is written only by its player and read only by the party's GMs
   await no(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), notes: 1 }, at: 1 }));
   await no(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), per: 5000 }, at: 1 }));
   await no(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), per: "x".repeat(50) }, at: 1 }));
+  // 0.38: gaps agreed with the GM, as a short text
+  await ok(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), todo: '[{"key":"todo.subclass"}]' }, at: 1 }));
+  await no(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), todo: "x".repeat(4001) }, at: 1 }));
+  await no(bob.set("parties/t1/gm/bob", { v: { ...gmOk(), todo: [{ key: "todo.subclass" }] }, at: 1 }));
   await no(alice.get("parties/t1/gm/bob"));
   await no(alice.list("parties/t1/gm"));
   await no(carol.get("parties/t1/gm/bob"));

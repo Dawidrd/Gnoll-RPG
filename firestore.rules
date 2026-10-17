@@ -42,14 +42,16 @@ service cloud.firestore {
     function gmNum(v) { return v is int && v >= -30 && v <= 1000; }
     // What a GM sees of a character beyond the summary (partylogic.js gmSummary).
     function gmSheet(s) {
-      return s is map && s.keys().hasOnly(['per', 'ins', 'inv', 'init', 'speed', 'dv', 'dc', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'acrobatics', 'animal', 'arcana', 'athletics', 'deception', 'history', 'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception', 'performance', 'persuasion', 'religion', 'sleight', 'stealth', 'survival', 'dOk', 'dFail', 'paper'])
+      return s is map && s.keys().hasOnly(['per', 'ins', 'inv', 'init', 'speed', 'dv', 'dc', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'acrobatics', 'animal', 'arcana', 'athletics', 'deception', 'history', 'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception', 'performance', 'persuasion', 'religion', 'sleight', 'stealth', 'survival', 'dOk', 'dFail', 'paper', 'todo'])
         && gmNum(s.get('per', 0)) && gmNum(s.get('ins', 0)) && gmNum(s.get('inv', 0)) && gmNum(s.get('init', 0)) && gmNum(s.get('speed', 0)) && gmNum(s.get('dv', 0))
         && gmNum(s.get('dc', 0)) && gmNum(s.get('str', 0)) && gmNum(s.get('dex', 0)) && gmNum(s.get('con', 0)) && gmNum(s.get('int', 0)) && gmNum(s.get('wis', 0))
         && gmNum(s.get('cha', 0)) && gmNum(s.get('acrobatics', 0)) && gmNum(s.get('animal', 0)) && gmNum(s.get('arcana', 0)) && gmNum(s.get('athletics', 0)) && gmNum(s.get('deception', 0))
         && gmNum(s.get('history', 0)) && gmNum(s.get('insight', 0)) && gmNum(s.get('intimidation', 0)) && gmNum(s.get('investigation', 0)) && gmNum(s.get('medicine', 0)) && gmNum(s.get('nature', 0))
         && gmNum(s.get('perception', 0)) && gmNum(s.get('performance', 0)) && gmNum(s.get('persuasion', 0)) && gmNum(s.get('religion', 0)) && gmNum(s.get('sleight', 0)) && gmNum(s.get('stealth', 0))
         && gmNum(s.get('survival', 0)) && gmNum(s.get('dOk', 0)) && gmNum(s.get('dFail', 0))
-        && text(s.get('paper', ''), 40);
+        && text(s.get('paper', ''), 40)
+        // 0.38: the gaps the player saved as agreed with the GM (partylogic.js gmTodo, GM_TODO_MAX)
+        && text(s.get('todo', ''), 4000);
     }
     // A GM's confirmation of a member's paper scores (partylogic.js paperConfirmation): signed with the GM's own uid.
     function confirmation(p) {
