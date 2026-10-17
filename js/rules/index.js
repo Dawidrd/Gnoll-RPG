@@ -20,7 +20,7 @@ import { grantedSkills, skillSlots, fitSkills } from "./skills.js";
 import { SPECIES, SPECIES_SPELLS, speciesTraits } from "./species.js";
 import { BACKGROUNDS, backgroundBonus } from "./backgrounds.js";
 import { TOOLS, TOOL_GROUPS, toolOptions, ALL_TOOLS } from "./tools.js";
-import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES, paperMethod } from "./identity.js";
+import { LANGUAGES, STANDARD_PICKS, ANY_PICKS, ALIGNMENTS, SIZES, GENDERS, paperMethod } from "./identity.js";
 import { review } from "./checks.js";
 import { startPlan, blankStartGear } from "./equipment.js";
 import { spellSources, spellResources, pickOptions } from "./magic.js";
@@ -30,7 +30,7 @@ export const CLASSES = { barbarian, bard, cleric, druid, fighter, monk, paladin,
 /** Classes listed in the creator but not built yet. */
 export const PLANNED_CLASSES = {};
 
-export { SPECIES, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES };
+export { SPECIES, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES, GENDERS };
 export { CREATURE_TYPES, DAMAGE_NAMES, SPELL_ABILITIES, SPECIES_SPELLS } from "./species.js";
 
 /** Game types: the standard rules, or Ravenloft (adds The Horrors Within options). */
@@ -192,6 +192,9 @@ export function normalize(ch) {
   if (!ch.active) ch.active = {};
   if (!Array.isArray(ch.weapons)) ch.weapons = []; // 0.12: weapons carried, for attack rolls
   if (!ch.familiar) ch.familiar = { name: "", kind: "", hp: { cur: null, max: null }, present: true };
+  // 0.26: gender (description only). A value from outside the list is kept as the player's own words.
+  if (ch.gender == null) ch.gender = "";
+  if (ch.gender && !GENDERS[ch.gender]) { ch.genderCustom = String(ch.gender); ch.gender = "other"; }
   // 0.18: starting equipment. Characters made before it already have their gear, so the creator doesn't ask again.
   ch.startGear = blankStartGear(ch.startGear || { skip: true });
   if ((ch.schema || 1) < 3) {
@@ -505,7 +508,7 @@ export function blankCharacter({ paper = false } = {}) {
   return {
     schema: 3, setting: "standard",
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
-    name: "", player: "", classId: cls.id, subclass: "", speciesId: "human", speciesChoice: {}, size: "",
+    name: "", player: "", gender: "", classId: cls.id, subclass: "", speciesId: "human", speciesChoice: {}, size: "",
     background: "", bgIncrease: { mode: "21", plus2: "", plus1: "" },
     level: 1, abilityMethod: "array", abilityBase: { ...cls.standardArray }, rolled: null,
     abilities: { ...cls.standardArray },

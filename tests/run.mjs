@@ -2,7 +2,7 @@
 // No dependencies; each test is a name and a function that throws on failure.
 import { compute, blankCharacter, normalize, typedHpRoll } from "../js/rules/index.js";
 import { fitSkills, trimSkills } from "../js/rules/skills.js";
-import { pointsSpent, paperMethod, paperSig, paperLocked } from "../js/rules/identity.js";
+import { pointsSpent, paperMethod, paperSig, paperLocked, GENDERS, genderText } from "../js/rules/identity.js";
 import { SPELLS, spellsOf } from "../js/rules/spells.js";
 import { turnOptions, turnTips } from "../js/rules/turn.js";
 import * as PAGE from "../js/rules/pageimport.js";
@@ -1380,6 +1380,30 @@ test("add a character: texts in both languages, “Paste text” gone", () => {
   eq(Object.values(LANG_PL).some((v) => /wklej tekst/i.test(v)), false);
   eq(Object.values(LANG_EN).some((v) => /paste text/i.test(v)), false);
   for (const lg of [LANG_PL, LANG_EN]) eq(/dodaj|add/i.test(lg["privacy.stats.p"]) || /Z pliku|From file/.test(lg["privacy.stats.p"]), true, "the events are on the Privacy screen");
+});
+
+test("gender: optional, description only, shown with own words", () => {
+  const ch = make();
+  eq(ch.gender, "", "a new character has no gender chosen");
+  eq(genderText(ch, "pl"), "");
+  eq(run(ch).review.todo.some((x) => /gender/i.test(x.key)), false, "not choosing is not missing");
+  eq(Object.keys(GENDERS), ["female", "male", "other", "none"]);
+  eq(genderText(make({ gender: "female" }), "pl"), "Kobieta");
+  eq(genderText(make({ gender: "male" }), "en"), "Man");
+  eq(genderText(make({ gender: "none" }), "pl"), "Nie podaję");
+  eq(genderText(make({ gender: "other", genderCustom: "  niebinarna " }), "pl"), "niebinarna");
+  eq(genderText(make({ gender: "other", genderCustom: "" }), "en"), "Other", "no own words: just Other");
+  const a = run(make({ gender: "female" })), b = run(make());
+  eq([a.hpMax, a.ac.value, a.review.errors.length], [b.hpMax, b.ac.value, b.review.errors.length], "no effect on the rules");
+});
+
+test("gender: old characters load; an unknown value is kept as own words", () => {
+  const old = make(); delete old.gender;
+  eq(normalize(old).gender, "");
+  const odd = normalize(make({ gender: "Konstrukt" }));
+  eq([odd.gender, odd.genderCustom], ["other", "Konstrukt"], "nothing is lost");
+  eq(normalize(make({ gender: "male" })).gender, "male");
+  for (const k of ["form.gender", "form.genderPick", "form.genderOther", "form.genderCustom", "form.genderHint", "char.gender"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
 let failed = 0;

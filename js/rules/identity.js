@@ -40,6 +40,22 @@ export const ALIGNMENTS = {
   CE: { pl: "Chaotyczny zły", en: "Chaotic Evil" },
 };
 
+/** Gender: description only, no effect on the rules. "other" comes with the player's own words (genderCustom). */
+export const GENDERS = {
+  female: { pl: "Kobieta", en: "Woman" },
+  male: { pl: "Mężczyzna", en: "Man" },
+  other: { pl: "Inna", en: "Other" },
+  none: { pl: "Nie podaję", en: "Prefer not to say" },
+};
+
+/** The gender as shown on the sheet ("" when not chosen). */
+export function genderText(ch, lang) {
+  const g = GENDERS[ch.gender];
+  if (!g) return "";
+  if (ch.gender === "other") return (ch.genderCustom || "").trim() || g[lang];
+  return g[lang];
+}
+
 export const SIZES = {
   small: { pl: "Mały (Small)", en: "Small" },
   medium: { pl: "Średni (Medium)", en: "Medium" },

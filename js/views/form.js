@@ -5,7 +5,7 @@ import { h, toast } from "../dom.js";
 import { t, tr, lang } from "../i18n.js";
 import { getById, upsert, saveCreatorDraft, loadCreatorDraft, clearCreatorDraft } from "../store.js";
 import {
-  CLASSES, PLANNED_CLASSES, SPECIES, SPECIES_SPELLS, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES, SETTINGS,
+  CLASSES, PLANNED_CLASSES, SPECIES, SPECIES_SPELLS, BACKGROUNDS, TOOLS, TOOL_GROUPS, ARMOR, LANGUAGES, ALIGNMENTS, SIZES, GENDERS, SETTINGS,
   blankCharacter, normalize, compute, finalAbilities, fixedHp,
 } from "../rules/index.js";
 import { ABILITIES, ABILITY_NAMES, SKILLS, FEATS, STANDARD_ARRAY, mod, signed, roll4d6, rollDie } from "../rules/core.js";
@@ -467,6 +467,12 @@ export function renderForm(root, go, id, opts = {}) {
   function stepIdentity() {
     const name = h("input", { type: "text", maxlength: 60, value: ch.name, oninput: (e) => (ch.name = e.target.value), id: "f-name" });
     const player = h("input", { type: "text", maxlength: 60, value: ch.player, oninput: (e) => (ch.player = e.target.value), id: "f-player" });
+    const genderSel = h("select", { id: "f-gender", onchange: (e) => { ch.gender = e.target.value; draw(); } }, [
+      h("option", { value: "", text: t("form.genderPick"), selected: !ch.gender }),
+      ...Object.entries(GENDERS).map(([k, n]) => h("option", { value: k, text: k === "other" ? t("form.genderOther") : tr(n), selected: ch.gender === k })),
+    ]);
+    const genderOwn = ch.gender === "other" ? field(t("form.genderCustom"), h("input", { type: "text", maxlength: 30, value: ch.genderCustom || "", id: "f-gender-custom",
+      oninput: (e) => (ch.genderCustom = e.target.value) })) : null;
     const grid = h("div", { cls: "aligngrid", role: "group", "aria-label": t("form.alignment") }, Object.entries(ALIGNMENTS).map(([k, n]) =>
       h("button", { type: "button", id: "f-al-" + k, "aria-pressed": ch.alignment === k ? "true" : "false", text: tr(n), onclick: () => { ch.alignment = k; draw(); } })));
     return [
@@ -477,6 +483,8 @@ export function renderForm(root, go, id, opts = {}) {
           h("button", { type: "button", cls: "btn ghost", id: "f-name-roll", text: t("form.nameRoll"), title: t("form.nameRollHint"),
             onclick: () => { ch.name = randomName(ch.speciesId, lang()); name.value = ch.name; } }),
         ]),
+        h("div", { cls: "row" }, [field(t("form.gender"), genderSel), genderOwn]),
+        h("p", { cls: "hint", text: t("form.genderHint") }),
         h("div", { cls: "row" }, [field(t("form.player"), player)]),
       ]),
     ];
@@ -874,6 +882,7 @@ export function renderForm(root, go, id, opts = {}) {
     if (state === "todo" && !agreed) { toast(t("form.saveBlocked", { what: msg(c.review.todo[0]) })); pointAt(c.review.todo[0]); return; }
     if (state === "todo") ch.todoAgreed = true; else delete ch.todoAgreed;
     ch.name = ch.name.trim(); ch.player = (ch.player || "").trim();
+    if (ch.genderCustom != null) ch.genderCustom = ch.genderCustom.trim();
     ch.size = c.size;
     ch.abilities = finalAbilities(ch);
     // A GM's confirmation holds only for the scores it was given to.
