@@ -236,6 +236,18 @@ test("Rogue knows Thieves' Cant and picks one more language from any table", () 
   eq(c.languages.known.includes("thieves-cant"), true);
   eq(fitSkills(["elvish", "dwarvish", "abyssal"], c.languages.slots).ok, true);
 });
+test("typical species language is a hint only (PHB Standard Languages table)", () => {
+  eq(run(make({ speciesId: "gnome" })).languages.typical, "gnomish");
+  eq(run(make({ speciesId: "goliath" })).languages.typical, "giant");
+  eq(run(make({ speciesId: "dwarf" })).languages.typical, "dwarvish");
+  eq(run(make({ speciesId: "human" })).languages.typical, "", "no typical language");
+  eq(run(make({ speciesId: "tiefling" })).languages.typical, "", "Infernal is rare, not a hint");
+  const c = run(make({ speciesId: "gnome", languages: ["elvish", "dwarvish"] }));
+  eq(c.languages.fit.ok, true, "skipping the typical language is fine");
+  eq(c.languages.known.includes("gnomish"), false);
+  for (const k of ["langTypical", "langTypicalPick", "langTypicalPicked", "langTypicalFull"])
+    eq(!!LANG_PL["form." + k] && !!LANG_EN["form." + k], true, "texts in both languages: " + k);
+});
 test("Human may be Medium or Small; a single-size species sets it", () => {
   eq(run(make({ speciesId: "human" })).size, "");
   eq(run(make({ speciesId: "human", size: "small" })).size, "small");

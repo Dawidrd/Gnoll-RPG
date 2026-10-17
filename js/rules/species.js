@@ -76,6 +76,7 @@ const pickOf = (sp, c, key) => sp.choices?.find((x) => x.key === key)?.options[c
 const darkvisionFeature = (ft) => ({ lv: 1, id: "darkvision", name: L("Darkvision (Widzenie w ciemności)", "Darkvision"), desc: () => L(`${ft} ft.`, `${ft} ft.`) });
 const textOf = (x, c) => (typeof x === "function" ? x(c) : x);
 
+// language: the standard language that came from this species (PHB 2024, Standard Languages table) — only a hint, never required.
 export const SPECIES = {
   aasimar: {
     source: "phb2024", name: L("Aasimar", "Aasimar"), speed: 30, darkvision: 60, sizes: ["medium", "small"], type: "humanoid",
@@ -105,7 +106,7 @@ export const SPECIES = {
     ],
   },
   dragonborn: {
-    source: "srd52", name: L("Smokowiec (Dragonborn)", "Dragonborn"), speed: 30, darkvision: 60, sizes: ["medium"], type: "humanoid",
+    source: "srd52", name: L("Smokowiec (Dragonborn)", "Dragonborn"), speed: 30, darkvision: 60, sizes: ["medium"], type: "humanoid", language: "draconic",
     choices: [{ key: "ancestry", label: L("Smoczy przodek", "Draconic ancestry"), options: ANCESTRIES }],
     resist: (c) => (ANCESTRIES[c.choice.ancestry] ? [ANCESTRIES[c.choice.ancestry].dmg] : []),
     resources: (c) => [
@@ -130,7 +131,7 @@ export const SPECIES = {
     ],
   },
   dwarf: {
-    source: "srd52", name: L("Krasnolud (Dwarf)", "Dwarf"), speed: 30, darkvision: 120, sizes: ["medium"], type: "humanoid", hpPerLevel: 1,
+    source: "srd52", name: L("Krasnolud (Dwarf)", "Dwarf"), speed: 30, darkvision: 120, sizes: ["medium"], type: "humanoid", language: "dwarvish", hpPerLevel: 1,
     resist: () => ["poison"],
     resources: (c) => [{ id: "stonecunning", max: c.pb, recharge: "long", name: L("Stonecunning", "Stonecunning") }],
     features: [
@@ -144,7 +145,7 @@ export const SPECIES = {
     ],
   },
   elf: {
-    source: "srd52", name: L("Elf", "Elf"), speed: 30, darkvision: 60, sizes: ["medium"], type: "humanoid",
+    source: "srd52", name: L("Elf", "Elf"), speed: 30, darkvision: 60, sizes: ["medium"], type: "humanoid", language: "elvish",
     choices: [{ key: "lineage", label: L("Linia elfów", "Elven lineage"), options: ELF_LINEAGES }, abilityChoice],
     spellAbility: "choose",
     speedFor: (c) => ELF_LINEAGES[c.choice.lineage]?.speed || 30,
@@ -165,7 +166,7 @@ export const SPECIES = {
     ],
   },
   gnome: {
-    source: "phb2024", name: L("Gnom (Gnome)", "Gnome"), speed: 30, darkvision: 60, sizes: ["small"], type: "humanoid",
+    source: "phb2024", name: L("Gnom (Gnome)", "Gnome"), speed: 30, darkvision: 60, sizes: ["small"], type: "humanoid", language: "gnomish",
     choices: [{ key: "lineage", label: L("Linia gnomów", "Gnomish lineage"), options: GNOME_LINEAGES }, abilityChoice],
     spellAbility: "choose",
     spells: (c) => GNOME_LINEAGES[c.choice.lineage]?.spells || [],
@@ -182,7 +183,7 @@ export const SPECIES = {
     ],
   },
   goliath: {
-    source: "phb2024", name: L("Goliat (Goliath)", "Goliath"), speed: 35, darkvision: 0, sizes: ["medium"], type: "humanoid",
+    source: "phb2024", name: L("Goliat (Goliath)", "Goliath"), speed: 35, darkvision: 0, sizes: ["medium"], type: "humanoid", language: "giant",
     choices: [{ key: "giant", label: L("Przodek olbrzym", "Giant ancestry"), options: GIANT_ANCESTRIES }],
     resources: (c) => [
       { id: "giant", max: c.choice.giant ? c.pb : 0, recharge: "long", name: GIANT_ANCESTRIES[c.choice.giant] || L("Giant Ancestry", "Giant Ancestry") },
@@ -202,7 +203,7 @@ export const SPECIES = {
     ],
   },
   halfling: {
-    source: "srd52", name: L("Niziołek (Halfling)", "Halfling"), speed: 30, darkvision: 0, sizes: ["small"], type: "humanoid",
+    source: "srd52", name: L("Niziołek (Halfling)", "Halfling"), speed: 30, darkvision: 0, sizes: ["small"], type: "humanoid", language: "halfling",
     features: [
       { lv: 1, id: "brave", name: L("Brave", "Brave"), desc: () => L("Przewaga na rzuty, by uniknąć lub zakończyć strach (Frightened).", "Advantage on saves to avoid or end being Frightened.") },
       { lv: 1, id: "nimble", name: L("Halfling Nimbleness", "Halfling Nimbleness"),
@@ -227,7 +228,7 @@ export const SPECIES = {
     ],
   },
   orc: {
-    source: "srd52", name: L("Ork (Orc)", "Orc"), speed: 30, darkvision: 120, sizes: ["medium"], type: "humanoid",
+    source: "srd52", name: L("Ork (Orc)", "Orc"), speed: 30, darkvision: 120, sizes: ["medium"], type: "humanoid", language: "orc",
     resources: (c) => [
       { id: "adrenaline", max: c.pb, recharge: "short", name: L("Adrenaline Rush", "Adrenaline Rush") },
       { id: "endurance", max: 1, recharge: "long", name: L("Relentless Endurance", "Relentless Endurance") },

@@ -349,8 +349,18 @@ export function renderForm(root, go, id, opts = {}) {
     };
     const std = Object.keys(LANGUAGES).filter((k) => LANGUAGES[k].std);
     const rare = Object.keys(LANGUAGES).filter((k) => !LANGUAGES[k].std && (L.auto.includes(k) || L.chosen.includes(k) || L.slots.some((s) => s.from.includes(k))));
+    // Typical language of the species: a hint and a shortcut, never required (0.27).
+    const tk = L.typical;
+    const typical = tk ? h("p", { cls: "hint", id: "f-lang-typical" }, [
+      t("form.langTypical", { lang: tr(LANGUAGES[tk].name) }) + " ",
+      L.chosen.includes(tk) ? h("strong", { text: "✓ " + t("form.langTypicalPicked") })
+        : canAdd(tk) ? h("button", { type: "button", cls: "btn small", id: "f-lang-typical-pick", text: t("form.langTypicalPick"),
+          onclick: () => { ch.languages = [...L.chosen, tk]; draw(); } })
+        : h("small", { text: t("form.langTypicalFull") }),
+    ]) : null;
     return card(t("form.languages"), [
       h("p", { cls: "hint", text: t("form.languagesHint") }),
+      typical,
       budgetList(L.slots, L.fit, (x) => tr(LANGUAGES[x].name)),
       h("p", { cls: "picked" + (L.chosen.length === L.total && L.fit.ok ? " done" : ""), text: t("form.picked", { n: L.chosen.length, max: L.total }) }),
       h("h4", { text: t("form.langStandard") }), h("div", { cls: "checks" }, std.map(box)),

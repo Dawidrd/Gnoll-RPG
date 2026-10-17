@@ -369,7 +369,8 @@ export function compute(raw) {
   for (const f of originFeats.filter((x) => x.language)) langSlots.push({ id: "feat-" + f.id, label: f.name, count: f.language, from: ANY_PICKS });
   const langChosen = (ch.languages || []).filter((x) => !langAuto.includes(x));
   const languages = { auto: langAuto, slots: langSlots, chosen: langChosen, total: langSlots.reduce((n, x) => n + x.count, 0),
-    fit: fitSkills(langChosen, langSlots), known: [...langAuto, ...langChosen] };
+    fit: fitSkills(langChosen, langSlots), known: [...langAuto, ...langChosen],
+    typical: sp.language && !langAuto.includes(sp.language) ? sp.language : "" }; // a hint only (0.27)
 
   const featSkillSlots = originFeats.filter((f) => f.skillSlot).map((f) => ({ id: "feat-" + f.id, label: f.name, count: f.skillSlot.count, from: f.skillSlot.from }));
   const slots = skillSlots({ cls, subclass, sp, bg, skilledCount: Math.max(0, skilledCount - skilledTools.length), level, extra: featSkillSlots });
