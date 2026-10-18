@@ -17,6 +17,7 @@ Ten plik jest kopią ustaleń z projektu „DnD” w claude.ai, przygotowaną dl
 - Każda reguła ma test w `tests/run.mjs` (uruchamianie: `node tests/run.mjs`). Przed commitem testy muszą przechodzić.
 - Tryb Ravenloft: Dark Gift można wziąć zamiast featu pochodzenia (za zgodą DM-a); w grze standardowej opcje z Ravenloftu są zablokowane.
 - Czary: baza 213 czarów (sztuczki i kręgi 1–3).
+- Dźwięki: nowe pliki generuje właściciel projektu w ElevenLabs; potwierdził 2026-10-18, że jego licencja pozwala rozpowszechniać je w publicznej aplikacji. Pliki z myinstants.com (0.40.0) mają licencję nieznaną i do wymiany. Szczegóły i tabela plików: `docs/zrodla.md`.
 - Ręczne poprawki (HP, AC, prędkość) nie istnieją: aplikacja liczy według zasad. Przy imporcie ze starych stron karta „Przeniesione ze strony” pokazuje różnice.
 - Dodawanie postaci (0.25.0): jedno wejście „+ Dodaj postać” z trzema trybami — Nowa (kreator), Z karty (przepisanie z papieru), Z pliku (plik z Gnoll RPG albo ze starej strony). Każdy tryb kreatora pamięta swój szkic. Import tylko z pliku — wklejanie tekstu usunięte.
 

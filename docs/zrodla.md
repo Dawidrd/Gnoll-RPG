@@ -30,6 +30,8 @@ Skrót: ścieżka z repo to `../dnd-zrodla/`.
 ## Dźwięki (`assets/audio/sfx/`, od 0.40.0)
 Pliki `.mp3`, krótkie (do ~1,5 s, do ~50 KB). Nazwa pliku = nazwa dźwięku z listy `SOUNDS` w `js/sfx.js`. Gdy plik trafi do folderu, dopisz go do `SHELL` w `sw.js` (pilnuje tego test) i uzupełnij tabelę.
 
+**Nowe dźwięki generujemy w ElevenLabs** na koncie właściciela projektu. Właściciel potwierdził (2026-10-18), że jego licencja ElevenLabs pozwala rozpowszechniać wygenerowane audio w publicznej aplikacji — to jest podstawa prawna dla tych plików, więc w tabeli wpisujemy „ElevenLabs (konto właściciela projektu)”. Cztery pliki z myinstants.com mają licencję nieznaną i do wymiany na wygenerowane.
+
 | Plik | Kiedy gra | Źródło | Licencja |
 |---|---|---|---|
 | `attack.mp3` | atak w planerze tury (Attack, druga broń, atak okazyjny) | myinstants.com (dźwięki wrzucane przez użytkowników) | nieznana — do wymiany na pliki z jasną licencją |
