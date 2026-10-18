@@ -1710,7 +1710,7 @@ test("0.40 sound effects: which pick makes which sound, when it may play, files 
   eq(SFX.soundFor({ spell: "eldritch-blast", attack: true }), "eldritch-blast");
   eq(SFX.soundFor({ spell: "fire-bolt" }), ""); // other spells quiet for now
   eq(SFX.soundFor({ set: { rage: true } }), "rage");
-  eq(SFX.soundFor({ id: "attack", attack: true }), "attack");
+  eq(SFX.soundFor({ id: "attack", attack: true, dealsDamage: true }), "attack"); // since 0.42.2 the attack sound needs dealsDamage
   eq(SFX.soundFor({ id: "dash" }), "");
   const base = { on: true, hidden: false, playing: new Set(), name: "attack" };
   eq(SFX.mayPlay(base), true);
@@ -1730,6 +1730,35 @@ test("0.40 sound effects: which pick makes which sound, when it may play, files 
   eq(sw.includes(SFX.SONG), false); // the big song streams when played, phones do not download it up front
   eq([!!LANG_PL["news.songStop"], !!LANG_EN["news.songStop"]], [true, true]);
   for (const k of ["sfx.on", "sfx.off", "sfx.notKept", "sfx.labelOn", "sfx.labelOff", "sfx.hint"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+});
+
+test("0.42.2 attack sound: only attacks that take hit points, and every attack option says which it is", () => {
+  // The sound follows a property of the option, never a list of names: an attack is loud only with dealsDamage.
+  eq(SFX.soundFor({ id: "grapple", attack: true, dealsDamage: false }), "");
+  eq(SFX.soundFor({ id: "shove", attack: true, dealsDamage: false }), "");
+  eq(SFX.soundFor({ id: "attack", attack: true, dealsDamage: true }), "attack");
+  eq(SFX.soundFor({ id: "war-priest", attack: true, dealsDamage: true }), "attack"); // damaging attacks carry no dmg field, still loud
+  eq(SFX.soundFor({ id: "new-ability", attack: true }), ""); // an ability that forgot the property is quiet, never wrongly loud
+
+  // Grapple and Shove are attacks (taken instead of an attack) that take no hit points, so the planner keeps them silent.
+  const ch = make({ classId: "fighter", level: 1 });
+  const atk = turnOptions(run(ch), ch).action.filter((o) => o.attack);
+  eq(atk.map((o) => [o.id, SFX.soundFor(o)]), [["attack", "attack"], ["grapple", ""], ["shove", ""]]);
+
+  // Every option the planner can offer at levels 1-5 classifies itself, for all classes.
+  for (const id of Object.keys(ALL_CLASSES)) {
+    for (const level of [1, 2, 3, 4, 5]) {
+      const c = make({ classId: id, level });
+      const o = turnOptions(run(c), c);
+      for (const opt of [...o.action, ...o.bonus, ...o.reaction, ...o.free]) {
+        if (opt.attack) eq([opt.id, typeof opt.dealsDamage], [opt.id, "boolean"], `${id} ${level}: dealsDamage missing`);
+      }
+    }
+  }
+
+  // A new option written with attack: true has to say it on the same line, or this fails.
+  const src = readFileSync(new URL("../js/rules/turn.js", import.meta.url), "utf8");
+  eq(src.split("\n").filter((l) => l.includes("attack: true") && !l.includes("dealsDamage:")), []);
 });
 
 let failed = 0;

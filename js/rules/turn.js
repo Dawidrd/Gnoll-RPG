@@ -33,11 +33,11 @@ function standardActions(c) {
   return [
     { id: "attack", group: "attack", label: L(n > 1 ? `Atak (Attack), ${n} ataki` : "Atak (Attack)", n > 1 ? `Attack (${n} attacks)` : "Attack"),
       desc: c.attacks?.length ? { pl: c.attacks.map((a) => `${a.name.pl.split(" (")[0]} ${signed(a.hit)}, ${a.damage.pl}`).join("; "), en: c.attacks.map((a) => `${a.name.en} ${signed(a.hit)}, ${a.damage.en}`).join("; ") }
-        : L("Atak bronią albo ciosem bez broni. Broń dodasz w Ekwipunku.", "A weapon or Unarmed Strike attack. Add weapons under Equipment."), attack: true,
+        : L("Atak bronią albo ciosem bez broni. Broń dodasz w Ekwipunku.", "A weapon or Unarmed Strike attack. Add weapons under Equipment."), attack: true, dealsDamage: true,
       weapons: (c.attacks || []).map((a) => ({ name: a.name, hit: a.hit, tag: a.tag })) },
-    { id: "grapple", group: "attack", label: L("Chwyt (Grapple)", "Grapple"), attack: true,
+    { id: "grapple", group: "attack", label: L("Chwyt (Grapple)", "Grapple"), attack: true, dealsDamage: false,
       desc: L(`Zamiast ataku: cel rzuca SIŁ albo ZRĘ przeciw DC ${dc}; porażka = cel pochwycony.`, `Instead of an attack: the target makes a STR or DEX save against DC ${dc}; on a fail it's Grappled.`) },
-    { id: "shove", group: "attack", label: L("Pchnięcie (Shove)", "Shove"), attack: true,
+    { id: "shove", group: "attack", label: L("Pchnięcie (Shove)", "Shove"), attack: true, dealsDamage: false,
       desc: L(`Zamiast ataku: cel rzuca SIŁ albo ZRĘ przeciw DC ${dc}; porażka = 5 ft dalej albo powalony.`, `Instead of an attack: STR or DEX save against DC ${dc}; on a fail push it 5 ft or knock it Prone.`) },
     { id: "dash", group: "other", label: L("Sprint (Dash)", "Dash"), fx: ["dash"], desc: L(`+${c.speed} ft ruchu w tej turze.`, `+${c.speed} ft of movement this turn.`) },
     { id: "disengage", group: "other", label: L("Odskok (Disengage)", "Disengage"), fx: ["dis"], desc: L("Twój ruch nie prowokuje ataków okazyjnych do końca tury.", "Your movement doesn't provoke Opportunity Attacks this turn.") },
@@ -72,9 +72,9 @@ function featureOptions(c, ch) {
     }
     case "monk": {
       const die = martialDie(lv), hit = c.mods.dex + pb, dc = 8 + wis + pb;
-      add("bonus", { id: "martial-arts", label: L("Cios (Martial Arts)", "Unarmed Strike (Martial Arts)"), attack: true, desc: L(`${signed(hit)}, 1${die}${signed(c.mods.dex)}.`, `${signed(hit)}, 1${die}${signed(c.mods.dex)}.`), dmg: [dmg(`1${die}${signed(c.mods.dex)}`, "bludgeoning")] });
+      add("bonus", { id: "martial-arts", label: L("Cios (Martial Arts)", "Unarmed Strike (Martial Arts)"), attack: true, dealsDamage: true, desc: L(`${signed(hit)}, 1${die}${signed(c.mods.dex)}.`, `${signed(hit)}, 1${die}${signed(c.mods.dex)}.`), dmg: [dmg(`1${die}${signed(c.mods.dex)}`, "bludgeoning")] });
       if (lv >= 2) {
-        add("bonus", { id: "flurry", label: L("Flurry of Blows", "Flurry of Blows"), attack: true, cost: { res: "focus", n: 1 }, desc: L(`Dwa ciosy zamiast jednego: ${signed(hit)}, 1${die}${signed(c.mods.dex)} każdy.`, `Two strikes instead of one: ${signed(hit)}, 1${die}${signed(c.mods.dex)} each.`), dmg: [dmg(`1${die}${signed(c.mods.dex)}`, "bludgeoning", { n: 2 })] });
+        add("bonus", { id: "flurry", label: L("Flurry of Blows", "Flurry of Blows"), attack: true, dealsDamage: true, cost: { res: "focus", n: 1 }, desc: L(`Dwa ciosy zamiast jednego: ${signed(hit)}, 1${die}${signed(c.mods.dex)} każdy.`, `Two strikes instead of one: ${signed(hit)}, 1${die}${signed(c.mods.dex)} each.`), dmg: [dmg(`1${die}${signed(c.mods.dex)}`, "bludgeoning", { n: 2 })] });
         add("bonus", { id: "patient", label: L("Patient Defense", "Patient Defense"), fx: ["dis"], desc: L("Odskok za darmo.", "Free Disengage.") });
         add("bonus", { id: "patient-fp", label: L("Patient Defense + Unik", "Patient Defense + Dodge"), fx: ["dis", "dodge"], cost: { res: "focus", n: 1 }, desc: L("Odskok i Unik naraz.", "Disengage and Dodge together.") });
         add("bonus", { id: "step", label: L("Step of the Wind", "Step of the Wind"), fx: ["dash"], desc: L("Sprint za darmo.", "Free Dash.") });
@@ -118,7 +118,7 @@ function featureOptions(c, ch) {
           add("free", { id: "pull-death", label: L("Pull of Death", "Pull of Death"), desc: L("Raz na turę: +1k4 nekrotycznych w ranną istotę.", "Once per turn: +1d4 necrotic against a wounded creature."), dmg: [dmg("1d4", "necrotic", { plus: true })] });
         }
         if (sub === "war") {
-          add("bonus", { id: "war-priest", label: L("War Priest: atak", "War Priest: attack"), attack: true, cost: { res: "warpriest", n: 1 }, desc: L("Jeden atak bronią albo ciosem.", "One weapon or unarmed attack.") });
+          add("bonus", { id: "war-priest", label: L("War Priest: atak", "War Priest: attack"), attack: true, dealsDamage: true, cost: { res: "warpriest", n: 1 }, desc: L("Jeden atak bronią albo ciosem.", "One weapon or unarmed attack.") });
           add("reaction", { id: "guided", label: L("Guided Strike", "Guided Strike"), cost: { res: "channel", n: 1 }, desc: L("Chybiony atak (Twój albo sojusznika w 30 ft): +10 do rzutu.", "A missed attack (yours or an ally's within 30 ft): +10 to the roll.") });
         }
       }
@@ -170,7 +170,7 @@ function featureOptions(c, ch) {
         add("action", { id: "wild-companion", label: L("Wild Companion", "Wild Companion"), cost: { res: "wild-shape", n: 1 },
           desc: L("Za użycie Wild Shape rzucasz Find Familiar (chowaniec fey do długiego odpoczynku). Można też za slot.", "Spend a Wild Shape use to cast Find Familiar (a Fey familiar until a long rest). A slot works too.") });
       }
-      if (ws) add("attack", { id: "beast-attack", label: L(`Atak: ${ws.beast.name.pl}`, `Attack: ${ws.beast.name.en}`), attack: true, desc: ws.beast.attacks });
+      if (ws) add("attack", { id: "beast-attack", label: L(`Atak: ${ws.beast.name.pl}`, `Attack: ${ws.beast.name.en}`), attack: true, dealsDamage: true, desc: ws.beast.attacks });
       if (sub === "land" && lv >= 3) add("action", { id: "lands-aid", label: L("Land's Aid", "Land's Aid"), cost: { res: "wild-shape", n: 1 },
         desc: L(`Kula 10 ft do 60 ft: wybrane istoty KON (DC ${wsDc}), 2k6 nekrotycznych (połowa przy sukcesie); jedna istota leczy 2k6.`, `10-ft Sphere within 60 ft: chosen creatures CON save (DC ${wsDc}), 2d6 Necrotic (half on a success); one creature heals 2d6.`), dmg: [dmg("2d6", "necrotic")] });
       if (sub === "sea" && lv >= 3) {
@@ -180,7 +180,7 @@ function featureOptions(c, ch) {
       }
       if (sub === "stars" && lv >= 3) {
         add("bonus", { id: "starry-form", label: L("Starry Form", "Starry Form"), cost: { res: "wild-shape", n: 1 }, desc: L("10 minut: Łucznik, Kielich albo Smok.", "10 minutes: Archer, Chalice or Dragon.") });
-        add("bonus", { id: "starry-archer", label: L("Gwiezdna strzała (Łucznik)", "Luminous arrow (Archer)"), attack: true,
+        add("bonus", { id: "starry-archer", label: L("Gwiezdna strzała (Łucznik)", "Luminous arrow (Archer)"), attack: true, dealsDamage: true,
           desc: L(`W Starry Form: atak czarem ${signed(wis + pb)}, 60 ft, 1k8 ${signed(wis)} promienistych.`, `In Starry Form: spell attack ${signed(wis + pb)}, 60 ft, 1d8 ${signed(wis)} Radiant.`), dmg: [dmg(`1d8${signed(wis)}`, "radiant")] });
       }
       break;
@@ -248,7 +248,7 @@ function featureOptions(c, ch) {
 
   // Species
   const sp = ch.speciesId, choice = ch.speciesChoice || {};
-  if (has(c, "breath")) add("attack", { id: "breath", label: L("Zionięcie (Breath Weapon)", "Breath Weapon"), cost: { res: "breath", n: 1 }, attack: true,
+  if (has(c, "breath")) add("attack", { id: "breath", label: L("Zionięcie (Breath Weapon)", "Breath Weapon"), cost: { res: "breath", n: 1 }, attack: true, dealsDamage: true,
     desc: L(`Zamiast jednego ataku: stożek 15 ft albo linia 30 ft, ZRĘ przeciw DC ${8 + c.mods.con + pb}, ${lv < 5 ? 1 : 2}k10.`, `Instead of one attack: 15-ft cone or 30-ft line, DEX save against DC ${8 + c.mods.con + pb}, ${lv < 5 ? 1 : 2}d10.`),
     dmg: [dmg(`${lv < 5 ? 1 : 2}d10`, ANCESTRIES[choice.ancestry]?.dmg || ["acid", "cold", "fire", "lightning", "poison"], { choose: !ANCESTRIES[choice.ancestry] })] });
   if (has(c, "healing-hands")) add("action", { id: "healing-hands", label: L("Healing Hands", "Healing Hands"), cost: { res: "healing-hands", n: 1 }, desc: L(`Dotyk: leczysz ${pb}k4.`, `Touch: heal ${pb}d4.`) });
@@ -266,7 +266,7 @@ function featureOptions(c, ch) {
   if (has(c, "stonecunning")) add("bonus", { id: "stonecunning", label: L("Stonecunning", "Stonecunning"), cost: { res: "stonecunning", n: 1 }, desc: L("10 minut wyczucia drgań (60 ft) na kamieniu.", "10 minutes of Tremorsense 60 ft on stone.") });
   if (has(c, "howl")) add("bonus", { id: "howl", label: L("Wycie (Howl)", "Howl"), cost: { res: "howl", n: 1 }, desc: L(`Wybrani wrogowie w 15 ft: MĄD przeciw DC ${8 + c.mods.con + pb}; porażka = Utrudnienie na ataki i rzuty do Twojej tury.`, `Chosen enemies within 15 ft: WIS save against DC ${8 + c.mods.con + pb}; on a fail Disadvantage on attacks and saves until your turn.`) });
   if (has(c, "eerie-token")) add("bonus", { id: "eerie-token", label: L("Eerie Token", "Eerie Token"), cost: { res: "eerie-token", n: 1 }, desc: L("Tworzysz żeton (włos, paznokieć) do wiadomości i podglądu.", "Make a token (hair, a nail) for messages and remote viewing.") });
-  if (sp === "dhampir") add("attack", { id: "bite", label: L("Vampiric Bite", "Vampiric Bite"), attack: true, desc: L(`Ugryzienie zamiast ataku: 1k4 ${signed(c.mods.con)} kłutych; Przewaga, gdy masz połowę HP lub mniej.`, `A bite instead of an attack: 1d4 ${signed(c.mods.con)} piercing; Advantage at half HP or less.`), dmg: [dmg(`1d4${signed(c.mods.con)}`, "piercing")] });
+  if (sp === "dhampir") add("attack", { id: "bite", label: L("Vampiric Bite", "Vampiric Bite"), attack: true, dealsDamage: true, desc: L(`Ugryzienie zamiast ataku: 1k4 ${signed(c.mods.con)} kłutych; Przewaga, gdy masz połowę HP lub mniej.`, `A bite instead of an attack: 1d4 ${signed(c.mods.con)} piercing; Advantage at half HP or less.`), dmg: [dmg(`1d4${signed(c.mods.con)}`, "piercing")] });
 
   // Feats and Dark Gifts with a reaction
   const featReact = { "steel-yourself": [L("Steel Yourself", "Steel Yourself"), L("Nieudany rzut przeciw zauroczeniu albo przestraszeniu: +PB.", "A failed save against Charmed/Frightened: +PB.")],
@@ -307,8 +307,8 @@ export function turnOptions(c, ch) {
     attacks: attacksPerAction(c),
     action: [...attackGroup, ...feats.filter((o) => o.slot === "action"), ...spells.filter((o) => o.slot === "action"), ...std.filter((o) => o.group === "other").map((o) => ({ ...o, slot: "action" }))],
     bonus: [...feats.filter((o) => o.slot === "bonus"), ...spells.filter((o) => o.slot === "bonus"),
-      { slot: "bonus", group: "other", id: "offhand", attack: true, label: L("Atak drugą bronią (lekka)", "Off-hand attack (Light)"), desc: L("Po ataku lekką bronią: atak drugą lekką bronią, bez modyfikatora do obrażeń.", "After attacking with a Light weapon: attack with another Light weapon, no modifier to damage.") }],
-    reaction: [{ slot: "reaction", group: "other", id: "oa", attack: true, label: L("Atak okazyjny", "Opportunity Attack"), desc: L("Wróg wychodzi z Twojego zasięgu: jeden atak wręcz.", "An enemy leaves your reach: one melee attack.") },
+      { slot: "bonus", group: "other", id: "offhand", attack: true, dealsDamage: true, label: L("Atak drugą bronią (lekka)", "Off-hand attack (Light)"), desc: L("Po ataku lekką bronią: atak drugą lekką bronią, bez modyfikatora do obrażeń.", "After attacking with a Light weapon: attack with another Light weapon, no modifier to damage.") }],
+    reaction: [{ slot: "reaction", group: "other", id: "oa", attack: true, dealsDamage: true, label: L("Atak okazyjny", "Opportunity Attack"), desc: L("Wróg wychodzi z Twojego zasięgu: jeden atak wręcz.", "An enemy leaves your reach: one melee attack.") },
       { slot: "reaction", group: "other", id: "readied", label: L("Przygotowana akcja (Ready)", "Readied action"), desc: L("Wyzwalacz z akcji Przygotowanie nastąpił.", "The trigger from your Ready action happened.") },
       ...feats.filter((o) => o.slot === "reaction"), ...spells.filter((o) => o.slot === "reaction")],
     item: [{ id: "draw", label: L("Dobycie lub schowanie broni", "Draw or stow a weapon") }, { id: "door", label: L("Otwarcie drzwi", "Open a door") },

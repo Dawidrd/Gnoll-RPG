@@ -11,12 +11,15 @@ const SPELL_SOUNDS = ["eldritch-blast"];
 export const sfxFile = (name) => `./assets/audio/sfx/${name}.mp3`;
 const MAX_AT_ONCE = 3;
 
-/** Which sound a pick in the turn planner makes (or ""): a spell's own sound, Rage, or an attack. */
+/** Which sound a pick in the turn planner makes (or ""): a spell's own sound, Rage, or an attack.
+ * The attack sound needs dealsDamage: an attack that takes the target's hit points. Grapple and Shove
+ * are attacks too (made instead of an attack) but deal no damage, so they stay quiet. Every option with
+ * attack: true says which it is in js/rules/turn.js; a test keeps new abilities from skipping it. */
 export function soundFor(o) {
   if (!o) return "";
   if (o.spell) return SPELL_SOUNDS.includes(o.spell) ? o.spell : ""; // other spells are quiet for now, even attack spells
   if (o.set?.rage) return "rage";
-  if (o.attack) return "attack";
+  if (o.attack) return o.dealsDamage ? "attack" : "";
   return "";
 }
 

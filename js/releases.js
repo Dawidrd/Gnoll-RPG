@@ -2,6 +2,12 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.42.2", date: "2026-10-18",
+    points: [
+      { pl: "Dźwięk uderzenia leci tylko wtedy, gdy atak faktycznie zabiera przeciwnikowi punkty życia. Chwyt (Grapple) i Pchnięcie (Shove) są już ciche — przy nich nikt nie dostaje obrażeń.", en: "The hit sound now plays only when an attack actually takes the target's hit points. Grapple and Shove are silent — nobody takes damage from them." },
+    ],
+  },
+  {
     version: "0.42.1", date: "2026-10-17",
     points: [
       { pl: "Polska wersja mówi po polsku: akcje w zakładce Walka (Sprint, Odskok, Unik, Ukrycie…), stany (powalony, pochwycony, przestraszony…) i zmysły (widzenie w ciemności) mają polskie nazwy, a angielska zostaje w nawiasie na przyciskach i w słowniczku.", en: "The Polish version now uses Polish names for actions, conditions and senses, with the English name in brackets on buttons and in the glossary." },
