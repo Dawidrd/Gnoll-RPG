@@ -473,7 +473,7 @@ export function renderSheet(root, go, id, tab) {
               const after = compute(ch).hpMax;
               ch.hp.cur = clamp(ch.hp.cur + (after - before), 0, after);
               if (nc) ch.newCircle = nc;
-              pending = null; save(); toast(t("lvl.done", { n: N }));
+              pending = null; save(); toast(t("lvl.done", { n: N })); play("level-up");
             } }),
             pending.hp != null || pending.lc || pending.subclass || pending.skills.length || pending.expertise.length || pending.spellPicks || pending.classOptions
               ? h("button", { type: "button", cls: "btn ghost", text: t("lvl.reset"), onclick: () => { pending = null; draw(); } }) : null,

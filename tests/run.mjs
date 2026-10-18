@@ -1725,7 +1725,7 @@ test("0.40 sound effects: which pick makes which sound, when it may play, files 
   // A sound file in the folder must be in SHELL (plays offline); SHELL must not list a missing file (it would block installing).
   const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   for (const n of SFX.SOUNDS) {
-    const f = SFX.sfxFile(n);
+    const f = SFX.sfxFile(SFXCAT.catOf(n).def);
     eq([f, existsSync(new URL("../" + f, import.meta.url))], [f, sw.includes(`"${f}"`)]);
   }
   eq(sw.includes('"./js/sfx.js"'), true);
@@ -1783,6 +1783,13 @@ test("0.45.0 sound variants: catalogue, the player's pick, files and the offline
   eq(LANG_PL["set.sfx.listenAria"].includes("{name}") && LANG_EN["set.sfx.listenAria"].includes("{name}"), true);
 });
 
+test("0.46.0 ElevenLabs sounds: level up has its own sound, the old files and song are gone", () => {
+  const sheet = readFileSync(new URL("../js/views/sheet.js", import.meta.url), "utf8");
+  eq(SFX.SOUNDS.includes("level-up") && sheet.includes('play("level-up")'), true, "confirming a level plays it");
+  for (const old of ["attack", "eldritch-blast", "rafonix-sam"]) eq([old, existsSync(new URL(`../assets/audio/sfx/${old}.mp3`, import.meta.url))], [old, false]);
+  eq(SFX.SONG, "./assets/audio/sfx/news-song.mp3");
+  eq(existsSync(new URL("../" + SFX.SONG, import.meta.url)), true, "the change-history song exists");
+});
 test("0.45.0 Listen plays even with effects off, and plays the variant asked for", async () => {
   const made = [];
   globalThis.Audio = class { constructor(src) { this.src = src; this.paused = true; made.push(this); } play() { this.paused = false; return Promise.resolve(); } pause() { this.paused = true; } };

@@ -11,7 +11,7 @@ const PICK_KEY = "gnoll.sfx.pick.v1"; // { category: variant }
 export const SOUNDS = SFX_CATS.map((c) => c.id);
 /** Offensive spells with a sound; more can be added with their files. */
 const SPELL_SOUNDS = ["eldritch-blast"];
-/** A variant's file: its id + ".mp3" (a category's default variant has the category's own name). */
+/** A variant's file: its id + ".mp3". */
 export const sfxFile = (variant) => `./assets/audio/sfx/${variant}.mp3`;
 const MAX_AT_ONCE = 3;
 
@@ -148,7 +148,7 @@ export async function preview(variant) {
 }
 
 // Easter egg (0.40.1): a song for reading the change history. Big file, so not in SHELL: it streams only when played.
-export const SONG = "./assets/audio/sfx/rafonix-sam.mp3";
+export const SONG = "./assets/audio/sfx/news-song.mp3";
 let song = null;
 /** Start the song (from the tap on "See earlier changes", only with sound effects on). Missing file = silence. */
 export function playSong() {

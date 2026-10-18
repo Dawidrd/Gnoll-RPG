@@ -2,6 +2,14 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.46.0", date: "2026-10-18",
+    points: [
+      { pl: "Nowe dźwięki! Atak ma 2 wersje, a Eldritch Blast 3 — wybierzesz je w Ustawieniach (zębatka ⚙) i odsłuchasz przyciskiem „▶ Odsłuchaj”, także przy wyłączonych efektach.", en: "New sounds! Attack has 2 versions and Eldritch Blast has 3 — pick them in Settings (the ⚙ gear) and try them with “▶ Listen”, even with effects switched off." },
+      { pl: "Awans na wyższy poziom ma teraz własny dźwięk.", en: "Levelling up now has its own sound." },
+      { pl: "Szał i spadek do 0 HP brzmią po nowemu, a historia zmian ma nową muzykę.", en: "Rage and dropping to 0 HP sound new, and the change history has new music." },
+    ],
+  },
+  {
     version: "0.45.0", date: "2026-10-18",
     points: [
       { pl: "Przygotowujemy wybór brzmienia dźwięków w Ustawieniach — nowe wersje dźwięków pojawią się wkrótce. Na razie wszystko brzmi jak dotąd.", en: "We're getting ready to let you pick how sounds go in Settings — new sound versions are coming soon. For now everything sounds as before." },
