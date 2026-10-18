@@ -9,7 +9,12 @@ _(brak)_
 
 ## Pomysły
 
-1. **Własne dźwięki: gracz wybiera wariant** (niepilne, po ekranie „Ustawienia”). **Co:** dla każdej kategorii dźwięku (Atak, Szał, Spadek do 0 HP, Eldritch Blast) gracz wybiera jeden z kilku wariantów — np. trafienie „Ciężkie uderzenie”, „Szybkie cięcie”, „Trafienie w zbroję”. Do 3 wariantów na kategorię, może być mniej; kategoria z jednym wariantem nie pokazuje wyboru. Kategorii „Zwycięstwo” nie dodajemy — aplikacja nie wie, kiedy walka się kończy (osobny pomysł: koniec walki w Drużynie). **Po co:** dźwięk przy stole słyszy cała drużyna, jeden odgłos szybko się przejada, a gust jest różny.
+1. **Zawsze na końcu listy, najniższy priorytet.** Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`) (niepilne).
+
+## W trakcie
+
+- **Stan (0.45.0, 2026-10-18):** mechanizm gotowy — katalog `js/audio-config.js`, wybór i „▶ Odsłuchaj” w Ustawieniach, zapis `gnoll.sfx.pick.v1`, testy. Każdy dźwięk ma na razie jedną wersję („Klasyczny”), więc gracz nie widzi jeszcze wyboru. **Czeka na pliki z ElevenLabs** od właściciela projektu; potem: wiersze w katalogu i w `docs/zrodla.md`, ewentualna wymiana 4 plików z myinstants. Wpis 0.45.0 w „Co nowego” mówi tylko, że wybór jest w przygotowaniu (wysłane przed plikami na prośbę użytkownika); wersja z plikami dostaje własny wpis o wyborze i odsłuchu.
+- **Własne dźwięki: gracz wybiera wariant** (niepilne, po ekranie „Ustawienia”). **Co:** dla każdej kategorii dźwięku (Atak, Szał, Spadek do 0 HP, Eldritch Blast) gracz wybiera jeden z kilku wariantów — np. trafienie „Ciężkie uderzenie”, „Szybkie cięcie”, „Trafienie w zbroję”. Do 3 wariantów na kategorię, może być mniej; kategoria z jednym wariantem nie pokazuje wyboru. Kategorii „Zwycięstwo” nie dodajemy — aplikacja nie wie, kiedy walka się kończy (osobny pomysł: koniec walki w Drużynie). **Po co:** dźwięk przy stole słyszy cała drużyna, jeden odgłos szybko się przejada, a gust jest różny.
 
    **Gdzie:** sekcja „Ustawienia dźwięku” na ekranie Ustawienia. Kategoria na wiersz: nazwa nad listą wyboru, lista na całą szerokość, przycisk **▶ Odsłuchaj** co najmniej 44×44 px obok. Odsłuchanie gra też przy wyłączonych efektach (inaczej nie da się ich przesłuchać; na iPhonie stuknięcie jednocześnie odblokowuje dźwięk, czego wymaga system) i wolno je powtarzać od razu, bez limitu „ten sam dźwięk się nie nakłada”. Czytnik ekranu: „Odsłuchaj: Ciężkie uderzenie”. PL i EN.
 
@@ -22,12 +27,6 @@ _(brak)_
    **Pliki i licencja:** dźwięki generuje właściciel projektu w ElevenLabs, na swojej licencji. Każdy plik dostaje wiersz w `docs/zrodla.md` (do czego służy, „wygenerowane w ElevenLabs”, licencja). Przy okazji warto wymienić obecne cztery pliki z myinstants.com, które mają w tabeli „licencja nieznana — do wymiany”. Licencja potwierdzona przez właściciela projektu 2026-10-18: jego plan ElevenLabs pozwala rozpowszechniać wygenerowane audio w publicznej aplikacji (zob. `docs/zrodla.md`).
 
    **Testy:** unikalne `id` kategorii i wariantów; każdy wariant ma nazwę PL i EN; wariant domyślny każdej kategorii istnieje w katalogu i leży w `SHELL`; wybór pliku zwraca wariant gracza, a przy nieznanym albo braku zapisu — domyślny; każdy plik z katalogu istnieje w `assets/audio/sfx/`; `SHELL` nadal nie wskazuje brakującego pliku (to zablokowałoby instalację nowej wersji).
-
-2. **Zawsze na końcu listy, najniższy priorytet.** Decyzja o licencji kodu (np. MIT) i profil buycoffee (link w `js/config.js`) (niepilne).
-
-## W trakcie
-
-_(brak)_
 
 ## Zrobione
 

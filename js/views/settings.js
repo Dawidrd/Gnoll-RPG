@@ -4,8 +4,9 @@
 // 0.44: with a Google account, also my name in parties — the one setting that leaves the device (cloud.js setChosenName).
 // Texts: set.* in js/lang.
 import { h, toast } from "../dom.js";
-import { t } from "../i18n.js";
-import { sfxOn, setSfx } from "../sfx.js";
+import { t, tr } from "../i18n.js";
+import { sfxOn, setSfx, pickOf, setPick, preview } from "../sfx.js";
+import { SFX_CATS } from "../audio-config.js";
 import { browserSaysNo, userAllows, setUserAllows } from "../stats.js";
 import { account, onAccount, setChosenName } from "../sync/cloud.js";
 import { cleanName, PLAYER_NAME_MAX } from "../sync/partylogic.js";
@@ -26,6 +27,33 @@ const sfxChoice = () => h("label", { cls: "check" }, [
   } }),
   t("set.sfx.on"),
 ]);
+
+/** 0.45: which variant each sound plays. Only categories with a choice show up (one variant = nothing to pick).
+ * "▶ Listen" plays even with effects off, so a player can choose before switching them on. */
+function sfxPicks() {
+  const cats = SFX_CATS.filter((c) => c.variants.length > 1);
+  if (!cats.length) return null;
+  return h("div", { cls: "stack", id: "set-sfx-picks" }, [
+    h("p", { cls: "hint", text: t("set.sfx.pickIntro") }),
+    ...cats.map((c) => {
+      const id = `set-sfx-${c.id}`;
+      const nameOf = (v) => tr(c.variants.find((x) => x.id === v)?.name);
+      const listen = h("button", { type: "button", cls: "btn sfxlisten", text: t("set.sfx.listen") });
+      const label = () => listen.setAttribute("aria-label", t("set.sfx.listenAria", { name: nameOf(sel.value) }));
+      const sel = h("select", { id, onchange: () => {
+        label();
+        if (!setPick(c.id, sel.value)) toast(t("sfx.notKept"));
+      } }, c.variants.map((v) => h("option", { value: v.id, text: tr(v.name), selected: v.id === pickOf(c.id) })));
+      listen.onclick = () => preview(sel.value);
+      label();
+      return h("div", { cls: "sfxpick" }, [
+        h("label", { for: id, text: tr(c.name) }),
+        h("p", { cls: "hint", text: tr(c.hint) }),
+        h("div", { cls: "sfxrow" }, [sel, listen]),
+      ]);
+    }),
+  ]);
+}
 
 /** Visit counts: the browser's "do not track" wins; otherwise the same choice as on the Privacy screen. */
 const statsChoice = () => (browserSaysNo()
@@ -66,7 +94,7 @@ export function renderSettings(root) {
   root.replaceChildren(h("section", { cls: "panel", id: "settings" }, [
     h("header", { cls: "stack" }, [h("h2", { text: t("set.title") }), h("p", { cls: "lead", text: t("set.intro") })]),
     nameCard(),
-    card("sfx", sfxChoice()),
+    card("sfx", h("div", { cls: "stack" }, [sfxChoice(), sfxPicks()])),
     card("stats", h("div", { cls: "stack" }, [statsChoice(), h("p", { cls: "hint" }, [h("a", { href: "#/privacy", text: t("set.stats.more") })])])),
     h("div", { cls: "row" }, [h("a", { cls: "btn", href: "#/", text: t("privacy.back") })]),
   ]));

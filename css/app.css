@@ -525,6 +525,11 @@ summary .dmgs { margin-left: 4px; }
 .topctl { display: flex; align-items: center; gap: 8px; flex: none; }
 .btn.glossbtn { min-width: 44px; min-height: 44px; font-size: 1.15rem; }
 .setbtn svg { display: block; }
+/* Sound variants in Settings (0.45): name above, list across the row, "▶ Listen" beside it */
+.sfxpick { display: grid; gap: 4px; }
+.sfxrow { display: flex; gap: 8px; align-items: center; }
+.sfxrow select { flex: 1 1 0; width: 0; min-width: 0; min-height: 44px; } /* width 0: takes the room left, never pushes the button out */
+.btn.sfxlisten { flex: none; min-width: 44px; min-height: 44px; white-space: nowrap; }
 .setbtn[aria-current="page"] { color: var(--gold); border-color: var(--gold-dim); }
 /* Narrow phones (0.44.1): "?", the gear and PL/EN must fit beside the logo */
 @media (max-width: 380px) { .topbar { gap: 8px; padding: 10px 12px; } .topctl { gap: 6px; } .brand-logo { height: 48px; } }

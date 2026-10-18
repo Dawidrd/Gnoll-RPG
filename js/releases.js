@@ -2,6 +2,12 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.45.0", date: "2026-10-18",
+    points: [
+      { pl: "Przygotowujemy wybór brzmienia dźwięków w Ustawieniach — nowe wersje dźwięków pojawią się wkrótce. Na razie wszystko brzmi jak dotąd.", en: "We're getting ready to let you pick how sounds go in Settings — new sound versions are coming soon. For now everything sounds as before." },
+    ],
+  },
+  {
     version: "0.44.1", date: "2026-10-18",
     points: [
       { pl: "Ustawienia otwierasz teraz zębatką ⚙ w górnym pasku, obok „?” — na każdym ekranie, bez przewijania na sam dół.", en: "Settings now open from the ⚙ gear in the top bar, next to “?” — on every screen, no scrolling to the bottom." },

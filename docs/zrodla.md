@@ -28,7 +28,7 @@ Skrót: ścieżka z repo to `../dnd-zrodla/`.
 - The Horrors Within, rozdz. 1 „Character Options” — gatunki, tła, Dark Gifts, podklasy Ravenloft.
 
 ## Dźwięki (`assets/audio/sfx/`, od 0.40.0)
-Pliki `.mp3`, krótkie (do ~1,5 s, do ~50 KB). Nazwa pliku = nazwa dźwięku z listy `SOUNDS` w `js/sfx.js`. Gdy plik trafi do folderu, dopisz go do `SHELL` w `sw.js` (pilnuje tego test) i uzupełnij tabelę.
+Pliki `.mp3`, krótkie (do ~1,5 s, do ~50 KB). Od 0.45.0 każdy dźwięk (kategoria) może mieć do 3 wariantów do wyboru w Ustawieniach — katalog w `js/audio-config.js`. Nazwa pliku = `id` wariantu + `.mp3` (wariant domyślny ma nazwę kategorii, np. `attack.mp3`). Nowy wariant: plik do folderu + wiersz w katalogu (nazwa PL i EN) + wiersz w tabeli poniżej. Do `SHELL` w `sw.js` trafiają **tylko warianty domyślne**; pozostałe pobierają się przy pierwszym zagraniu (pilnuje tego test).
 
 **Nowe dźwięki generujemy w ElevenLabs** na koncie właściciela projektu. Właściciel potwierdził (2026-10-18), że jego licencja ElevenLabs pozwala rozpowszechniać wygenerowane audio w publicznej aplikacji — to jest podstawa prawna dla tych plików, więc w tabeli wpisujemy „ElevenLabs (konto właściciela projektu)”. Cztery pliki z myinstants.com mają licencję nieznaną i do wymiany na wygenerowane.
 

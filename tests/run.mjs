@@ -30,6 +30,7 @@ import * as FAM from "../js/rules/familiars.js";
 import * as NOTES from "../js/rules/notes.js";
 import * as AV from "../js/rules/avatar.js";
 import * as SFX from "../js/sfx.js";
+import * as SFXCAT from "../js/audio-config.js";
 import { TERMS, TERM_CATS, TERM_LINKS, findTerms, termRegex } from "../js/rules/terms.js";
 
 // localStorage stand-in, so store.js can be tested in Node.
@@ -1733,6 +1734,68 @@ test("0.40 sound effects: which pick makes which sound, when it may play, files 
   for (const k of ["sfx.on", "sfx.off", "sfx.notKept", "sfx.labelOn", "sfx.labelOff", "sfx.hint"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
 });
 
+test("0.45.0 sound variants: catalogue, the player's pick, files and the offline list", () => {
+  const { SFX_CATS, variantFor, readPicks } = SFXCAT;
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../js/views/settings.js", import.meta.url), "utf8");
+  eq(sw.includes('"./js/audio-config.js"'), true, "catalogue in SHELL");
+  // Unique ids: categories, and variants across all categories (a variant id is a file name).
+  const cats = SFX_CATS.map((c) => c.id), vars = SFX_CATS.flatMap((c) => c.variants.map((v) => v.id));
+  eq(new Set(cats).size, cats.length, "category ids unique");
+  eq(new Set(vars).size, vars.length, "variant ids unique");
+  eq(SFX.SOUNDS, cats, "the code plays exactly the catalogue's categories");
+  for (const c of SFX_CATS) {
+    eq([c.id, !!c.name?.pl, !!c.name?.en, !!c.hint?.pl, !!c.hint?.en], [c.id, true, true, true, true]);
+    eq([c.id, c.variants.length >= 1 && c.variants.length <= 3], [c.id, true], "1–3 variants");
+    eq([c.id, c.variants.some((v) => v.id === c.def)], [c.id, true], "default is in the catalogue");
+    eq([c.def, sw.includes(`"${SFX.sfxFile(c.def)}"`)], [c.def, true], "default in SHELL: the first sound plays at once, offline");
+    for (const v of c.variants) {
+      eq([v.id, !!v.name?.pl, !!v.name?.en], [v.id, true, true]);
+      eq([v.id, /^[a-z0-9-]+$/.test(v.id)], [v.id, true], "file-safe id");
+      eq([v.id, existsSync(new URL("../" + SFX.sfxFile(v.id), import.meta.url))], [v.id, true], "file exists");
+      // Other variants download on first play (service worker keeps them), so nobody downloads sounds they never pick.
+      if (v.id !== c.def) eq([v.id, sw.includes(`"${SFX.sfxFile(v.id)}"`)], [v.id, false], "only defaults in SHELL");
+    }
+  }
+  // SHELL never lists a missing file (that would block installing the new version).
+  for (const [, f] of sw.matchAll(/"(\.\/[^"]+)"/g)) if (f !== "./") eq([f, existsSync(new URL("../" + f, import.meta.url))], [f, true]);
+  // Which variant plays: the pick, else the default; an unknown pick falls back without being erased.
+  const c = { id: "t", def: "t-a", variants: [{ id: "t-a" }, { id: "t-b" }] };
+  SFX_CATS.push(c);
+  try {
+    eq(variantFor("t", { t: "t-b" }), "t-b");
+    eq(variantFor("t", {}), "t-a");
+    eq(variantFor("t", undefined), "t-a");
+    const picks = { t: "t-gone" };
+    eq(variantFor("t", picks), "t-a");
+    eq(picks.t, "t-gone", "the pick stays saved");
+    // Storage: broken JSON or a private window = all defaults; the setter refuses unknown variants.
+    eq(readPicks("{nope"), {}); eq(readPicks(null), {}); eq(readPicks("[1]"), {}); eq(readPicks('{"t":"t-b"}'), { t: "t-b" });
+    SFX.setPick("t", "t-b");
+    eq([SFX.pickOf("t"), JSON.parse(mem.get("gnoll.sfx.pick.v1"))], ["t-b", { t: "t-b" }]);
+    SFX.setPick("t", "made-up");
+    eq(SFX.pickOf("t"), "t-b");
+    eq(mem.get("gnoll.sfx"), undefined, "the on/off switch is a separate key, untouched");
+  } finally { SFX_CATS.pop(); mem.delete("gnoll.sfx.pick.v1"); }
+  // Settings: a row per category with a choice, "▶ Listen" that plays even when off, texts in both languages.
+  eq(settings.includes("variants.length > 1") && settings.includes("preview(sel.value)"), true);
+  for (const k of ["set.sfx.pickIntro", "set.sfx.listen", "set.sfx.listenAria"]) eq([k, !!LANG_PL[k], !!LANG_EN[k]], [k, true, true]);
+  eq(LANG_PL["set.sfx.listenAria"].includes("{name}") && LANG_EN["set.sfx.listenAria"].includes("{name}"), true);
+});
+
+test("0.45.0 Listen plays even with effects off, and plays the variant asked for", async () => {
+  const made = [];
+  globalThis.Audio = class { constructor(src) { this.src = src; this.paused = true; made.push(this); } play() { this.paused = false; return Promise.resolve(); } pause() { this.paused = true; } };
+  try {
+    eq(SFX.sfxOn(), false);
+    await SFX.preview("rage");
+    await SFX.preview("rage"); // again at once: the first stops, the second plays
+    eq(made.map((a) => [a.src, a.paused]), [["./assets/audio/sfx/rage.mp3", true], ["./assets/audio/sfx/rage.mp3", false]]);
+    SFX.stopAll();
+    eq(made[1].paused, true);
+  } finally { delete globalThis.Audio; }
+});
+
 test("0.42.2 attack sound: only attacks that take hit points, and every attack option says which it is", () => {
   // The sound follows a property of the option, never a list of names: an attack is loud only with dealsDamage.
   eq(SFX.soundFor({ id: "grapple", attack: true, dealsDamage: false }), "");
@@ -1930,7 +1993,7 @@ test("0.44.0 my party name: chosen in Settings, else the Google name; old notes 
   eq(LANG_PL["set.intro"].includes("nie wychodzi"), false, "Settings no longer says nothing leaves the device");
 });
 for (const [name, fn] of tests) {
-  try { fn(); console.log("ok   " + name); }
+  try { await fn(); console.log("ok   " + name); }
   catch (e) { failed++; console.log("FAIL " + name + "\n     " + e.message); }
 }
 console.log(`\n${tests.length - failed}/${tests.length} passed`);
