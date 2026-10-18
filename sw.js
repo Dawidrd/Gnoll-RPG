@@ -1,5 +1,5 @@
 // Offline support: keep the app shell and fonts cached. Bump VERSION when files change.
-const VERSION = "gnoll-0.43.0";
+const VERSION = "gnoll-0.44.0";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",
   "./logo.png", "./favicon.png", "./logo192.png", "./logo512.png",

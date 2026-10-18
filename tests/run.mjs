@@ -1880,6 +1880,46 @@ test("0.43.0 Settings screen: its own address, in SHELL, texts in both languages
   // Both languages say that opening the screen is counted (Privacy screen, visit counts).
   for (const [L, word] of [[LANG_PL, "Ustawienia"], [LANG_EN, "Settings"]]) eq(L["privacy.stats.p"].includes(word), true, word);
 });
+test("0.44.0 my party name: chosen in Settings, else the Google name; old notes show the current name", () => {
+  eq(PARTY.playerName("  Gnoll   Mag ", "Jan Kowalski"), "Gnoll Mag", "spaces cleaned");
+  eq(PARTY.playerName("", "Jan Kowalski"), "Jan Kowalski", "empty = the Google name");
+  eq(PARTY.playerName("   ", "jan@example.com"), "jan@example.com", "only spaces = empty");
+  eq(PARTY.playerName(undefined, "Jan"), "Jan", "not read yet = the Google name");
+  eq(PARTY.playerName("x".repeat(80), "Jan").length, PARTY.PLAYER_NAME_MAX, "length-limited");
+  eq(PARTY.PLAYER_NAME_MAX, PARTY.NAME_MAX, "the same limit as a party name");
+  const members = [
+    { uid: "a", name: "Wódz", gm: true },
+    { uid: "b", name: "Bob", charName: "Grok", paperOk: { sig: "s", charId: "b1", by: "a", name: "Alice", at: 1 } },
+  ];
+  const notes = [
+    { id: "n1", author: "a", name: "Alice", char: "", gm: true, text: "x" },
+    { id: "n2", author: "b", name: "Bob", char: "Grok", text: "y" },
+    { id: "n3", author: "z", name: "Zed", text: "someone who left" },
+  ];
+  const f = PARTY.freshNames(members, notes);
+  eq(f.notes.map((n) => n.name), ["Wódz", "Bob", "Zed"], "authors' current names; who left keeps the old one");
+  eq(f.members[1].paperOk.name, "Wódz", "the GM who confirmed paper scores, by current name");
+  eq(PARTY.paperState({ ...f.members[1], sheet: { paper: "s" }, charId: "b1" }).by, "Wódz");
+  eq(f.notes[1] === notes[1], true, "unchanged notes are the same objects");
+  eq(notes[0].name, "Alice", "the input is not changed");
+  eq(PARTY.freshNames(null, null), { members: [], notes: [] });
+  // Settings, cloud, rules and account deletion agree on where the name lives.
+  const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
+  const cloudJs = readFileSync(new URL("../js/sync/cloud.js", import.meta.url), "utf8");
+  const erase = readFileSync(new URL("../js/sync/erase.js", import.meta.url), "utf8");
+  const view = readFileSync(new URL("../js/views/settings.js", import.meta.url), "utf8");
+  eq(rules.includes("match /users/{uid}/profile/me"), true, "rules: my profile");
+  eq(rules.includes("changes(['name', 'charId', 'charName', 'sheet', 'avatar', 'init'])"), true, "rules: my own seat's name");
+  eq(cloudJs.includes('"users", uid, "profile", "me"'), true, "cloud reads and writes the profile");
+  eq(erase.includes('"users", uid, "profile", "me"'), true, "deleting the account removes the chosen name");
+  eq(view.includes("setChosenName") && view.includes('s.status !== "in"'), true, "Settings: only when signed in");
+  for (const k of ["set.name.h", "set.name.p", "set.name.label", "set.name.saved", "set.name.reset", "set.name.err"])
+    eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
+  // The Privacy screen says who sees the name and where it is kept, in both languages.
+  eq(LANG_PL["privacy.party.p"].includes("Ustawieniach"), true, "PL privacy");
+  eq(LANG_EN["privacy.party.p"].includes("Settings"), true, "EN privacy");
+  eq(LANG_PL["set.intro"].includes("nie wychodzi"), false, "Settings no longer says nothing leaves the device");
+});
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }
   catch (e) { failed++; console.log("FAIL " + name + "\n     " + e.message); }

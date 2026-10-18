@@ -3,6 +3,7 @@
 // Cloud layout (who may read and write what: firestore.rules):
 //   parties/{partyId}                 = { name, owner, invite, created, campaign?, next?, march?: { mode: "5"|"10", order: [uid] }, fight? }
 //                                       (fight: number of the current fight, for Initiative; a GM or an admin starts a new one)
+//   (name in members, requests and notes: the player's name for parties, cloud.js myName; 0.44: renaming rewrites it everywhere)
 //   parties/{partyId}/members/{uid}   = { role: admin|player, gm?: bool, name, charId, charName, at, sheet?, avatar?, paperOk?, init? }
 //                                       (sheet: partylogic.js sheetSummary; avatar: the character's portrait, partylogic.js avatarOf;
 //                                        paperOk: a GM's confirmation of scores from paper, paperConfirmation;
@@ -17,7 +18,7 @@
 import { cloud, onAccount } from "./cloud.js";
 import { onChange, getById, upsert, loadAll } from "../store.js";
 import { compute } from "../rules/index.js";
-import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, avatarOf, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign, rollInitiative } from "./partylogic.js";
+import { makeCode, cleanName, cleanNote, partyStatus, sheetSummary, gmSummary, sameSheet, avatarOf, validWhen, validMarch, CAMPAIGN_MAX, confirmFor, paperConfirmation, noteSign, rollInitiative, freshNames } from "./partylogic.js";
 
 const need = () => { const c = cloud(); if (!c) throw new Error("signed-out"); return c; };
 const charFields = (ch) => ({ charId: ch?.id || "", charName: cleanName(ch?.name, 100) });
@@ -127,7 +128,11 @@ export function watchMyParties(cb) {
 export function watchParty(id, cb) {
   const { F, db, uid } = need();
   const s = { party: null, members: [], requests: [], notes: [], mine: [], gm: {}, missing: false };
-  const send = () => cb({ ...s, me: s.members.find((m) => m.uid === uid) || null, uid });
+  const send = () => {
+    // Old notes and paper confirmations show their author's current name (after a rename).
+    const fresh = freshNames(s.members, s.notes);
+    cb({ ...s, ...fresh, me: fresh.members.find((m) => m.uid === uid) || null, uid });
+  };
   const ref = F.doc(db, "parties", id);
   const gone = () => { s.missing = true; send(); };
   let offRequests = null, offNotes = null, offGm = null;
@@ -212,12 +217,39 @@ async function shareChanged() {
   }
 }
 const shareSoon = (ids) => { ids.forEach((id) => changedChars.add(id)); clearTimeout(shareTimer); shareTimer = setTimeout(shareChanged, 3000); };
+/**
+ * 0.44: my name for parties changed (here or on another device): every party I am in, or asked to join, gets it.
+ * Only documents that still carry another name are written. Party notes are not rewritten: watchParty shows them
+ * with the author's current name.
+ */
+async function renameEverywhere() {
+  const c = cloud();
+  if (!c) return;
+  const { F, db, uid, name } = c;
+  let parties;
+  try { parties = await F.getDocs(F.collection(db, "users", uid, "parties")); } catch { return; }
+  for (const d of parties.docs) {
+    for (const col of ["members", "requests"]) {
+      try {
+        const ref = F.doc(db, "parties", d.id, col, uid), r = await F.getDoc(ref);
+        if (r.exists() && r.data().name !== name) await F.updateDoc(ref, { name });
+      } catch { /* not there, or offline: the next start tries again */ }
+    }
+  }
+}
+
 /** Called once at start-up. */
 export function startSharing() {
   onChange((e) => { if (e.type === "put" && cloud()) shareSoon([e.ch.id]); });
   // Once signed in, check every party once: e.g. a GM confirmed my scores from paper while the app was closed.
-  let checked = false;
-  onAccount((st) => { if (st.status === "in" && !checked) { checked = true; shareSoon(loadAll().map((ch) => ch.id)); } });
+  let checked = false, named = null;
+  onAccount((st) => {
+    if (st.status === "in" && !checked) { checked = true; shareSoon(loadAll().map((ch) => ch.id)); }
+    if (st.status !== "in") { named = null; return; }
+    // Wait until the chosen name is known; then every change of it goes to all my parties.
+    const name = st.user?.chosen === undefined ? null : cloud()?.name;
+    if (name && name !== named) { named = name; renameEverywhere(); }
+  });
 }
 
 // --- D3: party info and marching order (admins) ---

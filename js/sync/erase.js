@@ -1,6 +1,6 @@
 // Deleting an account (D4): everything the user has in the cloud, then the sign-in account itself.
 // Order matters: my party notes go while I am still a member (afterwards I could not find them),
-// parties I founded are deleted for everyone (like "Delete party"), characters go last, then the Google sign-in account.
+// parties I founded are deleted for everyone (like "Delete party"), then characters and my chosen name, then the Google sign-in account.
 // Everything is read from the server, not the device cache, so nothing is missed: this needs the internet.
 // The rules that allow each step are tested in tests/run.mjs ("deleting an account…").
 import { cloud, confirmIdentity, pauseSync, resumeSync, removeAccount } from "./cloud.js";
@@ -40,6 +40,7 @@ async function eraseCloud({ F, db, uid }) {
     await commit(F, db, refs);
   }
   await commit(F, db, (await all(F.collection(db, "users", uid, "characters"))).map((d) => d.ref));
+  await F.deleteDoc(F.doc(db, "users", uid, "profile", "me")); // the name I chose for my parties
 }
 
 /**

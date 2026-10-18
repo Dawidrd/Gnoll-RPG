@@ -1,12 +1,14 @@
 // Optional account and sync (Firebase: Google sign-in + Firestore).
 // Firebase is loaded only after the user chooses to sign in, so without an account nothing is fetched from Google.
 // Cloud layout: users/{uid}/characters/{characterId} = { json, updated, deleted } (rules: firestore.rules).
+// 0.44: users/{uid}/profile/me = { name, at }: the name I chose for my parties (Settings); no document = the Google name.
 // The device copy (localStorage) stays the one the app reads; this module mirrors it both ways.
 // Each account has its own list on the device (store.js), so switching accounts never mixes characters.
 // Firebase Analytics is deliberately not loaded (see docs/backlog.md).
 import { CONFIG } from "../config.js";
 import { storage, loadAll, gone, onChange, applyRemote, currentOwner, setOwner, knownOwner, guestCharacters, moveGuestCharacters, forgetAccount } from "../store.js";
 import { plan, syncableId, toDoc, goneDoc, fromDoc } from "./merge.js";
+import { cleanName, playerName, PLAYER_NAME_MAX } from "./partylogic.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.4.0/";
 const REDIRECT = "gnoll.signin.redirect"; // "1" while signing in through a page redirect
@@ -14,6 +16,7 @@ const REDIRECT = "gnoll.signin.redirect"; // "1" while signing in through a page
 // status: off (not set up) | out | loading | in | unreachable; sync: ok | pending | offline | error; error: load | signin | redirect
 // cont: the browser blocked Google's window on the first tap; one more tap ("Continue in Google") opens it
 // guests: characters made on this device without an account, which can be moved into the signed-in one
+// user: { name, email } from Google, and chosen: the name I picked for my parties ("" = none; undefined = not read yet)
 const state = { status: "off", user: null, sync: null, error: null, guests: 0 };
 const subs = new Set();
 export const account = () => state;
@@ -83,7 +86,16 @@ const changed = () => dispatchEvent(new CustomEvent("gnoll:remote"));
 let stop = null; // ends the cloud listener and the local listener
 let uid = null;
 /** For other cloud features (parties): Firebase and the signed-in account, or null when signed out. */
-export const cloud = () => (state.status === "in" && fb && uid ? { F: fb.F, db: fb.db, uid, name: state.user?.name || state.user?.email || "" } : null);
+export const cloud = () => (state.status === "in" && fb && uid ? { F: fb.F, db: fb.db, uid, name: myName() } : null);
+/** The name my parties see: the one I chose in Settings, or the Google account's. */
+export const myName = () => playerName(state.user?.chosen, state.user?.name || state.user?.email);
+
+/** Choose the name my parties see; "" goes back to the Google name. Resolves when the server has it. */
+export function setChosenName(name) {
+  if (!cloud()) return Promise.reject(new Error("signed-out"));
+  const n = cleanName(name, PLAYER_NAME_MAX), ref = fb.F.doc(fb.db, "users", uid, "profile", "me");
+  return n ? fb.F.setDoc(ref, { name: n, at: Date.now() }) : fb.F.deleteDoc(ref);
+}
 
 // --- Deleting the account (D4; the whole order is in erase.js) ---
 
@@ -129,11 +141,17 @@ function signedIn(user) {
     if (state.sync !== "error") emit({ sync: snap.metadata.fromCache ? "offline" : snap.metadata.hasPendingWrites ? "pending" : "ok" });
   }, failed);
   const offLocal = onChange((e) => (e.type === "put" ? put(e.ch) : del(e.id, e.at)));
-  stop = () => { offCloud(); offLocal(); stop = null; uid = null; };
+  // The name I chose for my parties (it follows me to every device). Missing in an offline cache = not known yet.
+  const offName = F.onSnapshot(F.doc(db, "users", uid, "profile", "me"), (d) => {
+    if (!d.exists() && d.metadata.fromCache) return;
+    const chosen = d.exists() ? cleanName(d.data().name, PLAYER_NAME_MAX) : "";
+    if (state.user && chosen !== state.user.chosen) emit({ user: { ...state.user, chosen } });
+  }, () => {});
+  stop = () => { offCloud(); offLocal(); offName(); stop = null; uid = null; };
 
   // The first sign-in takes this device's characters along; later ones only offer it (they may be someone else's).
   if (first) moveGuestCharacters();
-  emit({ status: "in", user: { name: user.displayName || "", email: user.email || "" }, error: null, sync: "offline", guests: guestCharacters().length });
+  emit({ status: "in", user: { name: user.displayName || "", email: user.email || "", chosen: undefined }, error: null, sync: "offline", guests: guestCharacters().length });
   if (switched || first) changed();
 }
 

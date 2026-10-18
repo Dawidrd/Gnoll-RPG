@@ -10,6 +10,7 @@
 //     a GM confirms them in the member's document (paperOk), and only a GM changes it.
 // 0.37: the character's portrait (avatar) next to the summary: only a small base64 JPEG/WebP/PNG, written by its owner.
 // 0.41: Initiative. Each member writes only their own roll (init); a GM or an admin starts a new fight (fight on the party).
+// 0.44: the name I chose for my parties (users/{uid}/profile/me, only mine); I rewrite it in my seats and requests.
 // Everything else is closed.
 rules_version = '2';
 service cloud.firestore {
@@ -80,6 +81,13 @@ service cloud.firestore {
         && request.resource.data.deleted is bool;
     }
 
+    // The name I chose for my parties (Settings; cloud.js setChosenName, PLAYER_NAME_MAX). No document = the Google name.
+    match /users/{uid}/profile/me {
+      allow read, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid && only(['name', 'at'])
+        && name(request.resource.data.name, 60) && request.resource.data.at is int;
+    }
+
     // My own list of parties (the ones I founded, joined or asked to join).
     match /users/{uid}/parties/{t} {
       allow read, delete: if signedIn() && me() == uid;
@@ -144,8 +152,9 @@ service cloud.firestore {
           || (isAdmin(t) && changes(['gm']) && request.resource.data.gm is bool)
           // a GM confirming a member's paper scores, or taking the confirmation back (anyone's, their own too)
           || (isGm(t) && changes(['paperOk']) && (!('paperOk' in request.resource.data) || confirmation(request.resource.data.paperOk)))
-          // a member changing their own character, its summary or its Initiative roll
-          || (signedIn() && u == me() && changes(['charId', 'charName', 'sheet', 'avatar', 'init'])
+          // a member changing their own name, character, its summary or its Initiative roll
+          || (signedIn() && u == me() && changes(['name', 'charId', 'charName', 'sheet', 'avatar', 'init'])
+            && text(request.resource.data.name, 100)
             && text(request.resource.data.charId, 128) && text(request.resource.data.charName, 100)
             && (!('sheet' in request.resource.data) || sheet(request.resource.data.sheet))
             && (!('avatar' in request.resource.data) || avatar(request.resource.data.avatar))

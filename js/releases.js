@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.44.0", date: "2026-10-18",
+    points: [
+      { pl: "Z kontem Google możesz w Ustawieniach wpisać własną nazwę, pod którą widzi Cię drużyna — zamiast imienia i nazwiska z konta.", en: "With a Google account you can set your own name in Settings — your party sees it instead of the name on your Google account." },
+      { pl: "Nowa nazwa od razu pojawia się we wszystkich Twoich drużynach, także przy starszych notatkach. Puste pole przywraca imię z konta Google.", en: "The new name shows up in all your parties at once, older notes included. An empty field brings back your Google account name." },
+    ],
+  },
+  {
     version: "0.43.0", date: "2026-10-18",
     points: [
       { pl: "Nowy ekran „Ustawienia” (link na dole każdego ekranu): efekty dźwiękowe i liczenie odwiedzin w jednym miejscu, bez szukania.", en: "A new “Settings” screen (linked at the bottom of every screen): sound effects and visit counts in one place, no hunting for them." },

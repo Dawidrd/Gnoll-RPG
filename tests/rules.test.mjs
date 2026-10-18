@@ -380,3 +380,25 @@ test("0.41: Initiative — each member writes only their own roll; a GM or an ad
   await ok(bob.update("parties/t1", { fight: 2 }));
   await no(bob.update("parties/t1", { fight: 3, campaign: "x" }), "a GM who isn't an admin changes only the fight");
 });
+
+test("0.44: my party name — only I read and write my profile; I rename only my own seat and request", async () => {
+  const { alice, bob, carol } = await world();
+  await ok(bob.set("users/bob/profile/me", { name: "Gnoll Mag", at: 1 }));
+  await ok(bob.get("users/bob/profile/me"));
+  await no(alice.get("users/bob/profile/me"));
+  await no(alice.set("users/bob/profile/me", { name: "Ha", at: 1 }));
+  await no(bob.set("users/bob/profile/me", { name: "", at: 1 }), "empty: delete the document instead");
+  await no(bob.set("users/bob/profile/me", { name: "x".repeat(61), at: 1 }));
+  await no(bob.set("users/bob/profile/me", { name: "Gnoll", at: 1, email: "b@x" }));
+  await no(bob.set("users/bob/profile/other", { name: "Gnoll", at: 1 }));
+  // the new name goes into my seat; nobody else's, and nothing else with it
+  await ok(bob.update("parties/t1/members/bob", { name: "Gnoll Mag" }));
+  await no(bob.update("parties/t1/members/alice", { name: "Gnoll Mag" }));
+  await no(bob.update("parties/t1/members/bob", { name: "Gnoll Mag", role: "admin" }));
+  await no(bob.update("parties/t1/members/bob", { name: "x".repeat(101) }));
+  await no(alice.update("parties/t1/members/bob", { name: "Bobek" }), "an admin does not rename others");
+  // a request still waiting is renamed too
+  await ok(carol.set("parties/t1/requests/carol", { name: "Carol", charId: "c1", charName: "Iva", code: CODE, at: 4 }));
+  await ok(carol.update("parties/t1/requests/carol", { name: "Karolina" }));
+  await ok(bob.delete("users/bob/profile/me"));
+});

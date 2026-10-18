@@ -30,6 +30,24 @@ export function codeFrom(text) {
 /** Party and character names: trimmed, single spaces, length-limited. */
 export const cleanName = (s, max = NAME_MAX) => String(s || "").replace(/\s+/g, " ").trim().slice(0, max);
 
+// --- 0.44: the player's own name in parties (Settings), instead of the one from the Google account ---
+export const PLAYER_NAME_MAX = NAME_MAX;
+/** The name the party sees: the one I chose, or (none chosen) the Google account's name, or its e-mail. */
+export const playerName = (chosen, account) => cleanName(chosen, PLAYER_NAME_MAX) || cleanName(account, 100);
+/**
+ * Party notes and paper confirmations keep the name they were signed with; after a rename the party should see
+ * the current one. Each note takes its author's name from the members list, each confirmation its GM's;
+ * someone who left keeps the old signature.
+ */
+export function freshNames(members, notes) {
+  const now = new Map((members || []).map((m) => [m.uid, m.name || ""]));
+  return {
+    members: (members || []).map((m) => (m.paperOk?.by && now.get(m.paperOk.by) && now.get(m.paperOk.by) !== m.paperOk.name
+      ? { ...m, paperOk: { ...m.paperOk, name: now.get(m.paperOk.by) } } : m)),
+    notes: (notes || []).map((n) => (n.author && now.get(n.author) && now.get(n.author) !== n.name ? { ...n, name: now.get(n.author) } : n)),
+  };
+}
+
 /**
  * Where I stand in a party on my list.
  * state: what my list remembers ("asked" = I sent a request, "in" = I was a member).
