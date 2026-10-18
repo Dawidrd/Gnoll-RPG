@@ -2,7 +2,7 @@
 // Only screen names and a few event names are sent (never character names, ids, invite codes or account data).
 // No third-party script is loaded: the app calls GoatCounter's /count address itself.
 // Off when: CONFIG.statsUrl is empty, the page runs locally, the browser asks not to be tracked (GPC / Do Not Track),
-// or the user picked "Don't count my visits" on the Privacy screen.
+// or the user picked "Don't count my visits" (Settings or the Privacy screen).
 import { CONFIG } from "./config.js";
 import { storage } from "./store.js";
 
@@ -17,7 +17,7 @@ const local = () => {
   const l = globalThis.location;
   return !l || l.protocol === "file:" || /^(localhost|127\.0\.0\.1|\[::1\]|)$/.test(l.hostname);
 };
-/** The user's own choice on the Privacy screen. */
+/** The user's own choice, made on the Settings or the Privacy screen (one setting, shown twice). */
 export const userAllows = () => storage.get(OPTOUT) !== "1";
 export function setUserAllows(on) { if (on) storage.del(OPTOUT); else storage.set(OPTOUT, "1"); }
 export const statsOn = () => !!CONFIG.statsUrl && userAllows() && !browserSaysNo() && !local();
@@ -31,6 +31,7 @@ export function screenPath(hash) {
   if (p[0] === "c") return "/sheet" + tab(p[2]);
   if (p[0] === "party") return p[1] ? "/party/view" : "/party";
   if (p[0] === "join") return "/join";
+  if (p[0] === "settings") return "/settings";
   if (p[0] === "privacy") return "/privacy";
   if (p[0] === "install") return "/install";
   if (p[0] === "news") return "/news";

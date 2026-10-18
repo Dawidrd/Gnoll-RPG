@@ -2,6 +2,13 @@
 // The first entry's version must match js/config.js and sw.js. 2–4 points each, in plain words, PL and EN.
 export const RELEASES = [
   {
+    version: "0.43.0", date: "2026-10-18",
+    points: [
+      { pl: "Nowy ekran „Ustawienia” (link na dole każdego ekranu): efekty dźwiękowe i liczenie odwiedzin w jednym miejscu, bez szukania.", en: "A new “Settings” screen (linked at the bottom of every screen): sound effects and visit counts in one place, no hunting for them." },
+      { pl: "Dźwięki możesz teraz włączyć i wyłączyć także tutaj — głośniczek w nagłówku karty zostaje i pokazuje to samo ustawienie.", en: "You can switch sounds on and off here too — the speaker on the sheet's header stays and shows the same setting." },
+    ],
+  },
+  {
     version: "0.42.2", date: "2026-10-18",
     points: [
       { pl: "Dźwięk uderzenia leci tylko wtedy, gdy atak faktycznie zabiera przeciwnikowi punkty życia. Chwyt (Grapple) i Pchnięcie (Shove) są już ciche — przy nich nikt nie dostaje obrażeń.", en: "The hit sound now plays only when an attack actually takes the target's hit points. Grapple and Shove are silent — nobody takes damage from them." },

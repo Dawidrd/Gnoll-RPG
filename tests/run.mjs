@@ -1305,6 +1305,7 @@ test("screen names carry no character ids, party ids or invite codes", () => {
   eq(STATS.screenPath("#/party/p123"), "/party/view");
   eq(STATS.screenPath("#/party"), "/party");
   eq(STATS.screenPath("#/privacy"), "/privacy");
+  eq(STATS.screenPath("#/settings"), "/settings");
   eq(STATS.screenPath(""), "/");
   eq(STATS.screenPath("#/c/x/Weird Tab!"), "/sheet", "odd tab names are dropped");
 });
@@ -1862,6 +1863,22 @@ test("0.42.1 Polish texts: actions, conditions and senses in Polish; English onl
   const found = (txt) => [...txt.matchAll(termRegex("pl"))].map((m) => TERM_LINKS[+Object.keys(m.groups).find((k) => m.groups[k] !== undefined).slice(1)].id);
   eq(found("Sprint, Odskok albo Ukrycie jako akcja bonusowa."), ["dash", "disengage", "hide", "bonus"]);
   eq(found("Cel zostaje powalony, a potem jest pochwycony i zauroczony."), ["prone", "grappled", "charmed"]);
+});
+test("0.43.0 Settings screen: its own address, in SHELL, texts in both languages", () => {
+  const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  const main = readFileSync(new URL("../js/main.js", import.meta.url), "utf8");
+  const view = readFileSync(new URL("../js/views/settings.js", import.meta.url), "utf8");
+  eq(sw.includes('"./js/views/settings.js"'), true, "settings.js in SHELL");
+  eq(main.includes('href: "#/settings"'), true, "link in the footer");
+  eq(main.includes('parts[0] === "settings"'), true, "route #/settings");
+  for (const k of ["set.title", "set.intro", "set.sfx.h", "set.sfx.p", "set.sfx.on", "set.stats.h", "set.stats.p", "set.stats.more"])
+    eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
+  // One setting, shown in two places: the screen uses the same switches, never a copy of the stored value.
+  eq(view.includes("sfxOn") && view.includes("setSfx"), true, "sound: the same switch as the sheet's speaker");
+  eq(view.includes("userAllows") && view.includes("setUserAllows"), true, "visit counts: the same switch as on Privacy");
+  eq(view.includes("browserSaysNo"), true, "do-not-track wins here too");
+  // Both languages say that opening the screen is counted (Privacy screen, visit counts).
+  for (const [L, word] of [[LANG_PL, "Ustawienia"], [LANG_EN, "Settings"]]) eq(L["privacy.stats.p"].includes(word), true, word);
 });
 for (const [name, fn] of tests) {
   try { fn(); console.log("ok   " + name); }

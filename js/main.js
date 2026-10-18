@@ -8,6 +8,7 @@ import { renderImport } from "./views/addmode.js";
 import { renderSheet } from "./views/sheet.js";
 import { renderParties, renderParty, renderJoin } from "./views/party.js";
 import { renderPrivacy } from "./views/privacy.js";
+import { renderSettings } from "./views/settings.js";
 import { renderInstall } from "./views/install.js";
 import { renderNews } from "./views/news.js";
 import { showNotice } from "./views/account.js";
@@ -43,7 +44,7 @@ function footer() {
   return h("footer", { cls: "foot" }, [
     h("p", {}, [t("foot.free"), " ", t(accountAvailable() ? "foot.storageAccount" : "foot.storage"), " ", t("app.offline"),
       CONFIG.supportUrl ? [" ", h("a", { href: CONFIG.supportUrl, target: "_blank", rel: "noopener", text: t("foot.support") })] : null,
-      " ", h("a", { href: "#/privacy", text: t("privacy.title") }), " · ", h("a", { href: "#/install", id: "foot-install", text: t("install.link") })].flat()),
+      " ", h("a", { href: "#/settings", text: t("set.title") }), " · ", h("a", { href: "#/privacy", text: t("privacy.title") }), " · ", h("a", { href: "#/install", id: "foot-install", text: t("install.link") })].flat()),
     h("p", { cls: "fan", text: t("foot.fan") }),
     h("p", { cls: "ver", text: `${CONFIG.name} ${CONFIG.version}` }),
   ]);
@@ -66,6 +67,7 @@ function route() {
   else if (parts[0] === "party" && parts[1]) renderParty(view, go, parts[1]);
   else if (parts[0] === "party") renderParties(view, go);
   else if (parts[0] === "join" && parts[1]) renderJoin(view, go, parts[1], parts[2]);
+  else if (parts[0] === "settings") renderSettings(view);
   else if (parts[0] === "privacy") renderPrivacy(view);
   else if (parts[0] === "install") renderInstall(view);
   else if (parts[0] === "news") renderNews(view);
