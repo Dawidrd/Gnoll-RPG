@@ -524,6 +524,10 @@ summary .dmgs { margin-left: 4px; }
 /* Rules glossary panel (0.42): full screen on phones, a side panel on wide screens */
 .topctl { display: flex; align-items: center; gap: 8px; flex: none; }
 .btn.glossbtn { min-width: 44px; min-height: 44px; font-size: 1.15rem; }
+.setbtn svg { display: block; }
+.setbtn[aria-current="page"] { color: var(--gold); border-color: var(--gold-dim); }
+/* Narrow phones (0.44.1): "?", the gear and PL/EN must fit beside the logo */
+@media (max-width: 380px) { .topbar { gap: 8px; padding: 10px 12px; } .topctl { gap: 6px; } .brand-logo { height: 48px; } }
 body.gloss-open { overflow: hidden; }
 .gloss { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: flex-end; }
 .gloss-back { position: absolute; inset: 0; background: rgba(0,0,0,.6); }

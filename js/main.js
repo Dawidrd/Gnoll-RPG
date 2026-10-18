@@ -20,6 +20,9 @@ import { getById, loadCreatorDraft } from "./store.js";
 
 const view = h("div", { id: "view" });
 
+// Settings: a classic gear next to the glossary's "?" (drawn here, coloured by the button's text colour).
+const GEAR = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M9.34 4.24L9.43 1.3L14.57 1.3L14.66 4.24L15.61 4.64L17.75 2.62L21.38 6.25L19.36 8.39L19.76 9.34L22.7 9.43L22.7 14.57L19.76 14.66L19.36 15.61L21.38 17.75L17.75 21.38L15.61 19.36L14.66 19.76L14.57 22.7L9.43 22.7L9.34 19.76L8.39 19.36L6.25 21.38L2.62 17.75L4.64 15.61L4.24 14.66L1.3 14.57L1.3 9.43L4.24 9.34L4.64 8.39L2.62 6.25L6.25 2.62L8.39 4.64ZM15.5 12a3.5 3.5 0 1 0-7 0a3.5 3.5 0 1 0 7 0Z"/></svg>';
+
 function topbar() {
   const sw = h("div", { cls: "seg", role: "group", "aria-label": t("lang.label") }, Object.keys(LANGS).map((code) =>
     h("button", { type: "button", "aria-pressed": code === lang() ? "true" : "false", text: code.toUpperCase(),
@@ -28,6 +31,8 @@ function topbar() {
     h("a", { cls: "brand", href: "#/" }, [h("img", { cls: "brand-logo", src: "logo.png", alt: CONFIG.name, width: 420, height: 241 }), h("span", { cls: "brand-tag", text: t("app.tagline") })]),
     h("div", { cls: "topctl" }, [
       h("button", { type: "button", cls: "btn ghost sq glossbtn", id: "gloss-open", text: "?", "aria-label": t("gl.open"), title: t("gl.open"), onclick: () => openGlossary() }),
+      h("a", { cls: "btn ghost sq glossbtn setbtn", href: "#/settings", "aria-label": t("set.title"), title: t("set.title"),
+        "aria-current": location.hash.startsWith("#/settings") ? "page" : null, html: GEAR }),
       sw,
     ]),
   ]);
@@ -44,7 +49,7 @@ function footer() {
   return h("footer", { cls: "foot" }, [
     h("p", {}, [t("foot.free"), " ", t(accountAvailable() ? "foot.storageAccount" : "foot.storage"), " ", t("app.offline"),
       CONFIG.supportUrl ? [" ", h("a", { href: CONFIG.supportUrl, target: "_blank", rel: "noopener", text: t("foot.support") })] : null,
-      " ", h("a", { href: "#/settings", text: t("set.title") }), " · ", h("a", { href: "#/privacy", text: t("privacy.title") }), " · ", h("a", { href: "#/install", id: "foot-install", text: t("install.link") })].flat()),
+      " ", h("a", { href: "#/privacy", text: t("privacy.title") }), " · ", h("a", { href: "#/install", id: "foot-install", text: t("install.link") })].flat()),
     h("p", { cls: "fan", text: t("foot.fan") }),
     h("p", { cls: "ver", text: `${CONFIG.name} ${CONFIG.version}` }),
   ]);

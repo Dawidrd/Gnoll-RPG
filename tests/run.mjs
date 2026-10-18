@@ -1869,7 +1869,7 @@ test("0.43.0 Settings screen: its own address, in SHELL, texts in both languages
   const main = readFileSync(new URL("../js/main.js", import.meta.url), "utf8");
   const view = readFileSync(new URL("../js/views/settings.js", import.meta.url), "utf8");
   eq(sw.includes('"./js/views/settings.js"'), true, "settings.js in SHELL");
-  eq(main.includes('href: "#/settings"'), true, "link in the footer");
+  eq(main.includes('href: "#/settings"'), true, "link to Settings");
   eq(main.includes('parts[0] === "settings"'), true, "route #/settings");
   for (const k of ["set.title", "set.intro", "set.sfx.h", "set.sfx.p", "set.sfx.on", "set.stats.h", "set.stats.p", "set.stats.more"])
     eq([!!LANG_PL[k], !!LANG_EN[k]], [true, true], k);
@@ -1879,6 +1879,15 @@ test("0.43.0 Settings screen: its own address, in SHELL, texts in both languages
   eq(view.includes("browserSaysNo"), true, "do-not-track wins here too");
   // Both languages say that opening the screen is counted (Privacy screen, visit counts).
   for (const [L, word] of [[LANG_PL, "Ustawienia"], [LANG_EN, "Settings"]]) eq(L["privacy.stats.p"].includes(word), true, word);
+});
+test("0.44.1 Settings: a gear in the top bar next to the glossary, not a footer link", () => {
+  const main = readFileSync(new URL("../js/main.js", import.meta.url), "utf8");
+  const top = main.slice(main.indexOf("function topbar()"), main.indexOf("function footer()"));
+  const foot = main.slice(main.indexOf("function footer()"), main.indexOf("function route()"));
+  eq(top.includes('href: "#/settings"') && top.includes("html: GEAR"), true, "gear link in the top bar");
+  eq(top.indexOf('id: "gloss-open"') < top.indexOf('href: "#/settings"'), true, "right after the \"?\"");
+  eq(top.includes('"aria-label": t("set.title")'), true, "screen readers hear \"Settings\"");
+  eq(foot.includes("#/settings"), false, "no second link in the footer");
 });
 test("0.44.0 my party name: chosen in Settings, else the Google name; old notes show the current name", () => {
   eq(PARTY.playerName("  Gnoll   Mag ", "Jan Kowalski"), "Gnoll Mag", "spaces cleaned");
